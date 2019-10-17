@@ -33,13 +33,52 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/kernel/sc_wait_cthread.h"
 
+// 02/22/2015 GL: to include the definition of CHNL_MTX_TYPE_
+#include "sysc/kernel/sc_process.h" 
+
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_prim_channel
-//
-//  Abstract base class of all primitive channel classes.
-// ----------------------------------------------------------------------------
+
+/**************************************************************************//**
+ *  \struct chnl_scoped_lock
+ *
+ *  \brief The chnl_scoped_lock class to lock (and automatically release) a 
+ *         mutex.
+ *****************************************************************************/
+// 02/22/2015 GL.
+
+struct chnl_scoped_lock {
+    /**
+     *  \brief A reference to the channel lock.
+     */ 
+    CHNL_MTX_TYPE_& m_ref;
+
+    /**
+     *  \brief The constructor automatically acquires the channel lock.
+     */
+    explicit chnl_scoped_lock( CHNL_MTX_TYPE_& mtx ): m_ref( mtx )
+    { 
+        sc_process_b* cp = sc_get_current_process_b();
+        if (cp) // not the root thread
+            cp->lock_and_push( &m_ref ); 
+    }
+
+    /**
+     *  \brief The destructor automatically releases the channel lock.
+     */
+    ~chnl_scoped_lock()
+    {
+        sc_process_b* cp = sc_get_current_process_b();
+        if (cp) // not the root thread
+            cp->pop_and_unlock( &m_ref ); 
+    }
+};
+
+/**************************************************************************//**
+ *  \class sc_prim_channel
+ *
+ *  \brief Abstract base class of all primitive channel classes.
+ *****************************************************************************/
 
 class sc_prim_channel
 : public sc_object
@@ -53,7 +92,13 @@ public:
         { return "sc_prim_channel"; }
 
     inline bool update_requested() 
-	{ return m_update_next_p != (sc_prim_channel*)list_end; }
+    {
+        // 02/25/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
+        return m_update_next_p != (sc_prim_channel*)list_end;
+        // 02/25/2015 GL: return releases the lock
+    }
 
     // request the update method to be executed during the update phase
     inline void request_update();
@@ -71,7 +116,13 @@ protected:
     // destructor
     virtual ~sc_prim_channel();
 
-    // the update method (does nothing by default)
+    /**
+     *  \brief The update method (does nothing by default).
+     *
+     *  This function is not supported by the out-of-order simulation in the
+     *  current release.
+     */
+    // 09/21/2015 GL.
     virtual void update();
 
     // called by construction_done (does nothing by default)
@@ -92,104 +143,236 @@ protected:
 
     // static sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait()
-        { sc_core::wait( simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( int seg_id = -1)
+        { sc_core::wait( seg_id, simcontext() ); }
 
 
     // dynamic sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait( const sc_event& e )
-        { sc_core::wait( e, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event& e, int seg_id = -1)
+        { sc_core::wait( e, seg_id, simcontext() ); }
 
-    void wait( const sc_event_or_list& el )
-	{ sc_core::wait( el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_or_list& el, int seg_id = -1 )
+        { sc_core::wait( el, seg_id, simcontext() ); }
 
-    void wait( const sc_event_and_list& el )
-	{ sc_core::wait( el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_and_list& el, int seg_id = -1 )
+        { sc_core::wait( el, seg_id, simcontext() ); }
 
-    void wait( const sc_time& t )
-        { sc_core::wait( t, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, int seg_id = -1 )
+        { sc_core::wait( t, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, int seg_id = -1 )
+        { sc_core::wait( sc_time( v, tu, simcontext() ), seg_id, 
+                         simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event& e )
-        { sc_core::wait( t, e, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event& e, int seg_id = -1 )
+        { sc_core::wait( t, e, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event& e )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), e, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event& e, int seg_id = -1 )
+        { sc_core::wait( sc_time( v, tu, simcontext() ), e, seg_id, 
+                         simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event_or_list& el )
-        { sc_core::wait( t, el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event_or_list& el, int seg_id = -1 )
+        { sc_core::wait( t, el, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event_or_list& el )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event_or_list& el, 
+               int seg_id = -1 )
+        { sc_core::wait( sc_time( v, tu, simcontext() ), el, seg_id, 
+                         simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event_and_list& el )
-        { sc_core::wait( t, el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event_and_list& el, int seg_id = -1 )
+        { sc_core::wait( t, el, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event_and_list& el )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event_and_list& el, 
+               int seg_id = -1 )
+        { sc_core::wait( sc_time( v, tu, simcontext() ), el, seg_id, 
+                         simcontext() ); }
 
-    void wait( int n )
-        { sc_core::wait( n, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( int n, int seg_id = -1 )
+        { sc_core::wait( n, seg_id, simcontext() ); }
 
 
     // static sensitivity for SC_METHODs
 
-    void next_trigger()
-	{ sc_core::next_trigger( simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void next_trigger( )
+        { sc_core::next_trigger( simcontext() ); }
 
 
     // dynamic sensitivity for SC_METHODs
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event& e )
         { sc_core::next_trigger( e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event_or_list& el )
         { sc_core::next_trigger( el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event_and_list& el )
         { sc_core::next_trigger( el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t )
         { sc_core::next_trigger( t, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu )
-        {sc_core::next_trigger( sc_time( v, tu, simcontext() ), simcontext() );}
+        {sc_core::next_trigger( sc_time( v, tu, simcontext() ), 
+                                simcontext() );}
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event& e )
         { sc_core::next_trigger( t, e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event& e )
         { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), e, simcontext() ); }
+            sc_time( v, tu, simcontext() ), e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event_or_list& el )
         { sc_core::next_trigger( t, el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
         { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
+            sc_time( v, tu, simcontext() ), el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event_and_list& el )
         { sc_core::next_trigger( t, el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
         { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
+            sc_time( v, tu, simcontext() ), el, simcontext() ); }
 
 
     // for SC_METHODs and SC_THREADs and SC_CTHREADs
 
     bool timed_out()
-	{ return sc_core::timed_out( simcontext() ); }
+        { return sc_core::timed_out( simcontext() ); }
 
 
 #if 0 // @@@@####
     // delta count maintenance
     sc_dt::uint64 delta_count()
-	{ return simcontext()->m_delta_count; }
+        { return simcontext()->m_delta_count; }
 #endif
 
 private:
@@ -217,15 +400,24 @@ private:
 
     sc_prim_channel_registry* m_registry;          // Update list manager.
     sc_prim_channel*          m_update_next_p;     // Next entry in update list.
+
+protected:
+
+    /**
+     *  \brief A mutex to protect concurrent communication.
+     */
+    // 02/25/2015 GL.
+    mutable CHNL_MTX_TYPE_ m_mutex;
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_prim_channel_registry
-//
-//  Registry for all primitive channels.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_prim_channel_registry
+ *
+ *  \brief Registry for all primitive channels.
+ *
+ *  FOR INTERNAL USE ONLY!
+ *****************************************************************************/
 
 class sc_prim_channel_registry
 {
@@ -287,6 +479,12 @@ private:
     std::vector<sc_prim_channel*> m_prim_channel_vec;    // existing channels.
     sc_simcontext*                m_simc;                // simulator context.
     sc_prim_channel*              m_update_list_p;       // internal updates.
+
+    /**
+     *  \brief A mutex to protect concurrent requests.
+     */
+    // 02/25/2015 GL.
+    CHNL_MTX_TYPE_ m_mutex;
 };
 
 
@@ -303,8 +501,13 @@ inline
 void
 sc_prim_channel_registry::request_update( sc_prim_channel& prim_channel_ )
 {
+    // 02/25/2015 GL: add a lock to protect concurrent requests from different 
+    //                primitive channels
+    chnl_scoped_lock lock( m_mutex );
+
     prim_channel_.m_update_next_p = m_update_list_p;
     m_update_list_p = &prim_channel_;
+    // 02/25/2015 GL: return releases the lock
 }
 
 // ----------------------------------------------------------------------------
@@ -319,17 +522,23 @@ inline
 void
 sc_prim_channel::request_update()
 {
+    // 02/25/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     if( ! m_update_next_p ) {
 	m_registry->request_update( *this );
     }
+    // 02/25/2015 GL: return releases the lock
 }
 
 // request the update method from external to the simulator (to be executed 
 // during the update phase)
 
+// 02/25/2015 GL: assume this method is MT-safe and protected by 
+//                async_update_list
 inline
 void
-sc_prim_channel::async_request_update()
+sc_prim_channel::async_request_update() 
 {
     m_registry->async_request_update(*this);
 }

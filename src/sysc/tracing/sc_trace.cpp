@@ -54,6 +54,8 @@
 #include "sysc/communication/sc_signal_ifs.h"
 #include "sysc/utils/sc_report.h"
 #include "sysc/utils/sc_utils_ids.h"
+//DM added simcontext.h header so that whenever a trace_file is created, we indicate the scheduler to execute in synchronous parallel
+#include "sysc/kernel/sc_simcontext.h"
 
 namespace sc_core {
 
@@ -61,7 +63,8 @@ namespace sc_core {
 
 sc_trace_file::sc_trace_file()
 {
-  /* Intentionally blank */
+//DM 4/12/2018
+_SYSC_SYNC_PAR_SIM = true;
 }
 
 void tprintf(sc_trace_file* tf,  const char* format, ...)

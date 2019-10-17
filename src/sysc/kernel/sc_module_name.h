@@ -43,15 +43,19 @@ class sc_module;
 class sc_simcontext;
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_module_name
-//
-//  Module name class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_module_name
+ *
+ *  \brief Module name class.
+ *****************************************************************************/
 
 class sc_module_name
 {
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend class sc_object_manager;
 
 public:

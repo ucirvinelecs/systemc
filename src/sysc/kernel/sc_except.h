@@ -74,6 +74,7 @@ class sc_unwind_exception : public std::exception
     friend class sc_method_process;
     friend class sc_thread_process;
     friend void sc_thread_cor_fn( void* arg );
+    friend void sc_method_cor_fn( void* arg );
 
   public:
     virtual bool is_reset() const { return m_is_reset; }

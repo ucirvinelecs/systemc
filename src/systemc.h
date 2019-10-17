@@ -117,7 +117,7 @@
     using std::fputs;
     using std::getc;
     using std::getchar;
-    using std::gets;
+//  using std::gets; // deprecated in c++11, removed in c++14; fails with newer compilers (RD, 07/23/18)
     using std::putc;
     using std::putchar;
     using std::puts;

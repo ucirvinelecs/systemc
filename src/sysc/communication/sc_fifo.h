@@ -40,11 +40,11 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo<T>
-//
-//  The sc_fifo<T> primitive channel class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo<T>
+ *
+ *  \brief The sc_fifo<T> primitive channel class.
+ *****************************************************************************/
 
 template <class T>
 class sc_fifo
@@ -62,7 +62,7 @@ public:
 	      (std::string(SC_KERNEL_EVENT_PREFIX)+"_read_event").c_str()),
 	  m_data_written_event(
 	      (std::string(SC_KERNEL_EVENT_PREFIX)+"_write_event").c_str())
-	{ init( size_ ); }
+    { init( size_ ); }
 
     explicit sc_fifo( const char* name_, int size_ = 16 )
 	: sc_prim_channel( name_ ),
@@ -70,13 +70,13 @@ public:
 	      (std::string(SC_KERNEL_EVENT_PREFIX)+"_read_event").c_str()),
 	  m_data_written_event(
 	      (std::string(SC_KERNEL_EVENT_PREFIX)+"_write_event").c_str())
-	{ init( size_ ); }
+    { init( size_ ); }
 
 
     // destructor
 
     virtual ~sc_fifo()
-	{ delete [] m_buf; }
+    { delete [] m_buf; }
 
 
     // interface methods
@@ -85,8 +85,28 @@ public:
 
 
     // blocking read
-    virtual void read( T& );
-    virtual T read();
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual void read( T&, sc_segid );
+    virtual void read( T&)
+    {
+      assert(false && "Should not be called");
+    }
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual T read( sc_segid );
+    virtual T read()
+    {
+      assert(false && "Should not be called");
+    }
 
     // non-blocking read
     virtual bool nb_read( T& );
@@ -95,17 +115,33 @@ public:
     // get the number of available samples
 
     virtual int num_available() const
-	{ return ( m_num_readable - m_num_read ); }
+    {
+        // 02/24/2015 GL: acquire a lock to protect m_num_readable & m_num_read
+        chnl_scoped_lock lock( m_mutex );
+
+        return ( m_num_readable - m_num_read );
+	      // 02/24/2015 GL: return releases the lock
+    }
 
 
     // get the data written event
 
     virtual const sc_event& data_written_event() const
-	{ return m_data_written_event; }
+    { return m_data_written_event; }
 
 
     // blocking write
-    virtual void write( const T& );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual void write( const T&, int );
+    void write( const T& )
+    {
+      assert(false && "Should not be called");
+    }
 
     // non-blocking write
     virtual bool nb_write( const T& );
@@ -114,23 +150,36 @@ public:
     // get the number of free spaces
 
     virtual int num_free() const
-	{ return ( m_size - m_num_readable - m_num_written ); }
+    {
+        // 02/24/2015 GL: acquire a lock to protect m_num_readable & 
+        //                m_num_written
+        chnl_scoped_lock lock( m_mutex );
+
+        return ( m_size - m_num_readable - m_num_written );
+        // 02/24/2015 GL: return releases the lock
+    }
 
 
     // get the data read event
 
     virtual const sc_event& data_read_event() const
-	{ return m_data_read_event; }
+    { return m_data_read_event; }
 
 
     // other methods
 
     operator T ()
-	{ return read(); }
+    { return read(); }
 
 
+    /**
+     *  \brief This operator is not supported by the out-of-order simulation in
+     *         the current release.
+     */
+    // 08/24/2015 GL.
     sc_fifo<T>& operator = ( const T& a )
-        { write( a ); return *this; }
+    { assert( 0 ); // 08/24/2015 GL: to support operator = in the future
+      write( a, -5 ); return *this; }
 
 
     void trace( sc_trace_file* tf ) const;
@@ -140,7 +189,7 @@ public:
     virtual void dump( ::std::ostream& = ::std::cout ) const;
 
     virtual const char* kind() const
-        { return "sc_fifo"; }
+    { return "sc_fifo"; }
 
 protected:
 
@@ -192,19 +241,19 @@ sc_fifo<T>::register_port( sc_port_base& port_,
     if( nm == typeid( sc_fifo_in_if<T> ).name() ||
         nm == typeid( sc_fifo_blocking_in_if<T> ).name() 
     ) {
-	// only one reader can be connected
-	if( m_reader != 0 ) {
-	    SC_REPORT_ERROR( SC_ID_MORE_THAN_ONE_FIFO_READER_, 0 );
-	}
-	m_reader = &port_;
+        // only one reader can be connected
+        if( m_reader != 0 ) {
+            SC_REPORT_ERROR( SC_ID_MORE_THAN_ONE_FIFO_READER_, 0 );
+        }
+        m_reader = &port_;
     } else if( nm == typeid( sc_fifo_out_if<T> ).name() ||
                nm == typeid( sc_fifo_blocking_out_if<T> ).name()
     ) {
-	// only one writer can be connected
-	if( m_writer != 0 ) {
-	    SC_REPORT_ERROR( SC_ID_MORE_THAN_ONE_FIFO_WRITER_, 0 );
-	}
-	m_writer = &port_;
+        // only one writer can be connected
+        if( m_writer != 0 ) {
+            SC_REPORT_ERROR( SC_ID_MORE_THAN_ONE_FIFO_WRITER_, 0 );
+        }
+        m_writer = &port_;
     }
     else
     {
@@ -216,26 +265,33 @@ sc_fifo<T>::register_port( sc_port_base& port_,
 
 // blocking read
 
+// 08/19/2015 GL: modified for the OoO simulation
+
 template <class T>
 inline
 void
-sc_fifo<T>::read( T& val_ )
+sc_fifo<T>::read( T& val_, sc_segid seg_id )
 {
+    // 02/24/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     while( num_available() == 0 ) {
-	sc_core::wait( m_data_written_event );
+        sc_core::wait( m_data_written_event, seg_id.seg_id );
     }
     m_num_read ++;
     buf_read( val_ );
     request_update();
+    // 02/24/2015 GL: return releases the lock
 }
 
+// 02/24/2015 GL: protected by sc_fifo<T>::read(T&)
 template <class T>
 inline
 T
-sc_fifo<T>::read()
+sc_fifo<T>::read( sc_segid seg_id )
 {
     T tmp;
-    read( tmp );
+    read( tmp, seg_id );
     return tmp;
 }
 
@@ -246,29 +302,39 @@ inline
 bool
 sc_fifo<T>::nb_read( T& val_ )
 {
+    // 02/24/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     if( num_available() == 0 ) {
-	return false;
+        return false;
     }
     m_num_read ++;
     buf_read( val_ );
     request_update();
     return true;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
 // blocking write
 
+// 08/19/2015 GL: modified for the OoO simulation
+
 template <class T>
 inline
 void
-sc_fifo<T>::write( const T& val_ )
+sc_fifo<T>::write( const T& val_, int seg_id )
 {
+    // 02/24/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     while( num_free() == 0 ) {
-	sc_core::wait( m_data_read_event );
+        sc_core::wait( m_data_read_event, seg_id );
     }
     m_num_written ++;
     buf_write( val_ );
     request_update();
+    // 02/24/2015 GL: return releases the lock
 }
 
 // non-blocking write
@@ -278,16 +344,21 @@ inline
 bool
 sc_fifo<T>::nb_write( const T& val_ )
 {
+    // 02/24/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     if( num_free() == 0 ) {
-	return false;
+        return false;
     }
     m_num_written ++;
     buf_write( val_ );
     request_update();
     return true;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
+// 02/24/2015 GL: take care of tracing in the future
 template <class T>
 inline
 void
@@ -309,6 +380,9 @@ inline
 void
 sc_fifo<T>::print( ::std::ostream& os ) const
 {
+    // 02/24/2015 GL: acquire a lock to protect member variables
+    chnl_scoped_lock lock( m_mutex );
+
     if( m_free != m_size ) {
         int i = m_ri;
         do {
@@ -316,6 +390,7 @@ sc_fifo<T>::print( ::std::ostream& os ) const
             i = ( i + 1 ) % m_size;
         } while( i != m_wi );
     }
+    // 02/24/2015 GL: return releases the lock
 }
 
 template <class T>
@@ -323,6 +398,9 @@ inline
 void
 sc_fifo<T>::dump( ::std::ostream& os ) const
 {
+    // 02/24/2015 GL: acquire a lock to protect member variables
+    chnl_scoped_lock lock( m_mutex );
+
     os << "name = " << name() << ::std::endl;
     if( m_free != m_size ) {
         int i = m_ri;
@@ -333,9 +411,11 @@ sc_fifo<T>::dump( ::std::ostream& os ) const
 	    j ++;
         } while( i != m_wi );
     }
+    // 02/24/2015 GL: return releases the lock
 }
 
 
+// 02/24/2015 GL: only executed in the update phase
 template <class T>
 inline
 void
@@ -357,6 +437,7 @@ sc_fifo<T>::update()
 
 // support methods
 
+// 02/24/2015 GL: already protected in public methods
 template <class T>
 inline
 void
@@ -373,13 +454,14 @@ sc_fifo<T>::init( int size_ )
 }
 
 
+// 02/24/2015 GL: already protected in public methods
 template <class T>
 inline
 void
 sc_fifo<T>::buf_init( int size_ )
 {
     if( size_ <= 0 ) {
-	SC_REPORT_ERROR( SC_ID_INVALID_FIFO_SIZE_, 0 );
+        SC_REPORT_ERROR( SC_ID_INVALID_FIFO_SIZE_, 0 );
     }
     m_size = size_;
     m_buf = new T[m_size];
@@ -388,13 +470,14 @@ sc_fifo<T>::buf_init( int size_ )
     m_wi = 0;
 }
 
+// 02/24/2015 GL: already protected in public methods
 template <class T>
 inline
 bool
 sc_fifo<T>::buf_write( const T& val_ )
 {
     if( m_free == 0 ) {
-	return false;
+        return false;
     }
     m_buf[m_wi] = val_;
     m_wi = ( m_wi + 1 ) % m_size;
@@ -402,13 +485,14 @@ sc_fifo<T>::buf_write( const T& val_ )
     return true;
 }
 
+// 02/24/2015 GL: already protected in public methods
 template <class T>
 inline
 bool
 sc_fifo<T>::buf_read( T& val_ )
 {
     if( m_free == m_size ) {
-	return false;
+        return false;
     }
     val_ = m_buf[m_ri];
     m_buf[m_ri] = T(); // clear entry for boost::shared_ptr, et al.

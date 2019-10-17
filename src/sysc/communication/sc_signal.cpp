@@ -80,6 +80,7 @@ bool
 sc_writer_policy_check_port::
   check_port( sc_object* target, sc_port_base * port_, bool is_output )
 {
+    // 02/05/2015 GL: assume we have acquired a lock upon here
     if ( is_output && sc_get_curr_simcontext()->write_check() )
     {
         // an out or inout port; only one can be connected
@@ -157,13 +158,18 @@ template< sc_writer_policy POL >
 void
 sc_signal<bool,POL>::write( const bool& value_ )
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication, but 
+    //                sc_signal should have a single write port?!
+    chnl_scoped_lock lock( m_mutex );
+
     bool value_changed = !( m_cur_val == value_ );
     if ( !policy_type::check_write(this, value_changed) )
         return;
     m_new_val = value_;
     if( value_changed ) {
-        request_update();
+	request_update();
     }
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
@@ -178,12 +184,17 @@ template< sc_writer_policy POL >
 void
 sc_signal<bool,POL>::dump( ::std::ostream& os ) const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     os << "     name = " << name() << ::std::endl;
     os << "    value = " << m_cur_val << ::std::endl;
     os << "new value = " << m_new_val << ::std::endl;
+    // 02/22/2015 GL: return releases the lock
 }
 
 
+// 02/08/2015 GL: only executed by the root thread in the evaluate-update phase
 template< sc_writer_policy POL >
 void
 sc_signal<bool,POL>::update()
@@ -200,16 +211,13 @@ sc_signal<bool,POL>::do_update()
 {
     // order of execution below is important, the notify_processes() call
     // must come after the update of m_cur_val for things to work properly!
-
     m_cur_val = m_new_val;
 
     if ( m_reset_p ) m_reset_p->notify_processes();
-
-    if ( m_change_event_p ) m_change_event_p->notify_next_delta();
-
+    if ( m_change_event_p ) m_change_event_p->notify(SC_ZERO_TIME); //DM
     sc_event* event_p = this->m_cur_val
                       ? m_posedge_event_p : m_negedge_event_p;
-    if ( event_p ) event_p->notify_next_delta();
+    if ( event_p ) event_p->notify(SC_ZERO_TIME); //DM
 
     m_change_stamp = simcontext()->change_stamp();
 }
@@ -220,21 +228,33 @@ template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::value_changed_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_change_event_p,"value_changed_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::posedge_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_posedge_event_p,"posedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::negedge_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_negedge_event_p,"negedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 
@@ -255,6 +275,7 @@ sc_signal<bool,POL>::is_reset() const
 template< sc_writer_policy POL >
 sc_signal<bool,POL>::~sc_signal()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
     delete m_change_event_p;
     delete m_negedge_event_p;
     delete m_posedge_event_p;
@@ -281,6 +302,10 @@ inline
 void
 sc_signal<sc_dt::sc_logic,POL>::write( const sc_dt::sc_logic& value_ )
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication, but 
+    //                sc_signal should have a single write port?!
+    chnl_scoped_lock lock( m_mutex );
+
     bool value_changed = !( m_cur_val == value_ );
     if ( !policy_type::check_write(this, value_changed) )
         return;
@@ -289,6 +314,7 @@ sc_signal<sc_dt::sc_logic,POL>::write( const sc_dt::sc_logic& value_ )
     if( value_changed ) {
         request_update();
     }
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
@@ -303,12 +329,17 @@ template< sc_writer_policy POL >
 void
 sc_signal<sc_dt::sc_logic,POL>::dump( ::std::ostream& os ) const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     os << "     name = " << name() << ::std::endl;
     os << "    value = " << m_cur_val << ::std::endl;
     os << "new value = " << m_new_val << ::std::endl;
+    // 02/22/2015 GL: return releases the lock
 }
 
 
+// 02/08/2015 GL: only executed by the root thread in the evaluate-update phase
 template< sc_writer_policy POL >
 void
 sc_signal<sc_dt::sc_logic,POL>::update()
@@ -325,13 +356,13 @@ sc_signal<sc_dt::sc_logic,POL>::do_update()
 {
     m_cur_val = m_new_val;
 
-    if ( m_change_event_p ) m_change_event_p->notify_next_delta();
+    if ( m_change_event_p ) m_change_event_p->notify(SC_ZERO_TIME); //DM
 
     if( m_posedge_event_p && (this->m_cur_val == sc_dt::SC_LOGIC_1) ) {
-        m_posedge_event_p->notify_next_delta();
+        m_posedge_event_p->notify(SC_ZERO_TIME); //DM
     }
     else if( m_negedge_event_p && (this->m_cur_val == sc_dt::SC_LOGIC_0) ) {
-        m_negedge_event_p->notify_next_delta();
+        m_negedge_event_p->notify(SC_ZERO_TIME); //DM
     }
 
     m_change_stamp = simcontext()->change_stamp();
@@ -343,21 +374,33 @@ template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::value_changed_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_change_event_p,"value_changed_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::posedge_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_posedge_event_p,"posedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::negedge_event() const
 {
+    // 02/22/2015 GL: add a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     return *sc_lazy_kernel_event(&m_negedge_event_p,"negedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 

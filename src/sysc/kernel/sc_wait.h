@@ -16,7 +16,7 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
   sc_wait.h -- Wait() and related functions.
@@ -32,7 +32,10 @@
 
 
 #include "sysc/kernel/sc_simcontext.h"
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 class sc_event;
@@ -42,91 +45,174 @@ class sc_simcontext;
 
 extern sc_simcontext* sc_get_curr_simcontext();
 
+void message_test();
 // static sensitivity for SC_THREADs and SC_CTHREADs
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+ 
+extern 
+void 
+aux_seg_bound(sc_simcontext* simc);
+ 
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
-wait( sc_simcontext* = sc_get_curr_simcontext() );
+wait( int = -1,
+      sc_simcontext* = sc_get_curr_simcontext() );
 
 
 // dynamic sensitivity for SC_THREADs and SC_CTHREADs
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_event&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_event_or_list&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_event_and_list&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_time&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 wait( double v, sc_time_unit tu,
+      int seg_id = -1,
       sc_simcontext* simc = sc_get_curr_simcontext() )
 {
-    wait( sc_time( v, tu, simc ), simc );
+    wait( sc_time( v, tu, simc ), seg_id, simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_time&,
       const sc_event&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 wait( double v, sc_time_unit tu,
       const sc_event& e,
+      int seg_id = -1,
       sc_simcontext* simc = sc_get_curr_simcontext() )
 {
-    wait( sc_time( v, tu, simc ), e, simc );
+    wait( sc_time( v, tu, simc ), e, seg_id, simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_time&,
       const sc_event_or_list&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 wait( double v, sc_time_unit tu,
       const sc_event_or_list& el,
+      int seg_id = -1,
       sc_simcontext* simc = sc_get_curr_simcontext() )
 {
-    wait( sc_time( v, tu, simc ), el, simc );
+    wait( sc_time( v, tu, simc ), el, seg_id, simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 wait( const sc_time&,
       const sc_event_and_list&,
+      int = -1,
       sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 wait( double v, sc_time_unit tu,
       const sc_event_and_list& el,
+      int seg_id = -1,
       sc_simcontext* simc = sc_get_curr_simcontext() )
 {
-    wait( sc_time( v, tu, simc ), el, simc );
+    wait( sc_time( v, tu, simc ), el, seg_id, simc );
 }
 
 
 // static sensitivity for SC_METHODs
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( sc_simcontext* = sc_get_curr_simcontext() );
@@ -134,26 +220,51 @@ next_trigger( sc_simcontext* = sc_get_curr_simcontext() );
 
 // dynamic sensitivity for SC_METHODs
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_event&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_event_or_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_event_and_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_time&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 next_trigger( double v, sc_time_unit tu,
@@ -162,12 +273,22 @@ next_trigger( double v, sc_time_unit tu,
     next_trigger( sc_time( v, tu, simc ), simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_time&,
 	      const sc_event&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 next_trigger( double v, sc_time_unit tu,
@@ -177,12 +298,22 @@ next_trigger( double v, sc_time_unit tu,
     next_trigger( sc_time( v, tu, simc ), e, simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_time&,
 	      const sc_event_or_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 next_trigger( double v, sc_time_unit tu,
@@ -192,12 +323,22 @@ next_trigger( double v, sc_time_unit tu,
     next_trigger( sc_time( v, tu, simc ), el, simc );
 }
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 extern
 void
 next_trigger( const sc_time&,
 	      const sc_event_and_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 06/12/2015 GL: modified for the OoO simulation
 inline
 void
 next_trigger( double v, sc_time_unit tu,

@@ -76,7 +76,11 @@ class sc_time
 {
 public:
 
-    typedef sc_dt::uint64 value_type;
+    // current RISC implementation uses 'long long', not 'unsigned long long'
+    // (this was a poor choice to allow for "special" values, not easy to change now)
+    // (08/23/19, RD)
+//  typedef sc_dt::uint64 value_type;
+    typedef long long value_type;
 
     // constructors
 

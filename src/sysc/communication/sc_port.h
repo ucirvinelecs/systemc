@@ -62,11 +62,11 @@ enum sc_port_policy
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_port_base
-//
-//  Abstract base class for class sc_port_b.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_port_base
+ *
+ *  \brief Abstract base class for class sc_port_b.
+ *****************************************************************************/
 
 class sc_port_base
 : public sc_object
@@ -181,12 +181,13 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_port_registry
-//
-//  Registry for all ports.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_port_registry
+ *
+ *  \brief Registry for all ports.
+ *
+ *  FOR INTERNAL USE ONLY!
+ *****************************************************************************/
 
 class sc_port_registry
 {
@@ -240,11 +241,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_port_b
-//
-//  Abstract base class for class sc_port.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_port_b
+ *
+ *  \brief Abstract base class for class sc_port.
+ *****************************************************************************/
 
 template <class IF>
 class sc_port_b
@@ -361,13 +362,14 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_port
-//
-//  Generic port class and base class for other port classes.
-//  N is the maximum number of channels (with interface IF) that can be bound
-//  to this port. N <= 0 means no maximum.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_port
+ *
+ *  \brief Generic port class and base class for other port classes.
+ *
+ *  N is the maximum number of channels (with interface IF) that can be bound
+ *  to this port. N <= 0 means no maximum.
+ *****************************************************************************/
 
 extern void sc_warn_port_constructor();
 

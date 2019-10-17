@@ -83,11 +83,12 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_host_mutex
-//
-//   The sc_host_mutex class, wrapping an OS mutex on the simulation host
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_host_mutex
+ *
+ *  \brief The sc_host_mutex class, wrapping an OS mutex on the simulation
+ *         host.
+ *****************************************************************************/
 
 class sc_host_mutex : public sc_mutex_if
 {
@@ -105,8 +106,17 @@ public:
     // interface methods
 
     // blocks until mutex could be locked
-    virtual int lock()
-	{ SC_MTX_LOCK_(m_mtx); return 0; }
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     * 
+     *  This function is not supported by the out-of-order simulation in the 
+     *  current release.
+     */ 
+    // 08/20/2015 GL: modified for the OoO simulation
+    virtual int lock( int )
+	{ assert( 0 ); SC_MTX_LOCK_(m_mtx); return 0; }
 
     // returns -1 if mutex could not be locked
     virtual int trylock()

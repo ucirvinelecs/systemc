@@ -32,7 +32,8 @@ PROJECT_NAME           = @PACKAGE_NAME@
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = @PACKAGE_VERSION@
+#PROJECT_NUMBER        = @PACKAGE_VERSION@
+PROJECT_NUMBER         = "Recoding Infrastructure for SystemC v0.6.0 derived from Accellera SystemC 2.3.1"
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer
@@ -660,7 +661,9 @@ WARN_LOGFILE           =
 
 INPUT                  = @top_srcdir@/src/systemc \
                          @top_srcdir@/src/systemc.h \
-                         @top_srcdir@/src/sysc
+                         @top_srcdir@/src/sysc \
+						 @top_srcdir@/docs/sysc/doxygen/mainpage.dox
+						
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding, which is

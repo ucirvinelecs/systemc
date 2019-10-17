@@ -57,9 +57,11 @@
 namespace sc_core {
 
 
-// ---------------------------------------------------------------------------
-// sc_event_queue_if
-// ---------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_queue_if
+ *
+ *  \brief The sc_event_queue interface class.
+ *****************************************************************************/
 
 class sc_event_queue_if : public virtual sc_interface
 {
@@ -69,10 +71,12 @@ public:
     virtual void cancel_all() =0;
 };
 
-// ---------------------------------------------------------------------------
-// sc_event_queue: a queue that can contain any number of pending 
-// delta, or timed events.
-// ---------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_queue
+ * 
+ *  \brief A queue that can contain any number of pending delta, or timed
+ *         events.
+ *****************************************************************************/
 
 class sc_event_queue: 
   public sc_event_queue_if,
@@ -82,7 +86,13 @@ class sc_event_queue:
 
     SC_HAS_PROCESS( sc_event_queue );
 
+    /**
+     *  \brief This constructor function is not supported by the out-of-order 
+     *         simulation in the current release.
+     */
+    // 08/20/2015 GL.
     sc_event_queue( sc_module_name name_ = sc_gen_unique_name("event_queue") );
+
     ~sc_event_queue();
 
     // API of sc_object

@@ -31,6 +31,7 @@
 #if !defined(sc_process_h_INCLUDED)
 #define sc_process_h_INCLUDED
 
+#include <string>
 #include <cassert>
 #include "sysc/utils/sc_iostream.h"
 #include "sysc/kernel/sc_constants.h"
@@ -38,6 +39,67 @@
 #include "sysc/kernel/sc_kernel_ids.h"
 #include "sysc/communication/sc_export.h"
 
+#include <list> // 02/13/2015 GL
+#include <set>
+#ifndef SC_INCLUDE_WINDOWS_H // 02/20/2015 GL
+#  define SC_INCLUDE_WINDOWS_H // include Windows.h, if needed
+#endif
+#include "sysc/kernel/sc_cmnhdr.h"
+
+#if defined(WIN32) || defined(_WIN32)
+
+#define CHNL_MTX_TYPE_ CRITICAL_SECTION
+
+#define CHNL_MTX_INIT_( Mutex ) \
+    InitializeCriticalSection( &(Mutex) )
+#define CHNL_MTX_LOCK_( Mutex ) \
+    EnterCriticalSection( &(Mutex) )
+#define CHNL_MTX_UNLOCK_( Mutex ) \
+    LeaveCriticalSection( &(Mutex) )
+#define CHNL_MTX_TRYLOCK_( Mutex ) \
+    ( TryEnterCriticalSection( &(Mutex) ) != 0 )
+#define CHNL_MTX_DESTROY_( Mutex ) \
+    DeleteCriticalSection( &(Mutex) )
+
+#else // use pthread mutex
+
+#include <pthread.h>
+#define CHNL_MTX_TYPE_ pthread_mutex_t
+
+#if defined(__hpux)
+#  define CHNL_PTHREAD_NULL_ cma_c_null
+#else // !defined(__hpux)
+#  define CHNL_PTHREAD_NULL_ NULL
+#endif
+
+#define CHNL_MTX_INIT_( Mutex ) \
+    pthread_mutex_init( &(Mutex), CHNL_PTHREAD_NULL_ )
+#define CHNL_MTX_LOCK_( Mutex ) \
+    pthread_mutex_lock( &(Mutex) )
+#define CHNL_MTX_UNLOCK_( Mutex ) \
+    pthread_mutex_unlock( &(Mutex) )
+
+#ifdef _XOPEN_SOURCE
+#   define CHNL_MTX_TRYLOCK_( Mutex ) \
+       ( pthread_mutex_trylock( &(Mutex) ) == 0 )
+#else // no try_lock available
+#   define CHNL_MTX_TRYLOCK_( Mutex ) \
+       ( false ) 
+#endif
+
+#define CHNL_MTX_DESTROY_( Mutex ) \
+    pthread_mutex_destroy( &(Mutex) )
+
+#endif
+
+#include "sysc/kernel/sc_time.h" // 08/12/2015 GL: to include sc_time type
+
+// 08/19/2015 GL: to include sc_dt::uint64
+#include "sysc/datatypes/int/sc_nbdefs.h"
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 // Forward declarations:
@@ -78,12 +140,12 @@ enum sc_descendant_inclusion_info {
     SC_INVALID_DESCENDANTS
 };
 
-//==============================================================================
-// CLASS sc_process_host
-//
-// This is the base class for objects which may have processes defined for
-// their methods (e.g., sc_module)
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_process_host
+ *
+ *  \brief This is the base class for objects which may have processes defined 
+ *  for their methods (e.g., sc_module).
+ *****************************************************************************/
 
 class sc_process_host 
 {
@@ -94,14 +156,15 @@ class sc_process_host
 };
 
 
-//==============================================================================
-// CLASS sc_process_monitor
-//
-// This class provides a way of monitoring a process' status (e.g., waiting 
-// for a thread to complete its execution.) This class is intended to be a base
-// class for classes which need to monitor a process or processes (e.g.,
-// sc_join.) Its methods should be overloaded where notifications are desired.
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_process_monitor
+ *
+ *  This class provides a way of monitoring a process' status (e.g., 
+ *  waiting for a thread to complete its execution). This class is intended to 
+ *  be a base class for classes which need to monitor a process or processes 
+ *  (e.g., sc_join). Its methods should be overloaded where notifications are 
+ *  desired.
+ *****************************************************************************/
 
 class sc_process_monitor {
   public:
@@ -110,23 +173,29 @@ class sc_process_monitor {
     };
     virtual ~sc_process_monitor() {}
     virtual void signal(sc_thread_handle thread_p, int type);
+	//DM 05/24/2019 sc_method is same as sc_thread
+    virtual void signal(sc_method_handle thread_p, int type);
+
 };
 inline void sc_process_monitor::signal(sc_thread_handle , int ) {}  
+inline void sc_process_monitor::signal(sc_method_handle , int ) {}  
 
-//------------------------------------------------------------------------------
-// PROCESS INVOCATION METHOD OR FUNCTION:
-//
-//  Define SC_USE_MEMBER_FUNC_PTR if we want to use member function pointers 
-//  to implement process dispatch. Otherwise, we'll use a hack that involves 
-//  creating a templated invocation object which will invoke the member
-//  function. This should not be necessary, but some compilers (e.g., VC++)
-//  do not allow the conversion from `void (callback_tag::*)()' to 
-//  `void (sc_process_host::*)()'. This is supposed to be OK as long as the 
-//  dynamic type is correct.  C++ Standard 5.4 "Explicit type conversion", 
-//  clause 7: a pointer to member of derived class type may be explicitly 
-//  converted to a pointer to member of an unambiguous non-virtual base class 
-//  type. 
-//-----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \def SC_USE_MEMBER_FUNC_PTR
+*   
+ *  \brief Process invocation method or function.
+ *
+ *  Define SC_USE_MEMBER_FUNC_PTR if we want to use member function pointers 
+ *  to implement process dispatch. Otherwise, we'll use a hack that involves 
+ *  creating a templated invocation object which will invoke the member
+ *  function. This should not be necessary, but some compilers (e.g., VC++)
+ *  do not allow the conversion from `void (callback_tag::*)()' to 
+ *  `void (sc_process_host::*)()'. This is supposed to be OK as long as the 
+ *  dynamic type is correct.  C++ Standard 5.4 "Explicit type conversion", 
+ *  clause 7: a pointer to member of derived class type may be explicitly 
+ *  converted to a pointer to member of an unambiguous non-virtual base class 
+ *  type. 
+ *****************************************************************************/
 
 #if defined(_MSC_VER)
 #if ( _MSC_VER > 1200 )
@@ -199,32 +268,38 @@ inline void sc_process_monitor::signal(sc_thread_handle , int ) {}
 
 extern void sc_set_stack_size( sc_thread_handle, std::size_t );
 
+// 04/03/2015 GL: set the stack size of SC_METHODs
+extern void sc_set_stack_size( sc_method_handle, std::size_t );
+
 class sc_event;
 class sc_event_list;
+class sc_event_or_list;
 class sc_name_gen;
 class sc_spawn_options;
 class sc_unwind_exception;
 
-//==============================================================================
-// CLASS sc_throw_it<EXCEPT> - ARBITRARY EXCEPTION CLASS
-//
-// This class serves as a way of throwing an execption for an aribtrary type
-// without knowing what that type is. A true virtual method in the base
-// class is used to actually throw the execption. A pointer to the base 
-// class is used internally removing the necessity of knowing what the type
-// of EXCEPT is for code internal to the library.
-//
-// Note the clone() true virtual method. This is used to allow instances
-// of the sc_throw_it<EXCEPT> class to be easily garbage collected. Since
-// an exception may be propogated to more than one process knowing when
-// to garbage collect is non-trivial. So when a call is made to 
-// sc_process_handle::throw_it() an instance of sc_throw_it<EXCEPT> is 
-// allocated on the stack. For each process throwing the exception a copy is 
-// made via clone(). That allows those objects to be deleted by the individual
-// processes when they are no longer needed (in this implementation of SystemC 
-// that deletion will occur each time a new exception is thrown ( see 
-// sc_thread_process::suspend_me() ).
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_throw_it<EXCEPT> 
+ *   
+ *  \brief Arbitrary exception class.
+ *
+ *  This class serves as a way of throwing an execption for an aribtrary type
+ *  without knowing what that type is. A true virtual method in the base
+ *  class is used to actually throw the execption. A pointer to the base 
+ *  class is used internally removing the necessity of knowing what the type
+ *  of EXCEPT is for code internal to the library.
+ *
+ *  Note the clone() true virtual method. This is used to allow instances
+ *  of the sc_throw_it<EXCEPT> class to be easily garbage collected. Since
+ *  an exception may be propogated to more than one process knowing when
+ *  to garbage collect is non-trivial. So when a call is made to 
+ *  sc_process_handle::throw_it() an instance of sc_throw_it<EXCEPT> is 
+ *  allocated on the stack. For each process throwing the exception a copy is 
+ *  made via clone(). That allows those objects to be deleted by the individual
+ *  processes when they are no longer needed (in this implementation of SystemC 
+ *  that deletion will occur each time a new exception is thrown ( see 
+ *  sc_thread_process::suspend_me() ).
+ *****************************************************************************/
 class sc_throw_it_helper {
   public:
     virtual sc_throw_it_helper* clone() const = 0;
@@ -246,27 +321,242 @@ class sc_throw_it : public sc_throw_it_helper
     EXCEPT m_value;  // value to be thrown.
 };
 
-//==============================================================================
-// CLASS sc_process_b - USER INITIATED DYNAMIC PROCESS SUPPORT:
-//
-// This class implements the base class for a threaded process_base process 
-// whose semantics are provided by the true virtual method semantics(). 
-// Classes derived from this one will provide a version of semantics which 
-// implements the desired semantics. See the sc_spawn_xxx classes below.
-//
-// Notes:
-//   (1) Object instances of this class maintain a reference count of 
-//       outstanding handles. When the handle count goes to zero the 
-//       object will be deleted. 
-//   (2) Descriptions of the methods and operators in this class appear with
-//       their implementations.
-//   (3) The m_sticky_reset field is used to handle synchronous resets that
-//       are enabled via the sc_process_handle::sync_reset_on() method. These
-//       resets are not generated by a signal, but rather are modal by 
-//       method call: sync_reset_on - sync_reset_off.
-//       
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_acq_chnl_lock_queue
+ *  
+ *  \brief A list of channel locks acquired by a process.
+ *
+ *  This class implements the object to maintain a list of channel locks  
+ *  acquired in the hierachical channels. The outer channel lock is at the 
+ *  beginning of the list, and the inner channel lock is at the end of the 
+ *  list. The order of the acquired channel locks is maintained as LIFO 
+ *  (Last-In-First-Out), meaning that the outer channel lock is acquired first 
+ *  and released last.
+ *
+ *  Notes:
+ *    (1) In the lock_and_push method, it will first check whether the new 
+ *        channel lock is the same as the last one in the list. If they are 
+ *        the same (one method calls another in the current-level channel), it 
+ *        will only increment the lock counter; if the new channel lock is not 
+ *        in the list, then it will be locked and pushed into the end of the 
+ *        list; if the new lock is in the list but not the last one (an inner 
+ *        channel method calls an outer channel method), assertion fails and it
+ *         stops the simulation. 
+ *    (2) In the pop_and_unlock method, it will always try to unlock the last 
+ *        channel lock in the list, otherwise it breaks the correct order to 
+ *        unlock locks (may lead to deadlock issues). When the counter of the 
+ *        last lock is larger than one, it will decrement the counter. If the 
+ *        counter equals one, it pops the lock from the list and releases the 
+ *        lock.
+ *    (3) In lock_all and unlock_all methods, it will acquire all the locks 
+ *        from the beginning to the end, and release all the locks in the 
+ *        reverse order.
+ *****************************************************************************/
+// 02/13/2015 GL.
+/**
+ *  \brief A data structure to keep the state of a channel lock.
+ */
+struct sc_chnl_lock {
+    /**
+     *  \brief A pointer to the specific channel lock.
+     */
+    CHNL_MTX_TYPE_ *lock_p;
+
+    /**
+     *  \brief The lock counter.
+     */
+    unsigned int counter;
+
+    /**
+     *  \brief The constructor initializes the lock pointer and counter.
+     */
+    sc_chnl_lock( CHNL_MTX_TYPE_ *m ): lock_p( m ), counter( 1 ) {}
+};
+
+class sc_acq_chnl_lock_queue {
+  public:
+    /**
+     *  \brief Acquire a new channel lock or increment the lock counter.
+     *
+     *  In the lock_and_push method, it will first check whether the new 
+     *  channel lock is the same as the last one in the list. If they are 
+     *  the same (one method calls another in the current-level channel), it 
+     *  will only increment the lock counter; if the new channel lock is not 
+     *  in the list, then it will be locked and pushed into the end of the 
+     *  list; if the new lock is in the list but not the last one (an inner 
+     *  channel method calls an outer channel method), assertion fails and it
+     *  stops the simulation. 
+     */
+    void lock_and_push( CHNL_MTX_TYPE_ *lock );
+
+    /**
+     *  \brief Release a channel lock or decrement the lock counter.
+     *
+     *  In the pop_and_unlock method, it will always try to unlock the last 
+     *  channel lock in the list, otherwise it breaks the correct order to 
+     *  unlock locks (may lead to deadlock issues). When the counter of the 
+     *  last lock is larger than one, it will decrement the counter. If the 
+     *  counter equals one, it pops the lock from the list and releases the 
+     *  lock.
+     */
+    void pop_and_unlock( CHNL_MTX_TYPE_ *lock );
+
+    /**
+     *  \brief Acquire all the channel locks in the list.
+     *
+     *  Acquire all the locks from the beginning to the end.
+     */ 
+    void lock_all( void );
+
+    /**
+     *  \brief Release all the channel locks in the list.
+     *
+     *  Release all the locks from the end to the beginning.
+     */
+    void unlock_all( void );
+
+  private:
+    /**
+     *  \brief A list of acquired channel locks.
+     */
+    std::list<sc_chnl_lock*> queue;
+};
+
+/**************************************************************************//**
+ *  \class sc_timestamp
+ *
+ *  \brief A time stamp combining timed cycles and delta cycles.
+ *
+ *  This class implements the time stamp of a process which contains both timed
+ *  cycle counts and delta cycle counts. It records the local time of a process
+ *  and is used in the Out-of-Order simulation.
+ *****************************************************************************/
+// 08/06/2015 GL.
+class sc_timestamp
+{
+public:
+
+    /**
+     *  \brief The data type of delta cycles.
+     */
+    typedef sc_dt::uint64 value_type;
+
+    // constructors
+
+    sc_timestamp();
+    sc_timestamp( sc_time, value_type );
+    sc_timestamp( long long, int );
+    sc_timestamp( const sc_timestamp& );
+
+    // assignment operator
+
+    /**
+     *  \brief Overload assignment operator.
+     */
+    sc_timestamp& operator = ( const sc_timestamp& );
+
+    // relational operators
+
+    /**
+     *  \brief Overload == operator.
+     */
+    bool operator == ( const sc_timestamp& ) const;
+
+    /** 
+     *  \brief Overload != operator
+     */
+    bool operator != ( const sc_timestamp& ) const;
+
+    /**
+     *  \brief Overload < operator.
+     */
+    bool operator <  ( const sc_timestamp& ) const;
+
+    /**
+     *  \brief Overload <= operator.
+     */
+    bool operator <= ( const sc_timestamp& ) const;
+
+    /**
+     *  \brief Overload > operator.
+     */
+    bool operator >  ( const sc_timestamp& ) const;
+
+    /**
+     *  \brief Overload >= operator.
+     */
+    bool operator >= ( const sc_timestamp& ) const;
+ 
+    // arithmetic operator
+
+    /**
+     *  \brief Overload + operator.
+     */
+    sc_timestamp operator + ( const sc_timestamp& );
+
+    // get member variables
+
+    /**
+     *  \brief Get the value of timed cycles.
+     */
+    const sc_time& get_time_count() const;
+
+    /**
+     *  \brief Get the value of delta cycles.
+     */
+    value_type get_delta_count() const;
+
+    /**
+     *  \brief Check whether the time stamp is infinite.
+     */
+    bool get_infinite() const;
+
+    void show() const;
+    std::string to_string() const;
+    /**
+     *  \brief The value of timed cycles.
+     */
+    sc_time    m_time_count;
+
+    /**
+     *  \brief The value of delta cycles.
+     */
+    value_type m_delta_count;
+
+private:
+
+    
+
+    /**
+     *  \brief The flag of infinite time stamp.
+     */
+    bool       m_infinite;
+};
+
+/**************************************************************************//**
+ *  \class sc_process_b
+ *
+ *  \brief User initiated dynamic process support.
+ *
+ *  This class implements the base class for a threaded process_base process 
+ *  whose semantics are provided by the true virtual method semantics(). 
+ *  Classes derived from this one will provide a version of semantics which 
+ *  implements the desired semantics. See the sc_spawn_xxx classes below.
+ *
+ *  Notes:
+ *    (1) Object instances of this class maintain a reference count of 
+ *        outstanding handles. When the handle count goes to zero the 
+ *        object will be deleted. 
+ *    (2) Descriptions of the methods and operators in this class appear with
+ *        their implementations.
+ *    (3) The m_sticky_reset field is used to handle synchronous resets that
+ *        are enabled via the sc_process_handle::sync_reset_on() method. These
+ *        resets are not generated by a signal, but rather are modal by 
+ *        method call: sync_reset_on - sync_reset_off.    
+ *****************************************************************************/
 class sc_process_b : public sc_object { 
+    friend class Invoker; //DM 05/16/2019
+
     friend class sc_simcontext;      // Allow static processes to have base.
     friend class sc_cthread_process; // Child can access parent.
     friend class sc_method_process;  // Child can access parent.
@@ -280,6 +570,10 @@ class sc_process_b : public sc_object {
     friend class sc_sensitive_pos;
     friend class sc_sensitive_neg;
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend class sc_report_handler;
     friend class sc_reset;
     friend class sc_reset_finder;
@@ -289,8 +583,115 @@ class sc_process_b : public sc_object {
     friend sc_process_handle sc_get_current_process_handle();
     friend void sc_thread_cor_fn( void* arg );
     friend bool timed_out( sc_simcontext* );
+	
+
+	
 
   public:
+  
+  
+  //19:23 2018/7/7 ZC
+  //for both sc_event_and_list and sc_event_or_list
+  
+  /*
+  / if any event in event_list is triggered
+  / initially false;
+  / when the thread wakes up, set it to false again
+  / this is used to set the initial value of wake_up_time_for_event_list,
+  / which is the first event's time
+  */
+  
+  bool event_list_member_triggered;
+  
+  /*
+  / used for both andlist and orlist
+  / 1) for andlist, it is the max value of all the events
+  / 2) for orlist, it is the min value of all the events
+  */
+
+  sc_timestamp wake_up_time_for_event_list;  
+  
+  //end
+  
+
+	/**
+     * \brief sets the upcoming segment ids
+     *        TS 07/08/17
+     */
+    void set_upcoming_segment_ids(int *segment_ids)
+    {
+      this->segment_ids = segment_ids;
+    }
+
+    /**
+     * \brief returns the upcoming segment ids
+     *        TS 07/08/17
+     */
+    int* get_upcoming_segment_ids()
+    {
+      return segment_ids;
+    }
+
+    /**
+     * \brief stores the upcoming segment ids
+     *        TS 07/08/17
+     */
+    int *segment_ids;
+
+
+    /**
+     * \brief sets the upcoming socket id
+     *        ZC 10:30 2018/10/31
+     */
+    void set_upcoming_socket_id(int socket_id)
+    {
+      this->socket_id_ = socket_id;
+    }
+
+    /**
+     * \brief returns the upcoming socket id
+     *        ZC 10:31 2018/10/31
+     */
+    int get_upcoming_socket_id()
+    {
+      return this->socket_id_;
+    }
+
+    /**
+     * \brief stores the upcoming socket id
+     *        ZC 10:31 2018/10/31
+     */
+    int socket_id_;
+
+
+    /**
+     * \brief increase the offset
+     *        ZC 10:30 2018/10/31
+     */
+    void increase_offset(int offset)
+    {
+      this->seg_offset_ += offset;
+    }
+
+    /**
+     * \brief decrease the offset
+     *        ZC 10:31 2018/10/31
+     */
+    void decrease_offset(int offset)
+    {
+      this->seg_offset_ -= offset;
+    }
+
+    /**
+     * \brief returns the offset
+     *        ZC 10:31 2018/10/31
+     */
+    int get_offset()
+    {
+      return this->seg_offset_;
+    }
+	
+    
     enum process_throw_type {
         THROW_NONE = 0,
 	THROW_KILL,
@@ -344,9 +745,82 @@ class sc_process_b : public sc_object {
     sc_event& reset_event();
     sc_event& terminated_event();
 
+    /**
+     *  \brief Acquire a new channel lock or increment the lock counter.
+     * 
+     *  Acquire a new channel lock and push it to the end of the list
+     *  m_acq_chnl_lock_queue, or increment the lock counter of the 
+     *  corresponding channel lock in the list.
+     */
+    // 02/16/2015 GL.
+    void lock_and_push( CHNL_MTX_TYPE_ *lock );
+
+    /**
+     *  \brief Release a channel lock or decrement the lock counter.
+     *
+     *  Release the channel lock at the end of the list m_acq_chnl_lock_queue
+     *  if its lock counter equals one, or decrement its lock counter.
+     */
+    // 02/16/2015 GL.
+    void pop_and_unlock( CHNL_MTX_TYPE_ *lock );
+
+    /**
+     *  \brief Acquire all the channel locks.
+     *
+     *  Acquire all the channel locks in the list m_acq_chnl_lock_queue, from
+     *  the beginning to the end.
+     */
+    // 02/16/2015 GL.
+    void lock_all_channels( void );
+
+    /**
+     *  \brief Release all the channel locks.
+     *
+     *  Release all the channel locks in the list m_acq_chnl_lock_queue, from 
+     *  the end of the beginning.
+     */
+    // 02/16/2015 GL.
+    void unlock_all_channels( void );
+
+    /**
+     *  \brief Set the current segment ID of this process.
+     */
+    // 08/12/2015 GL.
+    int get_segment_id();
+
+    /** 
+     *  \brief Get the current segment ID of this process.
+     */
+    // 08/12/2015 GL.
+    void set_segment_id( int id );
+
+    /**
+     *  \brief Set the local time stamp of this process.
+     */
+    // 08/12/2015 GL.
+    const sc_timestamp& get_timestamp();
+
+    /**
+     *  \brief Get the local time stamp of this process.
+     */
+    // 08/12/2015 GL.
+    void set_timestamp( const sc_timestamp& ts );
+
+    /**
+     *  \brief Set the instance ID of this process.
+     */
+    // 09/01/2015 GL.
+    int get_instance_id();
+
+    /**
+     *  \brief Get the instance ID of this process.
+     */
+    void set_instance_id( int id );
+
   public:
     static inline sc_process_handle last_created_process_handle();
-        
+    void add_sensitivity_event(const sc_event& e);
+    std::string event_names();
   protected:
     virtual void add_child_object( sc_object* );
     void add_static_event( const sc_event& );
@@ -407,13 +881,21 @@ class sc_process_b : public sc_object {
     const char*                 file;
     int                         lineno;
     int                         proc_id;
-
+	/**
+     *  \brief The name of this process.
+     */
+    // 03/10/2017 ZC.
+	//const char*				process_name; 		// not needed, use name() to get process name
+	int							m_process_state; //0 running 1 ready 2 waiting 3 waitfor time
+                                                 //4 finished 5 paused
+    sc_event_or_list*            m_sensitivity_events;
   protected:
     int                          m_active_areset_n; // number of aresets active.
     int                          m_active_reset_n;  // number of resets active.
     bool                         m_dont_init;       // true: no initialize call.
     bool                         m_dynamic_proc;    // true: after elaboration.
     const sc_event*              m_event_p;         // Dynamic event waiting on.
+	
     int                          m_event_count;     // number of events.
     const sc_event_list*         m_event_list_p;    // event list waiting on.
     sc_process_b*                m_exist_p;         // process existence link.
@@ -442,8 +924,43 @@ class sc_process_b : public sc_object {
     trigger_t                    m_trigger_type;    // type of trigger using.
     bool                         m_unwinding;       // true if unwinding stack.
 
+    /**
+     *  \brief A list of channel locks acquired by this process.
+     */
+    // 02/16/2015 GL.
+    sc_acq_chnl_lock_queue       m_acq_chnl_lock_queue;
+
+    /**
+     *  \brief The current segment ID of this process.
+     */
+    // 08/12/2015 GL.
+    int                          m_segment_id;
+
+    /**
+     *  \brief The local time stamp of this process.
+     */
+    // 08/12/2015 GL.
+    sc_timestamp                 m_timestamp;
+
+    /**
+     *  \brief The instance ID of this process.
+     */
+    // 09/01/2015 GL.
+    int                          m_instance_id;
+	
+	 
+    int seg_offset_;
+	
+	
   protected:
     static sc_process_b* m_last_created_process_p; // Last process created.
+  public:
+    sc_timestamp possible_wakeup_time;
+
+    // 05/13/2019 DM
+  public:
+    bool invoker;
+    sc_process_b* cur_invoker_method_handle;
 };
 
 typedef sc_process_b sc_process_b;  // For compatibility.
@@ -460,6 +977,8 @@ sc_process_b::add_child_object( sc_object* object_p )
     sc_object::add_child_object( object_p );
     reference_increment();
 }
+
+
 
 inline bool
 sc_process_b::remove_child_object( sc_object* object_p )
@@ -652,7 +1171,7 @@ inline void sc_process_b::semantics()
 
     if ( m_reset_event_p && 
          ( (m_throw_status == THROW_SYNC_RESET) || 
-	   (m_throw_status == THROW_ASYNC_RESET) )
+           (m_throw_status == THROW_ASYNC_RESET) )
     ) {
         trigger_reset_event();
     }
@@ -692,6 +1211,7 @@ inline bool sc_process_b::timed_out() const
 {
     return m_timed_out;
 }
+
 
 } // namespace sc_core
 

@@ -42,35 +42,71 @@ namespace sc_core
 
 // for SC_CTHREADs
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
 extern
 void
-halt( sc_simcontext* = sc_get_curr_simcontext() );
-
-
-extern
-void
-wait( int,
+halt( int,
       sc_simcontext* = sc_get_curr_simcontext() );
 
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
+extern
+void
+wait( int,
+      int,
+      sc_simcontext* = sc_get_curr_simcontext() );
+
+
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
 extern
 void
 at_posedge( const sc_signal_in_if<bool>&,
+            int,
 	    sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
 extern
 void
 at_posedge( const sc_signal_in_if<sc_dt::sc_logic>&,
+            int,
 	    sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
 extern
 void
 at_negedge( const sc_signal_in_if<bool>&,
+            int,
 	    sc_simcontext* = sc_get_curr_simcontext() );
 
+/**
+ *  \brief A new parameter segment ID is added for the out-of-order 
+ *         simulation.
+ */
+// 08/19/2015 GL: modified for the OoO simulation
 extern
 void
 at_negedge( const sc_signal_in_if<sc_dt::sc_logic>&,
+            int,
 	    sc_simcontext* = sc_get_curr_simcontext() );
 
 

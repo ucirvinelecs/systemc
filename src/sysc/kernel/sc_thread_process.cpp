@@ -25,7 +25,7 @@
                
  CHANGE LOG AT THE END OF THE FILE
  *****************************************************************************/
-
+ 
 #include "sysc/kernel/sc_cmnhdr.h"
 #include "sysc/kernel/sc_constants.h"
 #include "sysc/kernel/sc_thread_process.h"
@@ -33,7 +33,11 @@
 #include "sysc/kernel/sc_simcontext_int.h"
 #include "sysc/kernel/sc_module.h"
 #include "sysc/utils/sc_machine.h"
-
+//#include "sysc/kernel/sc_simcontext.cpp"
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 // DEBUGGING MACROS:
 //
 // DEBUG_MSG(NAME,P,MSG)
@@ -133,31 +137,46 @@ void sc_thread_cor_fn( void* arg )
         break;
     }
 
-    sc_process_b*    active_p = sc_get_current_process_b();
+//    sc_process_b*    active_p = sc_get_current_process_b();
 
     // REMOVE ALL TRACES OF OUR THREAD FROM THE SIMULATORS DATA STRUCTURES:
 
-    thread_h->disconnect_process();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        thread_h->disconnect_process();
 
     // IF WE AREN'T ACTIVE MAKE SURE WE WON'T EXECUTE:
 
-    if ( thread_h->next_runnable() != 0 )
-    {
-	simc_p->remove_runnable_thread(thread_h);
-    }
+        if ( thread_h->next_runnable() != 0 )
+        {
+	    simc_p->remove_runnable_thread( thread_h );
+        }
 
     // IF WE ARE THE ACTIVE PROCESS ABORT OUR EXECUTION:
 
 
-    if ( active_p == (sc_process_b*)thread_h )
-    {
-     
-        sc_core::sc_cor* x = simc_p->next_cor();
-	simc_p->cor_pkg()->abort( x );
+        simc_p->remove_running_process( (sc_process_b*)thread_h );
+		
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR)) //ZC
+		// 	printf("\n%s calling sc_thread_cor_func, state change to 4\n", thread_h->name());
+		
+		thread_h->m_process_state=4;
+        // 08/19/2015 GL: OoO scheduling
+        //simc_p->schedule( thread_h->m_cor_p );
+        simc_p->oooschedule( thread_h->m_cor_p );
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
 
 }
-
 
 //------------------------------------------------------------------------------
 //"sc_thread_process::disable_process"
@@ -502,6 +521,7 @@ void sc_thread_process::signal_monitors(int type)
 void sc_thread_process::suspend_process(
     sc_descendant_inclusion_info descendants )
 {     
+    assert(0); // 11/21/2014 GL TODO: clean up the codes later
 
     // IF NEEDED PROPOGATE THE SUSPEND REQUEST THROUGH OUR DESCENDANTS:
 
@@ -676,6 +696,349 @@ void sc_thread_process::throw_user( const sc_throw_it_helper& helper,
 
 
 //------------------------------------------------------------------------------
+//"sc_thread_process::deliver_event_at_time"
+//
+// This method delivers an event at specific time for the thread
+//
+//
+//------------------------------------------------------------------------------
+bool sc_thread_process::deliver_event_at_time( sc_event* e, 
+                                sc_timestamp e_delivery_time )
+{ 
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel 
+    //    lock is acquired
+
+    // No time outs yet, and keep gcc happy.
+
+    m_timed_out = false;
+
+    // Escape cases:
+    //   (a) If this thread issued the notify() don't schedule it for
+    //       execution, but leave the sensitivity in place.
+    //   (b) If this thread is already runnable can't trigger an event.
+
+    // not possible for thread processes!
+    #if 0 // ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
+    if ( sc_get_current_process_b() == (sc_process_b*)this )
+    {
+    report_immediate_self_notification();
+    return false;
+    }
+    #endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
+
+    if( is_runnable() ) 
+        return false;// true;
+
+    // If a process is disabled then we ignore any events, leaving them enabled:
+    //
+    // But if this is a time out event we need to remove both it and the
+    // event that was being waited for.
+
+    if ( m_state & ps_bit_disabled )
+    {
+        if ( e == m_timeout_event_p )
+        {
+            remove_dynamic_events( true );  
+            return false;// true;
+        }
+        else
+        {
+            return false;// false;
+        }
+    }
+
+
+    // (commented off the following line, GCC 4.8.x correctly warns that this is never used; 5/18/18, RD)
+
+
+    //if a thread starts waiting on event e at time 10,
+    //and e are all notified before 10, then the thread should
+    //not wake up and return false, and can_wake_up is also false
+    if( e->m_notify_type == sc_event::DELTA){
+
+        bool flag_exit = e_delivery_time < m_timestamp;
+
+        if(flag_exit){
+            //can_wake_up = false;
+            return false;// false;
+        }
+    }
+    //Now, we know that the event will for sure be delivered to this thread
+    //so we can safely remove the thread from the event
+    e->remove_dynamic( this);
+    //check if this can put here 
+    //can_wake_up = true;
+    // GL
+    // Process based on the event type and current process state:
+    //
+    // Every case needs to set 'rc' and continue on to the end of
+    // this method to allow suspend processing to work correctly.
+
+
+    //10:15 2018/7/8 ZC
+    /*
+    / changes for andlist and orlist
+    / comment off "m_trigger_type = STATIC;"
+    / and move it down 
+    / so that when the last event is triggered,
+    / we are able to know the type
+    */
+    switch( m_trigger_type ) 
+    {
+        case EVENT: 
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+            break;
+
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the last notified event in andlist has the highest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when m_event_count goes to zero
+        //However, I still write code this way to make the logic clear
+        case AND_LIST: 
+        {
+
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time > wake_up_time_for_event_list) //10>1
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{  
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                //can_wake_up = true;
+            }
+            else
+            {
+                //can_wake_up = false;  
+                return false;// true;
+            }
+            break;
+        }   
+        
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the first notified event in orlist has the lowest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when an event is notified
+        //However, I still write code this way to make the logic clear
+        case OR_LIST:
+        {
+            /*
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time < wake_up_time_for_event_list) 
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            { 
+                can_wake_up = false;
+                return true;
+            }
+            */
+            event_list_member_triggered = true;
+            wake_up_time_for_event_list = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+            m_event_list_p->remove_all_dynamic( this);
+            m_event_count = 0;
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0;
+            m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+            //can_wake_up = true;
+            break;
+
+        }
+        /* GL implementation for or_list, which ZC thought is not complete
+        However, on 2018.8.5, zc thinks it is correct
+        m_event_list_p->remove_dynamic( this, e );
+        m_event_list_p->auto_delete();
+        m_event_list_p = 0;
+        m_trigger_type = STATIC;
+        break;
+        */
+        case TIMEOUT: //wait for time, e.g.,  wait(1,sc_ns)
+        m_trigger_type = STATIC;
+        break;
+
+        //dont bother with the following code for now
+        //ZC 2018.8.6
+        case EVENT_TIMEOUT: //wait for time and event list, wait(1,sc_ns, el)
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_p->remove_dynamic( this );
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case OR_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case AND_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            -- m_event_count;
+            if ( m_event_count == 0 )
+            {
+                m_timeout_event_p->cancel();
+                m_timeout_event_p->reset();
+        // no need to remove_dynamic
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0; 
+                m_trigger_type = STATIC;
+            }
+            else
+            {
+                return false;// true;
+            }
+        }
+        break;
+
+        case STATIC: {
+        // we should never get here, but throw_it() can make it happen.
+            SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
+            return false;// true;
+        }
+    }
+
+    // If we get here then the thread has satisfied its wait criteria, if 
+    // its suspended mark its state as ready to run. If its not suspended then 
+    // push it onto the runnable queue.
+
+    if ( (m_state & ps_bit_suspended) )
+    {
+        m_state = m_state | ps_bit_ready_to_run;
+    }
+    else
+    {
+        // 12/22/2016 GL: store the current time before updating
+        sc_time curr_time = m_timestamp.get_time_count();
+        // 08/14/2015 GL: update the local time stamp of this thread process
+        sc_timestamp ts = e->get_notify_timestamp();
+
+        switch( e->m_notify_type )
+        {
+
+            case sc_event::DELTA: // delta notification
+
+                //zc 2018.8.5 shoul not be here,
+                //move to very first
+                //e->remove_dynamic( this);   
+
+                //15:09 2018/7/8 ZC
+                //for event_list
+                if(m_trigger_type == AND_LIST || m_trigger_type == OR_LIST ){
+
+                    set_timestamp(wake_up_time_for_event_list);
+
+                    event_list_member_triggered = false;
+                    break;
+
+                }
+                //for single event
+                else{
+
+                    set_timestamp( sc_timestamp( e_delivery_time.get_time_count(),
+                        e_delivery_time.get_delta_count() +1) );
+                    break;
+                }
+            case sc_event::TIMED: // timed notification
+                set_timestamp( ts );
+                break;
+            case sc_event::NONE:
+                assert( 0 ); // wrong type
+        }   
+
+        //push thread to ready queue
+        if(_SYSC_SYNC_PAR_SIM==true){
+
+            simcontext()->m_synch_thread_queue.push_back(this);
+            this->m_process_state=32;
+ 
+        }else{
+            simcontext()->push_runnable_thread(this);
+        }   
+
+        // 12/22/2016 GL: update m_oldest_time in sc_simcontext if necessary
+        simcontext()->update_oldest_time( curr_time );
+        return true;
+    }
+
+    return false;// true;
+} 
+//end
+
+//------------------------------------------------------------------------------
 //"sc_thread_process::trigger_dynamic"
 //
 // This method sets up a dynamic trigger on an event.
@@ -691,8 +1054,15 @@ void sc_thread_process::throw_user( const sc_throw_it_helper& helper,
 // Result is true if this process should be removed from the event's list,
 // false if not.
 //------------------------------------------------------------------------------
-bool sc_thread_process::trigger_dynamic( sc_event* e )
-{
+bool sc_thread_process::trigger_dynamic( sc_event* e, bool& can_wake_up )
+{ 
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel 
+    //    lock is acquired
+
     // No time outs yet, and keep gcc happy.
 
     m_timed_out = false;
@@ -703,13 +1073,13 @@ bool sc_thread_process::trigger_dynamic( sc_event* e )
     //   (b) If this thread is already runnable can't trigger an event.
 
     // not possible for thread processes!
-#if 0 // ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
+    #if 0 // ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
     if ( sc_get_current_process_b() == (sc_process_b*)this )
     {
-        report_immediate_self_notification();
-        return false;
+    report_immediate_self_notification();
+    return false;
     }
-#endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
+    #endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
 
     if( is_runnable() ) 
         return true;
@@ -722,144 +1092,301 @@ bool sc_thread_process::trigger_dynamic( sc_event* e )
     if ( m_state & ps_bit_disabled )
     {
         if ( e == m_timeout_event_p )
-	{
-	    remove_dynamic_events( true );  
-	    return true;
-	}
-	else
-	{
-	    return false;
-	}
+        {
+            remove_dynamic_events( true );  
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
 
+    // (commented off the following line, GCC 4.8.x correctly warns that this is never used; 5/18/18, RD)
+
+    sc_timestamp e_delivery_time = e->get_earliest_notification_time();
+
+    //if a thread starts waiting on event e at time 10,
+    //and e are all notified before 10, then the thread should
+    //not wake up and return false, and can_wake_up is also false
+    if( e->m_notify_type == sc_event::DELTA){
+
+        bool flag_exit = e_delivery_time < m_timestamp;
+
+        if(flag_exit){
+            can_wake_up = false;
+            return false;
+        }
+    }
+    //Now, we know that the event will for sure be delivered to this thread
+    //so we can safely remove the thread from the event
+    e->remove_dynamic( this);
+    //check if this can put here 
+    can_wake_up = true;
+    // GL
     // Process based on the event type and current process state:
     //
     // Every case needs to set 'rc' and continue on to the end of
     // this method to allow suspend processing to work correctly.
 
+
+    //10:15 2018/7/8 ZC
+    /*
+    / changes for andlist and orlist
+    / comment off "m_trigger_type = STATIC;"
+    / and move it down 
+    / so that when the last event is triggered,
+    / we are able to know the type
+    */
     switch( m_trigger_type ) 
     {
-      case EVENT: 
-	m_event_p = 0;
-	m_trigger_type = STATIC;
-	break;
-
-      case AND_LIST:
-        -- m_event_count;
-	if ( m_event_count == 0 )
-	{
-	    m_event_list_p->auto_delete();
-	    m_event_list_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	else
-	{
-	    return true;
-	}
-	break;
-
-      case OR_LIST:
-	m_event_list_p->remove_dynamic( this, e );
-	m_event_list_p->auto_delete();
-	m_event_list_p = 0;
-	m_trigger_type = STATIC;
-	break;
-
-      case TIMEOUT: 
-	m_trigger_type = STATIC;
-	break;
-
-      case EVENT_TIMEOUT: 
-        if ( e == m_timeout_event_p )
-	{
-	    m_timed_out = true;
-	    m_event_p->remove_dynamic( this );
-	    m_event_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	else
-	{
-	    m_timeout_event_p->cancel();
-	    m_timeout_event_p->reset();
-	    m_event_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	break;
-
-      case OR_LIST_TIMEOUT:
-        if ( e == m_timeout_event_p )
-	{
-            m_timed_out = true;
-            m_event_list_p->remove_dynamic( this, e ); 
-            m_event_list_p->auto_delete();
-            m_event_list_p = 0; 
+        case EVENT: 
+            m_event_p = 0;
             m_trigger_type = STATIC;
-	}
+            break;
 
-	else
-	{
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the last notified event in andlist has the highest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when m_event_count goes to zero
+        //However, I still write code this way to make the logic clear
+        case AND_LIST: 
+        {
+
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time > wake_up_time_for_event_list) //10>1
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{  
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            {
+                can_wake_up = false;  
+                return true;
+            }
+            break;
+        }   
+        
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the first notified event in orlist has the lowest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when an event is notified
+        //However, I still write code this way to make the logic clear
+        case OR_LIST:
+        {
+            /*
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time < wake_up_time_for_event_list) 
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            { 
+                can_wake_up = false;
+                return true;
+            }
+            */
+            event_list_member_triggered = true;
+            wake_up_time_for_event_list = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+            m_event_list_p->remove_all_dynamic( this);
+            m_event_count = 0;
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0;
+            m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+            can_wake_up = true;
+            break;
+
+        }
+        /* GL implementation for or_list, which ZC thought is not complete
+        However, on 2018.8.5, zc thinks it is correct
+        m_event_list_p->remove_dynamic( this, e );
+        m_event_list_p->auto_delete();
+        m_event_list_p = 0;
+        m_trigger_type = STATIC;
+        break;
+        */
+        case TIMEOUT: //wait for time, e.g.,  wait(1,sc_ns)
+        m_trigger_type = STATIC;
+        break;
+
+        //dont bother with the following code for now
+        //ZC 2018.8.6
+        case EVENT_TIMEOUT: //wait for time and event list, wait(1,sc_ns, el)
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_p->remove_dynamic( this );
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        else
+        {
             m_timeout_event_p->cancel();
             m_timeout_event_p->reset();
-	    m_event_list_p->remove_dynamic( this, e ); 
-	    m_event_list_p->auto_delete();
-	    m_event_list_p = 0; 
-	    m_trigger_type = STATIC;
-	}
-	break;
-      
-      case AND_LIST_TIMEOUT:
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case OR_LIST_TIMEOUT:
         if ( e == m_timeout_event_p )
-	{
+        {
             m_timed_out = true;
             m_event_list_p->remove_dynamic( this, e ); 
             m_event_list_p->auto_delete();
             m_event_list_p = 0; 
             m_trigger_type = STATIC;
-	}
+        }
 
-	else
-	{
-	    -- m_event_count;
-	    if ( m_event_count == 0 )
-	    {
-		m_timeout_event_p->cancel();
-		m_timeout_event_p->reset();
-		// no need to remove_dynamic
-		m_event_list_p->auto_delete();
-		m_event_list_p = 0; 
-		m_trigger_type = STATIC;
-	    }
-	    else
-	    {
-	        return true;
-	    }
-	}
-	break;
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+        break;
 
-      case STATIC: {
+        case AND_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            -- m_event_count;
+            if ( m_event_count == 0 )
+            {
+                m_timeout_event_p->cancel();
+                m_timeout_event_p->reset();
+        // no need to remove_dynamic
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0; 
+                m_trigger_type = STATIC;
+            }
+            else
+            {
+                return true;
+            }
+        }
+        break;
+
+        case STATIC: {
         // we should never get here, but throw_it() can make it happen.
-	SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
-        return true;
-      }
+            SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
+            return true;
+        }
     }
 
-    // If we get here then the thread is has satisfied its wait criteria, if 
+    // If we get here then the thread has satisfied its wait criteria, if 
     // its suspended mark its state as ready to run. If its not suspended then 
     // push it onto the runnable queue.
 
     if ( (m_state & ps_bit_suspended) )
     {
-	m_state = m_state | ps_bit_ready_to_run;
+        m_state = m_state | ps_bit_ready_to_run;
     }
     else
     {
-        simcontext()->push_runnable_thread(this);
+        // 12/22/2016 GL: store the current time before updating
+        sc_time curr_time = m_timestamp.get_time_count();
+        // 08/14/2015 GL: update the local time stamp of this thread process
+        sc_timestamp ts = e->get_notify_timestamp();
+
+        switch( e->m_notify_type )
+        {
+
+            case sc_event::DELTA: // delta notification
+
+                //zc 2018.8.5 shoul not be here,
+                //move to very first
+                //e->remove_dynamic( this);   
+
+                //15:09 2018/7/8 ZC
+                //for event_list
+                if(m_trigger_type == AND_LIST || m_trigger_type == OR_LIST ){
+
+                    set_timestamp(wake_up_time_for_event_list);
+
+                    event_list_member_triggered = false;
+                    break;
+
+                }
+                //for single event
+                else{
+
+                    set_timestamp( sc_timestamp( e_delivery_time.get_time_count(),
+                        e_delivery_time.get_delta_count() +1) );
+                    break;
+                }
+            case sc_event::TIMED: // timed notification
+                set_timestamp( ts );
+                break;
+            case sc_event::NONE:
+                assert( 0 ); // wrong type
+        }   
+
+        //push thread to ready queue
+        if(_SYSC_SYNC_PAR_SIM==true){
+
+            simcontext()->m_synch_thread_queue.push_back(this);
+            this->m_process_state=32;
+ 
+        }else{
+            simcontext()->push_runnable_thread(this);
+        }   
+
+        // 12/22/2016 GL: update m_oldest_time in sc_simcontext if necessary
+        simcontext()->update_oldest_time( curr_time );
     }
 
     return true;
 }
-
 
 //------------------------------------------------------------------------------
 //"sc_set_stack_size"

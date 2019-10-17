@@ -43,7 +43,17 @@ using std::endl;
 
 namespace sc_core {
 
-
+extern bool _SYSC_SYNC_PAR_SIM;
+extern bool print_verbose_message;
+extern bool print_mode_message;
+extern bool verbosity_flag_1;
+extern bool verbosity_flag_2;
+extern bool verbosity_flag_3;
+extern bool verbosity_flag_4;
+extern bool sych_mode_defined;
+// 02/22/2017 ZC: enable prediction or not
+extern bool prediction_switch;
+extern char* num_cpus; 
 static
 const char systemc_version[] =
     "SystemC " SC_VERSION " --- " __DATE__ " " __TIME__;
@@ -115,6 +125,34 @@ pln()
             cerr << "SystemC Simulation" << endl;
         }
 
+		if(getenv("SYSC_PRINT_MODE_MESSAGE")) {
+			if(sych_mode_defined)
+				printf("***%-66s     ***\n","     RISC simulator mode: synchronous parallel");
+			else 
+			{
+				if(prediction_switch)
+					printf("***%-66s     ***\n","     RISC simulator mode: out-of-order parallel with prediction");
+				else
+					printf("***%-66s     ***\n","     RISC simulator mode: out-of-order parallel without prediction");
+			}
+			printf("***     %-30s    is          %-20s***\n","SYSC_PRINT_MODE_MESSAGE","defined");	
+			printf("***     %-30s    is          %-20s***\n","SYSC_SYNC_PAR_SIM", 
+					sych_mode_defined ? "defined" : "not defined" );				 
+			printf("***     %-30s    is          %-20s***\n","SYSC_VERBOSITY_FLAG_1",
+          verbosity_flag_1?"defined":"not defined");
+      printf("***     %-30s    is          %-20s***\n","SYSC_VERBOSITY_FLAG_2",
+          verbosity_flag_2?"defined":"not defined");
+      printf("***     %-30s    is          %-20s***\n","SYSC_VERBOSITY_FLAG_3",
+          verbosity_flag_3?"defined":"not defined");
+      printf("***     %-30s    is          %-20s***\n","SYSC_VERBOSITY_FLAG_4",
+          verbosity_flag_4?"defined":"not defined");
+			printf("***     %-30s    is          %-20s***\n","SYSC_DISABLE_PREDICTION",
+					prediction_switch?"not defined":"defined");
+			printf("***     %-30s    is          %-20s***\n","SYSC_PAR_SIM_CPUS",
+					num_cpus?num_cpus:"64");
+		}
+	
+		
         lnp = true;
     }
 }

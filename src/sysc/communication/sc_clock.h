@@ -36,11 +36,11 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_clock
-//
-//  The clock channel.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_clock
+ *
+ *  \brief The clock channel.
+ *****************************************************************************/
 
 class sc_clock
   : public sc_signal<bool,SC_ONE_WRITER>
@@ -91,25 +91,25 @@ public:
 
     // get the period
     const sc_time& period() const
-	{ return m_period; }
+    { return m_period; }
 
     // get the duty cycle
     double duty_cycle() const
-	{ return m_duty_cycle; }
+    { return m_duty_cycle; }
 
 
     // get the current time / clock characteristics
 
     bool posedge_first() const
-        { return m_posedge_first; }
+    { return m_posedge_first; }
 
     sc_time start_time() const
-        { return m_start_time; }
+    { return m_start_time; }
 
     static const sc_time& time_stamp();
 
     virtual const char* kind() const
-        { return "sc_clock"; }
+    { return "sc_clock"; }
 
 
 #if 0 // @@@@#### REMOVE
@@ -136,6 +136,11 @@ public:
 
 protected:
 
+    /**
+     *  \brief This function is not supported by the out-of-order simulation 
+     *         in the current release.
+     */
+    // 09/20/2015 GL.
     void before_end_of_elaboration();
 
     // processes
@@ -179,18 +184,26 @@ inline
 void
 sc_clock::posedge_action()
 {
+    // 02/23/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     m_next_negedge_event.notify_internal( m_negedge_time );
-	m_new_val = true;
-	request_update();
+    m_new_val = true;
+    request_update();
+    // 02/23/2015 GL: return releases the lock
 }
 
 inline
 void
 sc_clock::negedge_action()
 {
+    // 02/23/2015 GL: acquire a lock to protect concurrent communication
+    chnl_scoped_lock lock( m_mutex );
+
     m_next_posedge_event.notify_internal( m_posedge_time );
-	m_new_val = false;
-	request_update();
+    m_new_val = false;
+    request_update();
+    // 02/23/2015 GL: return releases the lock
 }
 
 

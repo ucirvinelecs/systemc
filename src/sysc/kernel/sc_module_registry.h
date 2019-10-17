@@ -38,12 +38,13 @@ class sc_module;
 class sc_simcontext;
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_module_registry
-//
-//  Registry for all modules.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_module_registry
+ *
+ *  \brief Registry for all modules.
+ *
+ *  FOR INTERNAL USE ONLY!
+ *****************************************************************************/
 
 class sc_module_registry
 {

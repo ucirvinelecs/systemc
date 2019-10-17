@@ -16,7 +16,7 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
   sc_event.h --
@@ -29,15 +29,23 @@
 
 #ifndef SC_EVENT_H
 #define SC_EVENT_H
+#include <vector>
+#include <string>
+#include <set>
 
 #include "sysc/kernel/sc_cmnhdr.h"
 #include "sysc/kernel/sc_kernel_ids.h"
 #include "sysc/kernel/sc_simcontext.h"
 #include "sysc/communication/sc_writer_policy.h"
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 // forward declarations
+class Invoker; //DM 05/17/2019 TODO: REMOVE
+
 class sc_event;
 class sc_event_timed;
 class sc_event_list;
@@ -48,11 +56,11 @@ class sc_object;
 // friend function declarations
     int sc_notify_time_compare( const void*, const void* );
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event_expr
-//
-//  The event expression class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_expr
+ *
+ *  \brief The event expression class.
+ *****************************************************************************/
 
 template< typename T >
 class sc_event_expr
@@ -111,14 +119,17 @@ private:
     void operator=( sc_event_expr const & );
 };
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event_list
-//
-//  Base class for lists of events.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_list
+ *
+ *  \brief Base class for lists of events.
+ *****************************************************************************/
 
 class sc_event_list
 {
+    friend class Invoker; //DM 05/17/2019 TODO:remove
+    friend class sc_simcontext; //DM 05/22/2019 TODO:remove
+
     friend class sc_process_b;
     friend class sc_method_process;
     friend class sc_thread_process;
@@ -129,7 +140,9 @@ public:
     sc_event_list& operator = ( const sc_event_list& );
 
     int size() const;
+    std::string to_string() const;
 
+    bool and_list() const;
 protected:
 
     void push_back( const sc_event& );
@@ -147,12 +160,15 @@ protected:
     void swap( sc_event_list& );
     void move_from( const sc_event_list& );
 
-    bool and_list() const;
+    
 
     void add_dynamic( sc_method_handle ) const;
     void add_dynamic( sc_thread_handle ) const;
     void remove_dynamic( sc_method_handle, const sc_event* ) const;
     void remove_dynamic( sc_thread_handle, const sc_event* ) const;
+
+    void remove_all_dynamic( sc_thread_handle ) const;
+    void remove_all_dynamic( sc_method_handle ) const; //DM 05/24/2019
 
     bool busy()        const;
     bool temporary()   const;
@@ -170,11 +186,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event_and_list
-//
-//  AND list of events.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_and_list
+ *
+ *  \brief AND list of events.
+ *****************************************************************************/
 
 class sc_event_and_list
 : public sc_event_list
@@ -205,11 +221,11 @@ public:
 
 typedef sc_event_expr<sc_event_and_list> sc_event_and_expr;
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event_or_list
-//
-//  OR list of events.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_or_list
+ *
+ *  \brief OR list of events.
+ *****************************************************************************/
 
 class sc_event_or_list
 : public sc_event_list
@@ -237,11 +253,11 @@ public:
 
 typedef sc_event_expr<sc_event_or_list> sc_event_or_expr;
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event
-//
-//  The event class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event
+ *
+ *  \brief The event class.
+ *****************************************************************************/
 
 class sc_event
 {
@@ -257,6 +273,19 @@ class sc_event
     friend void sc_thread_cor_fn( void* arg );
 
 public:
+	
+    //a vector that contains all the notification timestamp of this event
+    //std::vector<sc_timestamp>    m_notify_timestamp_list;
+	std::set<sc_timestamp>    m_notify_timestamp_set;
+
+    //returns the min value of m_notify_timestamp_list
+    sc_timestamp get_earliest_notification_time();
+    //returns the min value of m_notify_timestamp_list that is larget than the argument
+    sc_timestamp get_earliest_time_after_certain_time(sc_timestamp);
+
+    //according to the notification time,
+    //erase it from the m_notify_timestamp_list
+    void erase_notification_time(sc_timestamp);
 
     sc_event();
     sc_event( const char* name );
@@ -269,7 +298,13 @@ public:
     sc_object* get_parent_object() const { return m_parent_p; }
     bool in_hierarchy() const            { return m_name.length() != 0; }
 
+    /**
+     *  \brief The immediate notification is not supported by the out-of-order 
+     *         simulation in the current release.
+     */
+    // 08/13/2015 GL.
     void notify();
+
     void notify( const sc_time& );
     void notify( double, sc_time_unit );
 
@@ -282,9 +317,20 @@ public:
     sc_event_and_expr operator & ( const sc_event& ) const;
     sc_event_and_expr operator & ( const sc_event_and_list& ) const;
 
+	/** 
+     *  \brief GET the notification time stamp.
+     */
+    // 08/12/2015 GL.
+    const sc_timestamp& get_notify_timestamp() const;
+	void push_notify_timestamp_list( const sc_timestamp& ts );
+	const sc_timestamp& get_notify_timestamp_last() const;
+	mutable std::vector<sc_method_handle> m_methods_static;
+    mutable std::vector<sc_method_handle> m_methods_dynamic;
+    mutable std::vector<sc_thread_handle> m_threads_static;
+	mutable std::vector<sc_thread_handle> m_threads_dynamic;
 
 private:
-
+ 
     void add_static( sc_method_handle ) const;
     void add_static( sc_thread_handle ) const;
     void add_dynamic( sc_method_handle ) const;
@@ -301,7 +347,14 @@ private:
     void register_event( const char* name );
     void reset();
 
-    void trigger();
+    bool trigger();
+
+    
+    /** 
+     *  \brief SET the notification time stamp.
+     */
+    // 08/12/2015 GL.
+    void set_notify_timestamp( const sc_timestamp& ts );
 
 private:
 
@@ -310,31 +363,39 @@ private:
     std::string     m_name;     // name of object.
     sc_object*      m_parent_p; // parent sc_object for this event.
     sc_simcontext*  m_simc;
-    notify_t        m_notify_type;
-    int             m_delta_event_index;
+    
+    
     sc_event_timed* m_timed;
 
-    mutable std::vector<sc_method_handle> m_methods_static;
-    mutable std::vector<sc_method_handle> m_methods_dynamic;
-    mutable std::vector<sc_thread_handle> m_threads_static;
-    mutable std::vector<sc_thread_handle> m_threads_dynamic;
+    
+   
+
+    /** 
+     *  \brief The time stamp of the event notification.
+     */
+    // 08/13/2015 GL.
+    sc_timestamp    m_notify_timestamp;
 
 private:
 
     // disabled
     sc_event( const sc_event& );
     sc_event& operator = ( const sc_event& );
+	notify_t        m_notify_type;
+	
+public:
+	int             m_delta_event_index;
 };
 
 #define SC_KERNEL_EVENT_PREFIX "$$$$kernel_event$$$$_"
 
 extern sc_event sc_non_event; // Event that never happens.
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_event_timed
-//
-//  Class for storing the time to notify a timed event.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_event_timed
+ *
+ *  \brief Class for storing the time to notify a timed event.
+ *****************************************************************************/
 
 class sc_event_timed
 {
@@ -398,16 +459,44 @@ inline
 void
 sc_event::notify_internal( const sc_time& t )
 {
+    // 08/14/2015 GL: to get the local time stamp of this coroutine
+    sc_process_b* m_proc = m_simc->get_curr_proc();
+
     if( t == SC_ZERO_TIME ) {
+	/* ZC: because the event notification is removed from the if statement,
+		wait(0) should not be put into the delta list, this will create too many
+		delta events
+        // 08/14/2015 GL: set the time stamp of the event notification
+        set_notify_timestamp( m_proc->get_timestamp() );
+
         // add this event to the delta events set
         m_delta_event_index = m_simc->add_delta_event( this );
         m_notify_type = DELTA;
-    } else {
-        sc_event_timed* et =
-		new sc_event_timed( this, m_simc->time_stamp() + t );
+	*/
+		sc_event_timed* et = new sc_event_timed( this,
+                                 m_proc->get_timestamp().get_time_count() + t );
         m_simc->add_timed_event( et );
         m_timed = et;
         m_notify_type = TIMED;
+        // 08/14/2015 GL: also set the time stamp of this event notification
+        // 08/17/2015 GL: delta cycle count starts from 0 in each timed cycle
+        set_notify_timestamp( sc_timestamp( m_proc->get_timestamp().
+                                            get_time_count() , m_proc->get_timestamp().
+                                            get_delta_count() +1 ) );
+    } else {
+        // sc_event_timed* et =
+	//         new sc_event_timed( this, m_simc->time_stamp() + t );
+        // 08/13/2015 GL: get the local time stamp of this coroutine instead 
+        //                of the global time stamp
+        sc_event_timed* et = new sc_event_timed( this,
+                                 m_proc->get_timestamp().get_time_count() + t );
+        m_simc->add_timed_event( et );
+        m_timed = et;
+        m_notify_type = TIMED;
+        // 08/14/2015 GL: also set the time stamp of this event notification
+        // 08/17/2015 GL: delta cycle count starts from 0 in each timed cycle
+        set_notify_timestamp( sc_timestamp( m_proc->get_timestamp().
+                                            get_time_count() + t, 0 ) );
     }
 }
 
@@ -415,9 +504,16 @@ inline
 void
 sc_event::notify_next_delta()
 {
+    // 08/14/2015 GL: to get the local time stamp of this coroutine
+    sc_process_b* m_proc = m_simc->get_curr_proc();
+
     if( m_notify_type != NONE ) {
         SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
     }
+
+    // 08/14/2015 GL: set the time stamp of the event notification
+    set_notify_timestamp( m_proc->get_timestamp() );
+
     // add this event to the delta events set
     m_delta_event_index = m_simc->add_delta_event( this );
     m_notify_type = DELTA;
@@ -456,6 +552,7 @@ inline
 void
 sc_event::add_dynamic( sc_thread_handle thread_h ) const
 {
+    
     m_threads_dynamic.push_back( thread_h );
 }
 
@@ -695,7 +792,7 @@ sc_event_or_list::swap( sc_event_or_list & that )
 {
   sc_event_list::swap( that );
 }
-
+ 
 
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII

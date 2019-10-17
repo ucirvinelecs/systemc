@@ -1617,7 +1617,9 @@ void wif_trace_file::do_initialize()
         t->print_variable_declaration_line(fp);
     }
 
-    double inittime = sc_time_stamp().to_seconds();
+    //DM 4/16/2018
+    //double inittime = sc_time_stamp().to_seconds();
+    double inittime = get_current_trace_time().to_seconds(); 
     previous_time = inittime/timescale_unit;
 
     // Dump all values at initial time
@@ -1788,9 +1790,11 @@ wif_trace_file::cycle(bool this_is_a_delta_cycle)
         return;
     };
 
+    // DM 4/16/2018
     // double now_units = sc_simulation_time() / timescale_unit;
-    double now_units = sc_time_stamp().to_seconds() / timescale_unit;
-    
+    //double now_units = sc_time_stamp().to_seconds() / timescale_unit;
+    double now_units = get_current_trace_time().to_seconds();    
+
     double_to_special_int64(now_units, &now_units_high, &now_units_low );
 
     // Now do the real stuff

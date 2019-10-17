@@ -29,30 +29,32 @@
 
 #ifndef SC_COR_H
 #define SC_COR_H
-
+ 
 
 #include <cassert>
 #include <cstdlib>
+
+//#define SC_LOCK_CHECK // 05/27/2015 GL: check the state of the kernel lock
 
 namespace sc_core {
 
 class sc_simcontext;
 
 
-// ----------------------------------------------------------------------------
-//  TYPEDEF : sc_cor_fn
-//
-//  Function type for creating coroutines.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \typedef sc_cor_fn
+ *
+ *  \brief Function type for creating coroutines.
+ *****************************************************************************/
 
 typedef void (sc_cor_fn)( void* );
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_cor
-//
-//  Coroutine abstract base class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_cor
+ *
+ *  \brief Coroutine abstract base class.
+ *****************************************************************************/
 
 class sc_cor
 {
@@ -69,6 +71,21 @@ public:
     // switch stack protection on/off
     virtual void stack_protect( bool /* enable */ ) {}
 
+    /** 
+     *  \brief Increment the lock counter.
+     */
+    virtual void increment_counter() = 0;
+
+    /** 
+     *  \brief Decrement the lock counter.
+     */
+    virtual void decrement_counter() = 0;
+
+    /** 
+     *  \brief Get the value of the lock counter.
+     */
+    virtual unsigned int get_counter() = 0;
+
 private:
 
     // disabled
@@ -77,11 +94,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_cor_pkg
-//
-//  Coroutine package abstract base class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_cor_pkg
+ *
+ *  \brief Coroutine package abstract base class.
+ *****************************************************************************/
 
 class sc_cor_pkg
 {
@@ -101,11 +118,70 @@ public:
     // yield to the next coroutine
     virtual void yield( sc_cor* next_cor ) = 0;
 
+    /** 
+     *  \brief Suspend the current coroutine.
+     */
+    virtual void wait( sc_cor* cur_cor ) = 0;
+
+    /** 
+     *  \brief Resume the next coroutine.
+     */
+    virtual void go( sc_cor* next_cor ) = 0;
+
     // abort the current coroutine (and resume the next coroutine)
     virtual void abort( sc_cor* next_cor ) = 0;
 
+    // join another coroutine
+    virtual void join( sc_cor* join_cor ) = 0;
+
     // get the main coroutine
     virtual sc_cor* get_main() = 0;
+
+    /** 
+     *  \brief Acquire the kernel lock.
+     */
+    virtual void acquire_sched_mutex() = 0;
+
+    /** 
+     *  \brief Release the kernel lock.
+     */
+    virtual void release_sched_mutex() = 0;
+
+    /** 
+     *  \brief Set the thread specific data value.
+     */
+    virtual void set_thread_specific( void* process_b ) = 0;
+
+    /** 
+     *  \brief Get the thread specific data value.
+     */
+    virtual void* get_thread_specific() = 0;
+
+    /** 
+     *  \brief Check whether the kernel lock is acquired.
+     */
+    virtual bool is_locked() = 0;
+
+    /** 
+     *  \brief Check whether the kernel lock is released.
+     */
+    virtual bool is_unlocked() = 0;
+
+    /** 
+     *  \brief Check whether the kernel lock is owned by this coroutine.
+     */
+    virtual bool is_lock_owner() = 0;
+
+    /** 
+     *  \brief Check whether the kernel lock is not owned by this coroutine.
+     */
+    virtual bool is_not_owner() = 0;
+
+    /** 
+     *  \brief Check whether the kernel lock is acquired and owned by this 
+     *         coroutine.
+     */
+    virtual bool is_locked_and_owner() = 0;
 
     // get the simulation context
     sc_simcontext* simcontext()

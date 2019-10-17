@@ -35,11 +35,11 @@
 
 namespace sc_core {
 
-//=============================================================================
-//  CLASS : sc_runnable
-//
-//  Class that manages the ready-to-run queues.
-//=============================================================================
+/**************************************************************************//**
+ *  \class sc_runnable
+ *
+ *  \brief Class that manages the ready-to-run queues.
+ *****************************************************************************/
 
 class sc_runnable
 {
@@ -68,6 +68,54 @@ class sc_runnable
 
     inline sc_method_handle pop_method();
     inline sc_thread_handle pop_thread();
+
+    /**
+     *  \brief Return the first method of methods push queue.
+     */
+    // 08/17/2015 GL.
+    inline sc_method_handle get_methods_push_first();
+
+    /**
+     *  \brief Check whether it is the end of methods push queue.
+     */
+    // 08/17/2015 GL.
+    inline bool is_methods_push_end( sc_method_handle );
+
+    /**
+     *  \brief Return the first method of methods pop queue.
+     */
+    // 08/17/2015 GL.
+    inline sc_method_handle get_methods_pop_first();
+
+    /**
+     *  \brief Check whether it is the end of methods pop queue.
+     */
+    // 08/17/2015 GL.
+    inline bool is_methods_pop_end( sc_method_handle );
+
+    /**
+     *  \brief Return the first thread of threads push queue.
+     */
+    // 08/17/2015 GL.
+    inline sc_thread_handle get_threads_push_first();
+
+    /**
+     *  \brief Check whether it is the end of threads push queue.
+     */
+    // 08/17/2015 GL.
+    inline bool is_threads_push_end( sc_thread_handle );
+
+    /**
+     *  \brief Return the first thread of threads pop queue.
+     */
+    // 08/17/2015 GL.
+    inline sc_thread_handle get_threads_pop_first();
+
+    /**
+     *  \brief Check whether it is the end of threads pop queue.
+     */
+    // 08/17/2015 GL.
+    inline bool is_threads_pop_end( sc_thread_handle );
 
   public: // diagnostics:
     void dump() const;

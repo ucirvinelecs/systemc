@@ -110,7 +110,7 @@ sc_sensitive::operator << ( sc_process_handle handle_ )
     }
     m_handle = (sc_process_b*)handle_;
     return *this;
-}
+} 
 
 sc_sensitive&
 sc_sensitive::operator << ( const sc_event& event_ )
@@ -124,8 +124,9 @@ sc_sensitive::operator << ( const sc_event& event_ )
     switch( m_mode ) {
     case SC_METHOD_:
     case SC_THREAD_: {
-	m_handle->add_static_event( event_ );
-	break;
+	   //m_handle->add_static_event( event_ );
+        m_handle->add_sensitivity_event(event_);
+	   break;
     }
     case SC_NONE_:
         /* do nothing */

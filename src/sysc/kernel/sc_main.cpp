@@ -26,14 +26,15 @@
  CHANGE LOG APPEARS AT THE END OF THE FILE
  *****************************************************************************/
 
-
+#include <iostream>
+#include "sysc/kernel/sc_simcontext.h"
 #include "sysc/kernel/sc_cmnhdr.h"
 #include "sysc/kernel/sc_externs.h"
 
 int
 main( int argc, char* argv[] )
 {
-	return sc_core::sc_elab_and_sim( argc, argv );
+  return sc_core::sc_elab_and_sim( argc, argv );
 }
 
 // $Log: sc_main.cpp,v $

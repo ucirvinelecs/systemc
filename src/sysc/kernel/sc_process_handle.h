@@ -55,13 +55,13 @@ operator < ( const sc_process_handle& left, const sc_process_handle& right );
 
 
 
-//=============================================================================
-// CLASS sc_process_handle
-//
-// This class provides access to an sc_process_b object instance in a
-// manner which allows some persistence after the deletion of the actual 
-// process.
-//=============================================================================
+/**************************************************************************//**
+ *  \class sc_process_handle
+ *
+ *  \brief This class provides access to an sc_process_b object instance in a
+ *  manner which allows some persistence after the deletion of the actual 
+ *  process.
+ *****************************************************************************/
 class sc_simcontext;
 class sc_process_handle {
     typedef sc_process_handle this_type;
@@ -72,6 +72,10 @@ class sc_process_handle {
     friend class sc_object;
     friend class sc_join;
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend class sc_reset;
     friend class sc_sensitive;
     friend class sc_sensitive_pos;

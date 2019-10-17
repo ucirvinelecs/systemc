@@ -53,7 +53,11 @@ sc_event_queue::sc_event_queue( sc_module_name name_ )
       m_change_stamp(0),
       m_pending_delta(0)
 {
-    SC_METHOD( fire_event );
+    assert( 0 ); // 08/20/2015 GL: to support sc_event_queue in the future
+
+    //SC_METHOD( fire_event ); 
+    //SC_METHOD( fire_event, -3 ); // 08/20/2015 GL: fake segment ID
+    SC_METHOD( fire_event, -3, -3 ); // 09/02/2015 GL: fake instance ID
     sensitive << m_e;
     dont_initialize();
 }

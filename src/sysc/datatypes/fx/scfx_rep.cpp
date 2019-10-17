@@ -91,6 +91,49 @@ n_word( int x )
     return ( x + bits_in_word - 1 ) / bits_in_word;
 }
 
+// 08/03/2015 GL: initialize scfx_rep_list_lock::m_mutex
+pthread_mutex_t scfx_rep_list_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_rep_list_lock
+scfx_rep_list_lock::scfx_rep_list_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_list_lock::~scfx_rep_list_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
+// 08/03/2015 GL: initialize scfx_rep_pow10_fx_lock::m_mutex
+pthread_mutex_t scfx_rep_pow10_fx_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_rep_pow10_fx_lock
+scfx_rep_pow10_fx_lock::scfx_rep_pow10_fx_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_pow10_fx_lock::~scfx_rep_pow10_fx_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
+// 08/04/2015 GL: initialize scfx_rep_scfx_string_lock::m_mutex
+pthread_mutex_t scfx_rep_scfx_string_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/04/2015 GL: constructor & destructor for scfx_rep_scfx_string_lock
+scfx_rep_scfx_string_lock::scfx_rep_scfx_string_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_scfx_string_lock::~scfx_rep_scfx_string_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
+
 
 // ----------------------------------------------------------------------------
 //  CONSTRUCTORS
@@ -374,6 +417,10 @@ static scfx_rep_node* list = 0;
 void*
 scfx_rep::operator new( std::size_t size )
 {
+    // 08/03/2015 GL: to protect global data list
+    // 08/03/2015 GL: scfx_rep_list_lock constructor acquires the mutex
+    scfx_rep_list_lock m_scfx_rep_list_lock;
+
     const int ALLOC_SIZE = 1024;
 
     if( size != sizeof( scfx_rep ) )
@@ -391,11 +438,16 @@ scfx_rep::operator new( std::size_t size )
     list = list->next;
 
     return ptr;
+    // 08/03/2015 GL: scfx_rep_list_lock destructor releases the mutex
 }
 
 
 void scfx_rep::operator delete( void* ptr, std::size_t size )
 {
+    // 08/03/2015 GL: to protect global data list
+    // 08/03/2015 GL: scfx_rep_list_lock constructor acquires the mutex
+    scfx_rep_list_lock m_scfx_rep_list_lock; 
+
     if( size != sizeof( scfx_rep ) )
     {
 	::operator delete( ptr );
@@ -405,6 +457,7 @@ void scfx_rep::operator delete( void* ptr, std::size_t size )
     scfx_rep_node* node = static_cast<scfx_rep_node*>( ptr );
     node->next = list;
     list = node;
+    // 08/03/2015 GL: scfx_rep_list_lock destructor releases the mutex
 }
 
 
@@ -692,7 +745,19 @@ scfx_rep::from_string( const char* s, int cte_wl )
 	    
 	    if( denominator )
 	    {
-		scfx_rep frac_num = pow10_fx( denominator );
+		//scfx_rep frac_num = pow10_fx( denominator );
+
+                // 08/03/2015 GL: to protect global object pow10_fx
+                scfx_rep frac_num;
+                {
+                    // 08/03/2015 GL: scfx_rep_pow10_fx_lock constructor 
+                    //                acquires the mutex
+                    scfx_rep_pow10_fx_lock m_scfx_rep_pow10_fx_lock;
+                    frac_num = pow10_fx( denominator );
+                    // 08/03/2015 GL: scfx_rep_pow10_fx_lock destructor 
+                    //                releases the mutex
+                }
+
 		scfx_rep* temp_num =
 		    div_scfx_rep( const_cast<const scfx_rep&>( *this ),
 				   frac_num, cte_wl );
@@ -1004,7 +1069,20 @@ print_dec( scfx_string& s, const scfx_rep& num, int w_prefix, sc_fmt fmt )
 	frac_zeros = (int) floor( frac_wl * log10( 2. ) );
 
 	scfx_rep temp;
-	sc_dt::multiply( temp, frac_part, pow10_fx( frac_zeros ) );
+	//sc_dt::multiply( temp, frac_part, pow10_fx( frac_zeros ) );
+
+        // 08/03/2015 GL: to protect global object pow10_fx
+        scfx_rep frac_zeros_rep;
+        {
+            // 08/03/2015 GL: scfx_rep_pow10_fx_lock constructor acquires the 
+            //                mutex
+            scfx_rep_pow10_fx_lock m_scfx_rep_pow10_fx_lock;
+            frac_zeros_rep = pow10_fx( frac_zeros );
+            // 08/03/2015 GL: scfx_rep_pow10_fx_lock destructor releases the 
+            //                mutex
+        }
+        sc_dt::multiply( temp, frac_part, frac_zeros_rep );
+
 	frac_part = temp;
 	if( frac_part.m_msw == frac_part.size() - 1 )
 	    frac_part.resize_to( frac_part.size() + 1, 1 );
@@ -1218,6 +1296,10 @@ const char*
 scfx_rep::to_string( sc_numrep numrep, int w_prefix,
 		     sc_fmt fmt, const scfx_params* params ) const
 {
+    // 08/04/2015 GL: to protect static variable scfx_string s
+    // 08/04/2015 GL: scfx_rep_scfx_string_lock constructor acquires the mutex
+    scfx_rep_scfx_string_lock m_scfx_rep_scfx_string_lock;
+
     static scfx_string s;
 
     s.clear();
@@ -1237,6 +1319,7 @@ scfx_rep::to_string( sc_numrep numrep, int w_prefix,
         sc_dt::print_other( s, *this, numrep, w_prefix, fmt, params );
 
     return s;
+    // 08/04/2015 GL: scfx_rep_scfx_string_lock destructor releases the mutex
 }
 
 

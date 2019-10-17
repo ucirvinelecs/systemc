@@ -44,16 +44,20 @@ class sc_simcontext;
 class sc_trace_file;
 class sc_trace_file_base;
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_object
-//
-//  Abstract base class of all SystemC `simulation' objects.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_object
+ *
+ *  \brief Abstract base class of all SystemC `simulation' objects.
+ *****************************************************************************/
 
 class sc_object
 {
     friend class sc_event;
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend struct sc_invoke_method;
     friend class sc_module_dynalloc_list;
     friend class sc_object_manager;

@@ -33,11 +33,11 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_mutex_if
-//
-//  The sc_mutex_if interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_mutex_if
+ *
+ *  \brief The sc_mutex_if interface class.
+ *****************************************************************************/
 
 class sc_mutex_if
 : virtual public sc_interface
@@ -47,7 +47,13 @@ public:
     // the classical operations: lock(), trylock(), and unlock()
 
     // blocks until mutex could be locked
-    virtual int lock() = 0;
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual int lock( int ) = 0;
 
     // returns -1 if mutex could not be locked
     virtual int trylock() = 0;
@@ -69,11 +75,12 @@ private:
     sc_mutex_if& operator = ( const sc_mutex_if& );
 };
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_scoped_lock
-//
-//  The sc_scoped_lock class to lock (and automatically release) a mutex.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_scoped_lock
+ *
+ *  \brief The sc_scoped_lock class to lock (and automatically release) a 
+ *         mutex.
+ *****************************************************************************/
 
 //template< typename Lockable = sc_mutex_if >
 class sc_scoped_lock
@@ -82,12 +89,19 @@ public:
     //typedef Lockable lockable_type;
     typedef sc_mutex_if lockable_type;
 
+    /**
+     *  \brief This constructor function is not supported by the out-of-order 
+     *         simulation in the current release.
+     */
+    // 08/20/2015 GL.
     explicit
     sc_scoped_lock( lockable_type& mtx )
       : m_ref(mtx)
       , m_active(true)
     {
-        m_ref.lock();
+        assert( 0 ); // 08/20/2015 GL: to support sc_scoped_lock in the future
+
+        m_ref.lock( -4 ); // 08/20/2015 GL: fake segment ID
     }
 
     bool release()

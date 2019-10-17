@@ -35,11 +35,11 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_buffer<T>
-//
-//  The sc_buffer<T> primitive channel class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_buffer<T>
+ *
+ *  \brief The sc_buffer<T> primitive channel class.
+ *****************************************************************************/
 
 template< typename T, sc_writer_policy POL = SC_DEFAULT_WRITER_POLICY >
 class sc_buffer
@@ -57,12 +57,12 @@ public:
     // constructors
 
     sc_buffer()
-	: base_type( sc_gen_unique_name( "buffer" ) )
-	{}
+      : base_type( sc_gen_unique_name( "buffer" ) )
+    {}
 
     explicit sc_buffer( const char* name_ )
-	: base_type( name_ )
-	{}
+      : base_type( name_ )
+    {}
 
     sc_buffer( const char* name_, const T& initial_value_ )
       : base_type( name_, initial_value_ )
@@ -77,16 +77,16 @@ public:
     // other methods
 
     this_type& operator = ( const T& a )
-	{ write( a ); return *this; }
+    { write( a ); return *this; }
 
     this_type& operator = ( const sc_signal_in_if<T>& a )
-	{ write( a.read() ); return *this; }
+    { write( a.read() ); return *this; }
 
     this_type& operator = ( const this_type& a )
-	{ write( a.read() ); return *this; }
+    { write( a.read() ); return *this; }
 
     virtual const char* kind() const
-        { return "sc_buffer"; }
+    { return "sc_buffer"; }
 
 protected:
 
@@ -108,11 +108,18 @@ inline
 void
 sc_buffer<T,POL>::write( const T& value_ )
 {
+    // 02/23/2015 GL: acquire a lock to protect concurrent communication, 
+    //                but sc_signal should have a single write port?!
+    // 02/24/2015 GL: the reason to add "this->" before m_mutex: 
+    // http://www.parashift.com/c++-faq-lite/nondependent-name-lookup-members.html
+    chnl_scoped_lock lock( this->m_mutex ); 
+
     if( !base_type::policy_type::check_write(this,true) )
       return;
 
     this->m_new_val = value_;
     this->request_update();
+    // 02/23/2015 GL: return releases the lock
 }
 
 

@@ -62,6 +62,9 @@ class sc_sensitive
 {
     friend class sc_module;
 
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
 public:
 
     // typedefs
@@ -140,6 +143,9 @@ class sc_sensitive_pos
 {
     friend class sc_module;
 
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
 public:
 
     // typedefs
@@ -205,6 +211,9 @@ private:
 class sc_sensitive_neg
 {
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
 
 public:
 

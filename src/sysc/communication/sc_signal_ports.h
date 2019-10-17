@@ -36,6 +36,9 @@
 #include "sysc/datatypes/bit/sc_logic.h"
 #include "sysc/tracing/sc_trace.h"
 
+// 02/22/2015 GL: to include the definition of chnl_scoped_lock
+#include "sysc/communication/sc_prim_channel.h"
+
 #if ! defined( SC_DISABLE_VIRTUAL_BIND )
 #  define SC_VIRTUAL_ virtual
 #else
@@ -44,12 +47,14 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  STRUCT : sc_trace_params
-//
-//  Struct for storing the trace file and object name of an sc_trace call.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \struct sc_trace_params
+ *
+ *  \brief Struct for storing the trace file and object name of an sc_trace 
+ *         call.
+ *
+ *  FOR INTERNAL USE ONLY!
+ *****************************************************************************/
 
 extern void sc_deprecated_add_trace();
 
@@ -60,18 +65,18 @@ struct sc_trace_params
 
     sc_trace_params( sc_trace_file* tf_, const std::string& name_ )
 	: tf( tf_ ), name( name_ )
-	{}
+    {}
 };
 
 
 typedef std::vector<sc_trace_params*> sc_trace_params_vec;
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_in<T>
-//
-//  The sc_signal<T> input port class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_in<T>
+ *
+ *  \brief The sc_signal<T> input port class.
+ *****************************************************************************/
 
 template <class T>
 class sc_in
@@ -100,91 +105,94 @@ public:
     sc_in()
 	: base_type(), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const char* name_ )
 	: base_type( name_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const in_if_type& interface_ )
         : base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
 	  m_change_finder_p(0)
-        {}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, const in_if_type& interface_ )
 	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( in_port_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, in_port_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( inout_port_type& parent_ )
 	: base_type(), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( const char* name_, inout_port_type& parent_ )
 	: base_type( name_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( this_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
 
     virtual ~sc_in()
-	{
-	    remove_traces();
-	    delete m_change_finder_p;
-	}
+    {
+        CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
+        remove_traces();
+        delete m_change_finder_p;
+    }
 
 
     // bind to in interface
 
     SC_VIRTUAL_ void bind( const in_if_type& interface_ )
-	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+    { sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
 
     SC_VIRTUAL_ void bind( in_if_type& interface_ )
-	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+    { this->bind( CCAST<const in_if_type&>( interface_ ) ); }
 
     void operator () ( const in_if_type& interface_ )
-	{ this->bind( interface_ ); }
+    { this->bind( interface_ ); }
 
 
     // bind to parent in port
 
     SC_VIRTUAL_ void bind( in_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( in_port_type& parent_ )
-        { this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // bind to parent inout port
 
     SC_VIRTUAL_ void bind( inout_port_type& parent_ )
-	{ sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( inout_port_type& parent_ )
-	{ this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // interface access shortcut methods
@@ -192,40 +200,44 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
 
     // (other) event finder method(s)
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
 	return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
@@ -236,7 +248,7 @@ public:
     virtual void end_of_elaboration();
 
     virtual const char* kind() const
-        { return "sc_in"; }
+    { return "sc_in"; }
 
 
     void add_trace( sc_trace_file*, const std::string& ) const;
@@ -262,11 +274,17 @@ protected:
     //  - errors are detected during elaboration
 
     SC_VIRTUAL_ void bind( base_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
 
 private:
   mutable sc_event_finder* m_change_finder_p;
+
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
 
 private:
 
@@ -381,11 +399,11 @@ sc_in<T>::vbind( sc_port_base& parent_ )
 }
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_in<bool>
-//
-//  Specialization of sc_in<T> for type bool.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_in<bool>
+ *
+ *  \brief Specialization of sc_in<T> for type bool.
+ *****************************************************************************/
 
 template <>
 class sc_in<bool> : 
@@ -414,100 +432,103 @@ public:
     sc_in()
 	: base_type(), m_traces( 0 ), m_change_finder_p(0), 
 	  m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const char* name_ )
 	: base_type( name_ ), m_traces( 0 ), m_change_finder_p(0), 
 	  m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const in_if_type& interface_ )
 	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ), 
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, const in_if_type& interface_ )
 	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( in_port_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, in_port_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( inout_port_type& parent_ )
 	: base_type(), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( const char* name_, inout_port_type& parent_ )
 	: base_type( name_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( this_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 #if defined(TESTING)
     sc_in( const this_type& parent_ )
 	: base_type( *(in_if_type*)parent_.get_interface() ) , m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 #endif 
 
     sc_in( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
 
     virtual ~sc_in()
-	{
-	    remove_traces();
-	    delete m_change_finder_p;
-	    delete m_neg_finder_p;
-	    delete m_pos_finder_p;
-	}
+    {
+        remove_traces();
+        CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
+        delete m_change_finder_p;
+        delete m_neg_finder_p;
+        delete m_pos_finder_p;
+    }
 
 
     // bind to in interface
 
     SC_VIRTUAL_ void bind( const in_if_type& interface_ )
-	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+    { sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
 
     SC_VIRTUAL_ void bind( in_if_type& interface_ )
-	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+    { this->bind( CCAST<const in_if_type&>( interface_ ) ); }
 
     void operator () ( const in_if_type& interface_ )
-	{ this->bind( interface_ ); }
+    { this->bind( interface_ ); }
 
 
     // bind to parent in port
 
     SC_VIRTUAL_ void bind( in_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( in_port_type& parent_ )
-        { this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // bind to parent inout port
 
     SC_VIRTUAL_ void bind( inout_port_type& parent_ )
-	{ sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( inout_port_type& parent_ )
-	{ this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // interface access shortcut methods
@@ -515,84 +536,96 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
     // get the positive edge event
 
     const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    { return (*this)->posedge_event(); }
 
     // get the negative edge event
 
     const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
+    { return (*this)->negedge_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // use for positive edge sensitivity
 
     sc_event_finder& pos() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_pos_finder_p )
 	{
 	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::posedge_event );
 	} 
 	return *m_pos_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     // use for negative edge sensitivity
 
     sc_event_finder& neg() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_neg_finder_p )
 	{
 	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::negedge_event );
 	} 
 	return *m_neg_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
     // was there a positive edge event?
 
     bool posedge() const
-        { return (*this)->posedge(); }
+    { return (*this)->posedge(); }
 
     // was there a negative edge event?
 
     bool negedge() const
-        { return (*this)->negedge(); }
+    { return (*this)->negedge(); }
 
     // (other) event finder method(s)
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
 	return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
@@ -603,7 +636,7 @@ public:
     virtual void end_of_elaboration();
 
     virtual const char* kind() const
-        { return "sc_in"; }
+    { return "sc_in"; }
 
 
     void add_trace( sc_trace_file*, const std::string& ) const;
@@ -629,12 +662,18 @@ protected:
     //  - errors are detected during elaboration
 
     SC_VIRTUAL_ void bind( base_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
 private:
   mutable sc_event_finder* m_change_finder_p;
   mutable sc_event_finder* m_neg_finder_p;
   mutable sc_event_finder* m_pos_finder_p;
+
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
 
 private:
 
@@ -655,11 +694,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_in<sc_dt::sc_logic>
-//
-//  Specialization of sc_in<T> for type sc_dt::sc_logic.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_in<sc_dt::sc_logic>
+ *
+ *  \brief Specialization of sc_in<T> for type sc_dt::sc_logic.
+ *****************************************************************************/
 
 template <>
 class sc_in<sc_dt::sc_logic>
@@ -688,93 +727,96 @@ public:
     sc_in()
 	: base_type(), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const char* name_ )
 	: base_type( name_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( const in_if_type& interface_ )
 	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, const in_if_type& interface_ )
 	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( in_port_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, in_port_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_in( inout_port_type& parent_ )
 	: base_type(), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( const char* name_, inout_port_type& parent_ )
 	: base_type( name_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    { CHNL_MTX_INIT_( m_mutex ); // 02/22/2015 GL: initialize the mutex
+      sc_port_base::bind( parent_ ); }
 
     sc_in( this_type& parent_ )
 	: base_type( parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_in( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
 
     virtual ~sc_in()
-	{
-	    remove_traces();
-	    delete m_change_finder_p;
-	    delete m_neg_finder_p;
-	    delete m_pos_finder_p;
-	}
+    {
+        remove_traces();
+        CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
+        delete m_change_finder_p;
+        delete m_neg_finder_p;
+        delete m_pos_finder_p;
+    }
 
 
     // bind to in interface
 
     SC_VIRTUAL_ void bind( const in_if_type& interface_ )
-	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+    { sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
 
     SC_VIRTUAL_ void bind( in_if_type& interface_ )
-	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+    { this->bind( CCAST<const in_if_type&>( interface_ ) ); }
 
     void operator () ( const in_if_type& interface_ )
-	{ this->bind( interface_ ); }
+    { this->bind( interface_ ); }
 
 
     // bind to parent in port
 
     SC_VIRTUAL_ void bind( in_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( in_port_type& parent_ )
-        { this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // bind to parent inout port
 
     SC_VIRTUAL_ void bind( inout_port_type& parent_ )
-	{ sc_port_base::bind( parent_ ); }
+    { sc_port_base::bind( parent_ ); }
 
     void operator () ( inout_port_type& parent_ )
-	{ this->bind( parent_ ); }
+    { this->bind( parent_ ); }
 
 
     // interface access shortcut methods
@@ -782,84 +824,96 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
     // get the positive edge event
 
     const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    { return (*this)->posedge_event(); }
 
     // get the negative edge event
 
     const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
+    { return (*this)->negedge_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // use for positive edge sensitivity
 
     sc_event_finder& pos() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_pos_finder_p )
 	{
 	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::posedge_event );
 	} 
 	return *m_pos_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     // use for negative edge sensitivity
 
     sc_event_finder& neg() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_neg_finder_p )
 	{
 	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::negedge_event );
 	} 
 	return *m_neg_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
     // was there a positive edge event?
 
     bool posedge() const
-        { return (*this)->posedge(); }
+    { return (*this)->posedge(); }
 
     // was there a negative edge event?
 
     bool negedge() const
-        { return (*this)->negedge(); }
+    { return (*this)->negedge(); }
 
     // (other) event finder method(s)
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
 	return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
@@ -870,7 +924,7 @@ public:
     virtual void end_of_elaboration();
 
     virtual const char* kind() const
-        { return "sc_in"; }
+    { return "sc_in"; }
 
 
     void add_trace( sc_trace_file*, const std::string& ) const;
@@ -903,6 +957,12 @@ private:
   mutable sc_event_finder* m_neg_finder_p;
   mutable sc_event_finder* m_pos_finder_p;
 
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
+
 private:
 
     // disabled
@@ -919,11 +979,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_inout<T>
-//
-//  The sc_signal<T> input/output port class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_inout<T>
+ *
+ *  \brief The sc_signal<T> input/output port class.
+ *****************************************************************************/
 
 template <class T>
 class sc_inout
@@ -951,42 +1011,42 @@ public:
     sc_inout()
 	: base_type(), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( const char* name_ )
 	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_if_type& interface_ )
 	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_if_type& interface_ )
 	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_port_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_port_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( this_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
@@ -999,49 +1059,49 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
 
     // write the new value
 
     void write( const data_type& value_ )
-	{ (*this)->write( value_ ); }
+    { (*this)->write( value_ ); }
 
     this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    { (*this)->write( value_ ); return *this; }
 
     this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    { (*this)->write( interface_.read() ); return *this; }
 
     this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
 
     // set initial value (can also be called when port is not bound yet)
@@ -1049,7 +1109,7 @@ public:
     void initialize( const data_type& value_ );
 
     void initialize( const in_if_type& interface_ )
-	{ initialize( interface_.read() ); }
+    { initialize( interface_.read() ); }
 
 
     // called when elaboration is done
@@ -1063,16 +1123,20 @@ public:
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
 	return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     virtual const char* kind() const
-        { return "sc_inout"; }
+    { return "sc_inout"; }
 
 protected:
 
@@ -1093,6 +1157,12 @@ protected:
 
 private:
   mutable sc_event_finder* m_change_finder_p;
+
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
 
 private:
 
@@ -1123,6 +1193,7 @@ template <class T>
 inline
 sc_inout<T>::~sc_inout()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
     delete m_change_finder_p;
     delete m_init_val;
     remove_traces();
@@ -1138,12 +1209,12 @@ sc_inout<T>::initialize( const data_type& value_ )
 {
     inout_if_type* iface = DCAST<inout_if_type*>( this->get_interface() );
     if( iface != 0 ) {
-	iface->write( value_ );
+        iface->write( value_ );
     } else {
-	if( m_init_val == 0 ) {
-	    m_init_val = new data_type;
-	}
-	*m_init_val = value_;
+        if( m_init_val == 0 ) {
+            m_init_val = new data_type;
+        }
+        *m_init_val = value_;
     }
 }
 
@@ -1156,17 +1227,17 @@ void
 sc_inout<T>::end_of_elaboration()
 {
     if( m_init_val != 0 ) {
-	write( *m_init_val );
-	delete m_init_val;
-	m_init_val = 0;
+        write( *m_init_val );
+        delete m_init_val;
+        m_init_val = 0;
     }
     if( m_traces != 0 ) {
-	for( int i = 0; i < (int)m_traces->size(); ++ i ) {
-	    sc_trace_params* p = (*m_traces)[i];
-	    in_if_type* iface = DCAST<in_if_type*>( this->get_interface() );
-	    sc_trace( p->tf, iface->read(), p->name );
-	}
-	remove_traces();
+        for( int i = 0; i < (int)m_traces->size(); ++ i ) {
+            sc_trace_params* p = (*m_traces)[i];
+            in_if_type* iface = DCAST<in_if_type*>( this->get_interface() );
+            sc_trace( p->tf, iface->read(), p->name );
+        }
+        remove_traces();
     }
 }
 
@@ -1180,10 +1251,10 @@ sc_inout<T>::add_trace_internal( sc_trace_file* tf_, const std::string& name_)
 const
 {
     if( tf_ != 0 ) {
-	    if( m_traces == 0 ) {
-	        m_traces = new sc_trace_params_vec;
-	    }
-	    m_traces->push_back( new sc_trace_params( tf_, name_ ) );
+        if( m_traces == 0 ) {
+            m_traces = new sc_trace_params_vec;
+        }
+        m_traces->push_back( new sc_trace_params( tf_, name_ ) );
     }
 }
 
@@ -1202,20 +1273,20 @@ void
 sc_inout<T>::remove_traces() const
 {
     if( m_traces != 0 ) {
-		for( int i = m_traces->size() - 1; i >= 0; -- i ) {
-	        delete (*m_traces)[i];
-		}
-		delete m_traces;
-		m_traces = 0;
+        for( int i = m_traces->size() - 1; i >= 0; -- i ) {
+            delete (*m_traces)[i];
+        }
+        delete m_traces;
+        m_traces = 0;
     }
 }
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_inout<bool>
-//
-//  Specialization of sc_inout<T> for type bool.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_inout<bool>
+ *
+ *  \brief Specialization of sc_inout<T> for type bool.
+ *****************************************************************************/
 
 template <>
 class sc_inout<bool> : 
@@ -1243,42 +1314,42 @@ public:
     sc_inout()
 	: base_type(), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( const char* name_ )
 	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_if_type& interface_ )
 	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_if_type& interface_ )
 	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_port_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_port_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( this_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
@@ -1291,93 +1362,101 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
     // get the positive edge event
 
     const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    { return (*this)->posedge_event(); }
 
     // get the negative edge event
 
     const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
+    { return (*this)->negedge_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // use for positive edge sensitivity
 
     sc_event_finder& pos() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_pos_finder_p )
 	{
 	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::posedge_event );
 	} 
 	return *m_pos_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     // use for negative edge sensitivity
 
     sc_event_finder& neg() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_neg_finder_p )
 	{
 	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::negedge_event );
 	} 
 	return *m_neg_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
     // was there a positive edge event?
 
     bool posedge() const
-        { return (*this)->posedge(); }
+    { return (*this)->posedge(); }
 
     // was there a negative edge event?
 
     bool negedge() const
-        { return (*this)->negedge(); }
+    { return (*this)->negedge(); }
 
     // write the new value
 
     void write( const data_type& value_ )
-	{ (*this)->write( value_ ); }
+    { (*this)->write( value_ ); }
 
     this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    { (*this)->write( value_ ); return *this; }
 
     this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    { (*this)->write( interface_.read() ); return *this; }
 
     this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
 
     // set initial value (can also be called when port is not bound yet)
@@ -1385,7 +1464,7 @@ public:
     void initialize( const data_type& value_ );
 
     void initialize( const in_if_type& interface_ )
-	{ initialize( interface_.read() ); }
+    { initialize( interface_.read() ); }
 
 
     // called when elaboration is done
@@ -1399,16 +1478,20 @@ public:
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
 	return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     virtual const char* kind() const
-        { return "sc_inout"; }
+    { return "sc_inout"; }
 
 protected:
 
@@ -1432,6 +1515,12 @@ private:
   mutable sc_event_finder* m_neg_finder_p;
   mutable sc_event_finder* m_pos_finder_p;
 
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
+
 private:
 
     // disabled
@@ -1447,11 +1536,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_inout<sc_dt::sc_logic>
-//
-//  Specialization of sc_inout<T> for type sc_dt::sc_logic.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_inout<sc_dt::sc_logic>
+ *
+ *  \brief Specialization of sc_inout<T> for type sc_dt::sc_logic.
+ *****************************************************************************/
 
 template <>
 class sc_inout<sc_dt::sc_logic>
@@ -1479,42 +1568,42 @@ public:
     sc_inout()
 	: base_type(), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( const char* name_ )
 	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_if_type& interface_ )
 	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_if_type& interface_ )
 	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     explicit sc_inout( inout_port_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, inout_port_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( this_type& parent_ )
 	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
     sc_inout( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
 	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    { CHNL_MTX_INIT_( m_mutex ); } // 02/22/2015 GL: initialize the mutex
 
 
     // destructor
@@ -1527,93 +1616,101 @@ public:
     // get the default event
 
     const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    { return (*this)->default_event(); }
 
 
     // get the value changed event
 
     const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    { return (*this)->value_changed_event(); }
 
     // get the positive edge event
 
     const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    { return (*this)->posedge_event(); }
 
     // get the negative edge event
 
     const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
+    { return (*this)->negedge_event(); }
 
 
     // read the current value
 
     const data_type& read() const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
     operator const data_type& () const
-	{ return (*this)->read(); }
+    { return (*this)->read(); }
 
 
     // use for positive edge sensitivity
 
     sc_event_finder& pos() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_pos_finder_p )
 	{
 	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::posedge_event );
 	} 
 	return *m_pos_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     // use for negative edge sensitivity
 
     sc_event_finder& neg() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_neg_finder_p )
 	{
 	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::negedge_event );
 	} 
 	return *m_neg_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
 
     // was there a value changed event?
 
     bool event() const
-	{ return (*this)->event(); }
+    { return (*this)->event(); }
 
     // was there a positive edge event?
 
     bool posedge() const
-        { return (*this)->posedge(); }
+    { return (*this)->posedge(); }
 
     // was there a negative edge event?
 
     bool negedge() const
-        { return (*this)->negedge(); }
+    { return (*this)->negedge(); }
 
     // write the new value
 
     void write( const data_type& value_ )
-	{ (*this)->write( value_ ); }
+    { (*this)->write( value_ ); }
 
     this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    { (*this)->write( value_ ); return *this; }
 
     this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    { (*this)->write( interface_.read() ); return *this; }
 
     this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
 
     // set initial value (can also be called when port is not bound yet)
@@ -1621,7 +1718,7 @@ public:
     void initialize( const data_type& value_ );
 
     void initialize( const in_if_type& interface_ )
-	{ initialize( interface_.read() ); }
+    { initialize( interface_.read() ); }
 
 
     // called when elaboration is done
@@ -1635,16 +1732,20 @@ public:
 
     sc_event_finder& value_changed() const
     {
+        // 02/22/2015 GL: add a lock to protect concurrent communication
+        chnl_scoped_lock lock( m_mutex );
+
         if ( !m_change_finder_p )
 	{
 	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
 	        *this, &in_if_type::value_changed_event );
 	}
         return *m_change_finder_p;
+        // 02/22/2015 GL: return releases the lock
     }
 
     virtual const char* kind() const
-        { return "sc_inout"; }
+    { return "sc_inout"; }
 
 protected:
 
@@ -1668,6 +1769,12 @@ private:
   mutable sc_event_finder* m_neg_finder_p;
   mutable sc_event_finder* m_pos_finder_p;
 
+  /**
+   *  \brief A mutex to protect concurrent communication.
+   */
+  // 02/22/2015 GL.
+  mutable CHNL_MTX_TYPE_ m_mutex;
+
 private:
 
     // disabled
@@ -1683,11 +1790,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_out<T>
-//
-//  The sc_signal<T> output port class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_out<T>
+ *
+ *  \brief The sc_signal<T> output port class.
+ *****************************************************************************/
 
 // sc_out can also read from its port, hence no difference with sc_inout.
 // For debugging reasons, a class is provided instead of a define.
@@ -1716,62 +1823,62 @@ public:
 
     sc_out()
 	: base_type()
-	{}
+    {}
 
     explicit sc_out( const char* name_ )
 	: base_type( name_ )
-	{}
+    {}
 
     explicit sc_out( inout_if_type& interface_ )
 	: base_type( interface_ )
-	{}
+    {}
 
     sc_out( const char* name_, inout_if_type& interface_ )
 	: base_type( name_, interface_ )
-	{}
+    {}
 
     explicit sc_out( inout_port_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_out( const char* name_, inout_port_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
     sc_out( this_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_out( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
 
     // destructor (does nothing)
 
     virtual ~sc_out()
-	{}
+    {}
 
 
     // write the new value
 
     this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    { (*this)->write( value_ ); return *this; }
 
     this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    { (*this)->write( interface_.read() ); return *this; }
 
     this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    { (*this)->write( port_->read() ); return *this; }
 
     virtual const char* kind() const
-        { return "sc_out"; }
+    { return "sc_out"; }
 
 private:
 

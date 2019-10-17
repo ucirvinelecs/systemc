@@ -16,10 +16,10 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
-  sc_time.cpp --
+  sc_time.cpp --  
 
   Original Author: Martin Janssen, Synopsys, Inc., 2001-05-21
 
@@ -48,7 +48,10 @@
 #else
 #  define SC_MAXTIME_ALLOWED_ 0
 #endif
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 static
@@ -70,7 +73,7 @@ const char* time_units[] = {
     "ms",
     "s"
 };
-
+   
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_time
@@ -86,11 +89,13 @@ sc_time::sc_time( double v, sc_time_unit tu )
     if( v != 0 ) {
 	sc_time_params* time_params = sc_get_curr_simcontext()->m_time_params;
 	double scale_fac = time_values[tu] / time_params->time_resolution;
+	
 	// linux bug workaround; don't change next two lines
 	volatile double tmp = v * scale_fac + 0.5;
 	m_value = SCAST<sc_dt::int64>( tmp );
+	
 	time_params->time_resolution_fixed = true;
-    }
+    } 
 }
 
 sc_time::sc_time( double v, sc_time_unit tu, sc_simcontext* simc )
@@ -102,6 +107,8 @@ sc_time::sc_time( double v, sc_time_unit tu, sc_simcontext* simc )
 	// linux bug workaround; don't change next two lines
 	volatile double tmp = v * scale_fac + 0.5;
 	m_value = SCAST<sc_dt::int64>( tmp );
+	// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+ //   		printf("tu=%d,scale_fac=%f,m_value=%lld\n",tu,scale_fac,m_value);
 	time_params->time_resolution_fixed = true;
     }
 }
@@ -163,11 +170,12 @@ sc_time
 sc_time::from_value( value_type v )
 {
     sc_time t;
-    if( v != 0 && !(SC_MAXTIME_ALLOWED_ && v == ~sc_dt::UINT64_ZERO) ) {
-        sc_time_params* time_params = sc_get_curr_simcontext()->m_time_params;
+    sc_time_params* time_params = sc_get_curr_simcontext()->m_time_params;
+    if( v != 0 && !(SC_MAXTIME_ALLOWED_ && v == ~0) ) {
+        
         time_params->time_resolution_fixed = true;
     }
-    t.m_value = v;
+    t.m_value =   sc_dt::uint64_to_double( v ) ;
     return t;
 }
 
@@ -257,10 +265,10 @@ sc_time::print( ::std::ostream& os ) const
 // ----------------------------------------------------------------------------
 
 sc_time_params::sc_time_params()
-: time_resolution( 1000 ),		// default 1 ps
+: time_resolution( 1000 ),		// default 1 fs
   time_resolution_specified( false ),
   time_resolution_fixed( false ),
-  default_time_unit( 1000 ),		// default 1 ns
+  default_time_unit( 1000000 ),		// default 1 ns
   default_time_unit_specified( false )
 {}
 

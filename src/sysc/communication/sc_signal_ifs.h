@@ -45,11 +45,11 @@ class sc_signal_bool_deval;
 class sc_signal_logic_deval;
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_in_if<T>
-//
-//  The sc_signal<T> input interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_in_if<T>
+ *
+ *  \brief The sc_signal<T> input interface class.
+ *****************************************************************************/
 
 template <class T>
 class sc_signal_in_if
@@ -76,7 +76,7 @@ protected:
     // constructor
 
     sc_signal_in_if()
-	{}
+        {}
 
 private:
 
@@ -86,11 +86,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_in_if<bool>
-//
-//  Specialization of sc_signal_in_if<T> for type bool.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_in_if<bool>
+ *
+ *  \brief Specialization of sc_signal_in_if<T> for type bool.
+ *****************************************************************************/
 
 class sc_reset;
 
@@ -146,11 +146,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_in_if<sc_dt::sc_logic>
-//
-//  Specialization of sc_signal_in_if<T> for type sc_dt::sc_logic.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_in_if<sc_dt::sc_logic>
+ *
+ *  \brief Specialization of sc_signal_in_if<T> for type sc_dt::sc_logic.
+ *****************************************************************************/
 
 template <>
 class sc_signal_in_if<sc_dt::sc_logic>
@@ -201,11 +201,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_write_if<T>
-//
-//  The standard output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_write_if<T>
+ *
+ *  \brief The standard output interface class.
+ *****************************************************************************/
 template< typename T >
 class sc_signal_write_if : public virtual sc_interface
 {
@@ -222,11 +222,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_inout_if<T>
-//
-//  The sc_signal<T> input/output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_inout_if<T>
+ *
+ *  \brief The sc_signal<T> input/output interface class.
+ *****************************************************************************/
 
 template <class T>
 class sc_signal_inout_if
@@ -248,11 +248,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_out_if<T>
-//
-//  The sc_signal<T> output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \def sc_signal_out_if<T>
+ *
+ *  \brief The sc_signal<T> output interface class.
+ *****************************************************************************/
 
 // sc_signal_out_if can also be read from, hence no difference with
 // sc_signal_inout_if.

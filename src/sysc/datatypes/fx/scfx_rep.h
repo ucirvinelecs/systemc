@@ -110,6 +110,36 @@ const int min_mant = 4;
 const int bits_in_int  = sizeof(int)  * CHAR_BIT;
 const int bits_in_word = sizeof(word) * CHAR_BIT;
 
+/**
+ *  \brief A scoped mutex for static scfx_rep_node* list.
+ */
+// 08/03/2015 GL.
+struct scfx_rep_list_lock {
+    static pthread_mutex_t m_mutex;
+    explicit scfx_rep_list_lock();
+    ~scfx_rep_list_lock();
+};
+
+/**
+ *  \brief A scoped mutex for static scfx_pow10 pow10_fx.
+ */
+// 08/03/2015 GL.
+struct scfx_rep_pow10_fx_lock {
+    static pthread_mutex_t m_mutex;
+    explicit scfx_rep_pow10_fx_lock();
+    ~scfx_rep_pow10_fx_lock();
+};
+
+/**
+ *  \brief A scoped mutex for scfx_rep::to_string.
+ */
+// 08/04/2015 GL.
+struct scfx_rep_scfx_string_lock {
+    static pthread_mutex_t m_mutex;
+    explicit scfx_rep_scfx_string_lock();
+    ~scfx_rep_scfx_string_lock();
+};
+
 
 // ----------------------------------------------------------------------------
 //  CLASS : scfx_index

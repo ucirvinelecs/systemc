@@ -30,16 +30,17 @@
 #define SC_FIFO_PORTS_H
 
 
+#include "sysc/kernel/sc_simcontext.h"
 #include "sysc/communication/sc_port.h"
 #include "sysc/communication/sc_fifo_ifs.h"
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_in<T>
-//
-//  The sc_fifo<T> input port class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_in<T>
+ *
+ *  \brief The sc_fifo<T> input port class.
+ *****************************************************************************/
 
 template <class T>
 class sc_fifo_in
@@ -64,82 +65,92 @@ public:
 
     sc_fifo_in()
 	: base_type()
-	{}
+    {}
 
     explicit sc_fifo_in( const char* name_ )
 	: base_type( name_ )
-	{}
+    {}
 
     explicit sc_fifo_in( in_if_type& interface_ )
 	: base_type( interface_ )
-	{}
+    {}
 
     sc_fifo_in( const char* name_, in_if_type& interface_ )
 	: base_type( name_, interface_ )
-	{}
+    {}
 
     explicit sc_fifo_in( in_port_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_fifo_in( const char* name_, in_port_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
     sc_fifo_in( this_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_fifo_in( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
 
     // destructor (does nothing)
 
     virtual ~sc_fifo_in()
-	{}
+    {}
 
 
     // interface access shortcut methods
 
-    // blocking read
+    // blocking read 
 
-    void read( data_type& value_ )
-        { (*this)->read( value_ ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void read( data_type& value_, sc_segid seg_id )
+    { (*this)->read( value_, seg_id ); }
 
-    data_type read()
-        { return (*this)->read(); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    data_type read( sc_segid seg_id )
+    { return (*this)->read( seg_id ); }
 
 
     // non-blocking read
 
     bool nb_read( data_type& value_ )
-        { return (*this)->nb_read( value_ ); }
+    { return (*this)->nb_read( value_ ); }
 
 
     // get the number of available samples
 
     int num_available() const
-        { return (*this)->num_available(); }
+    { return (*this)->num_available(); }
 
 
     // get the data written event
 
     const sc_event& data_written_event() const
-	{ return (*this)->data_written_event(); }
+    { return (*this)->data_written_event(); }
 
 
     // use for static sensitivity to data written event
 
     sc_event_finder& data_written() const
     {
-	return *new sc_event_finder_t<in_if_type>(
-	    *this, &in_if_type::data_written_event );
+        return *new sc_event_finder_t<in_if_type>(
+            *this, &in_if_type::data_written_event );
     }
 
     virtual const char* kind() const
-        { return "sc_fifo_in"; }
+    { return "sc_fifo_in"; }
 
 private:
 
@@ -151,11 +162,11 @@ private:
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_out<T>
-//
-//  The sc_fifo<T> output port class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_out<T>
+ *
+ *  \brief The sc_fifo<T> output port class.
+ *****************************************************************************/
 
 template <class T>
 class sc_fifo_out
@@ -180,79 +191,84 @@ public:
 
     sc_fifo_out()
 	: base_type()
-	{}
+    {}
 
     explicit sc_fifo_out( const char* name_ )
 	: base_type( name_ )
-	{}
+    {}
 
     explicit sc_fifo_out( out_if_type& interface_ )
 	: base_type( interface_ )
-	{}
+    {}
 
     sc_fifo_out( const char* name_, out_if_type& interface_ )
 	: base_type( name_, interface_ )
-	{}
+    {}
 
     explicit sc_fifo_out( out_port_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_fifo_out( const char* name_, out_port_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
     sc_fifo_out( this_type& parent_ )
 	: base_type( parent_ )
-	{}
+    {}
 
     sc_fifo_out( const char* name_, this_type& parent_ )
 	: base_type( name_, parent_ )
-	{}
+    {}
 
 
     // destructor (does nothing)
 
     virtual ~sc_fifo_out()
-	{}
+    {}
 
 
     // interface access shortcut methods
 
     // blocking write
 
-    void write( const data_type& value_ )
-        { (*this)->write( value_ ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    void write( const data_type& value_, int seg_id )
+    { (*this)->write( value_, seg_id ); }
 
 
     // non-blocking write
 
     bool nb_write( const data_type& value_ )
-        { return (*this)->nb_write( value_ ); }
+    { return (*this)->nb_write( value_ ); }
 
 
     // get the number of free spaces
 
     int num_free() const
-        { return (*this)->num_free(); }
+    { return (*this)->num_free(); }
 
 
     // get the data read event
 
     const sc_event& data_read_event() const
-	{ return (*this)->data_read_event(); }
+    { return (*this)->data_read_event(); }
 
 
     // use for static sensitivity to data read event
 
     sc_event_finder& data_read() const
     {
-	return *new sc_event_finder_t<out_if_type>(
-	    *this, &out_if_type::data_read_event );
+        return *new sc_event_finder_t<out_if_type>(
+            *this, &out_if_type::data_read_event );
     }
 
     virtual const char* kind() const
-        { return "sc_fifo_out"; }
+    { return "sc_fifo_out"; }
 
 private:
 

@@ -34,13 +34,16 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/communication/sc_mutex_if.h"
 
+// 02/24/2015 GL: to include the struct chnl_scoped_lock
+#include "sysc/communication/sc_prim_channel.h"
+
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_mutex
-//
-//  The sc_mutex primitive channel class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_mutex
+ *
+ *  \brief The sc_mutex primitive channel class.
+ *****************************************************************************/
 
 class sc_mutex
 : public sc_mutex_if,
@@ -58,7 +61,13 @@ public:
     // interface methods
 
     // blocks until mutex could be locked
-    virtual int lock();
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual int lock( int = -1);
 
     // returns -1 if mutex could not be locked
     virtual int trylock();
@@ -67,19 +76,25 @@ public:
     virtual int unlock();
 
     virtual const char* kind() const
-        { return "sc_mutex"; }
+    { return "sc_mutex"; }
 
 protected:
 
     // support methods
 
     bool in_use() const
-	{ return ( m_owner != 0 ); }
+    { return ( m_owner != 0 ); }
 
 protected:
 
     sc_process_b* m_owner;
     sc_event      m_free;
+
+    /**
+     *  \brief A lock to protect concurrent communication through sc_mutex.
+     */
+    // 02/10/2015 GL.
+    mutable CHNL_MTX_TYPE_ m_mutex;
 
 private:
 

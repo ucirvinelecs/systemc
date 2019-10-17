@@ -139,6 +139,14 @@ const sc_bind_proxy SC_BIND_PROXY_NIL;
 //
 //  Base class for all structural entities.
 // ----------------------------------------------------------------------------
+void sc_module::test_message(){
+	printf("hello\n");
+}
+
+//DM 05/20/2019 for sc_method invoker
+void sc_module::invoke_method(SC_ENTRY_FUNC func) {
+	(this->*func)();
+}
 
 void
 sc_module::sc_module_init()
@@ -180,6 +188,7 @@ sc_module::sc_module()
   sensitive(this),
   sensitive_pos(this),
   sensitive_neg(this),
+  m_instance_id(-1), // 09/01/2015 GL: instance id
   m_end_module_called(false),
   m_port_vec(),
   m_port_index(0),
@@ -205,6 +214,7 @@ sc_module::sc_module( const sc_module_name& )
   sensitive(this),
   sensitive_pos(this),
   sensitive_neg(this),
+  m_instance_id(-1), // 09/01/2015 GL: instance id
   m_end_module_called(false),
   m_port_vec(),
   m_port_index(0),
@@ -236,6 +246,7 @@ sc_module::sc_module( const char* nm )
   sensitive(this),
   sensitive_pos(this),
   sensitive_neg(this),
+  m_instance_id(-1), // 09/01/2015 GL: instance id
   m_end_module_called(false),
   m_port_vec(),
   m_port_index(0),
@@ -251,6 +262,7 @@ sc_module::sc_module( const std::string& s )
   sensitive(this),
   sensitive_pos(this),
   sensitive_neg(this),
+  m_instance_id(-1), // 09/01/2015 GL: instance id
   m_end_module_called(false),
   m_port_vec(),
   m_port_index(0),
@@ -288,40 +300,40 @@ sc_module::get_child_objects() const
 void
 sc_module::async_reset_signal_is( const sc_in<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(true, port, level);
+    sc_reset::reset_signal_is(true, port, level);
 }
 
 void
 sc_module::async_reset_signal_is( const sc_inout<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(true, port, level);
+    sc_reset::reset_signal_is(true, port, level);
 }
 
 void
 sc_module::async_reset_signal_is( const sc_out<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(true, port, level);
+    sc_reset::reset_signal_is(true, port, level);
 }
 
 void
 sc_module::async_reset_signal_is(const sc_signal_in_if<bool>& iface, bool level)
 {
-	sc_reset::reset_signal_is(true, iface, level);
+    sc_reset::reset_signal_is(true, iface, level);
 }
 
 void
 sc_module::end_module()
 {
     if( ! m_end_module_called ) {
-	/* TBD: Can check here to alert the user that end_module
+        /* TBD: Can check here to alert the user that end_module
                 was not called for a previous module. */
-	(void)sc_get_curr_simcontext()->hierarchy_pop();
-	sc_get_curr_simcontext()->reset_curr_proc(); 
-	sensitive.reset();
-	sensitive_pos.reset();
-	sensitive_neg.reset();
-	m_end_module_called = true;
-	m_module_name_p = 0; // make sure we are not called in ~sc_module().
+        (void)sc_get_curr_simcontext()->hierarchy_pop();
+        sc_get_curr_simcontext()->reset_curr_proc(); 
+        sensitive.reset();
+        sensitive_pos.reset();
+        sensitive_neg.reset();
+        m_end_module_called = true;
+        m_module_name_p = 0; // make sure we are not called in ~sc_module().
     }
 }
 
@@ -340,25 +352,25 @@ sc_module::dont_initialize()
 void
 sc_module::reset_signal_is( const sc_in<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(false, port, level);
+    sc_reset::reset_signal_is(false, port, level);
 }
 
 void
 sc_module::reset_signal_is( const sc_inout<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(false, port, level);
+    sc_reset::reset_signal_is(false, port, level);
 }
 
 void
 sc_module::reset_signal_is( const sc_out<bool>& port, bool level )
 {
-	sc_reset::reset_signal_is(false, port, level);
+    sc_reset::reset_signal_is(false, port, level);
 }
 
 void
 sc_module::reset_signal_is( const sc_signal_in_if<bool>& iface, bool level )
 {
-	sc_reset::reset_signal_is(false, iface, level);
+    sc_reset::reset_signal_is(false, iface, level);
 }
 
 // to generate unique names for objects in an MT-Safe way
@@ -400,13 +412,13 @@ void
 sc_module::elaboration_done( bool& error_ )
 {
     if( ! m_end_module_called ) {
-	char msg[BUFSIZ];
-	std::sprintf( msg, "module '%s'", name() );
-	SC_REPORT_WARNING( SC_ID_END_MODULE_NOT_CALLED_, msg );
-	if( error_ ) {
-	    SC_REPORT_WARNING( SC_ID_HIER_NAME_INCORRECT_, 0 );
-	}
-	error_ = true;
+        char msg[BUFSIZ];
+        std::sprintf( msg, "module '%s'", name() );
+        SC_REPORT_WARNING( SC_ID_END_MODULE_NOT_CALLED_, msg );
+        if( error_ ) {
+            SC_REPORT_WARNING( SC_ID_HIER_NAME_INCORRECT_, 0 );
+        }
+        error_ = true;
     }
     hierarchy_scope scope(this);
     end_of_elaboration();
@@ -443,20 +455,36 @@ sc_module::set_stack_size( std::size_t size )
 {
     sc_process_handle  proc_h(
     	sc_is_running() ?
-	sc_get_current_process_handle() :
-	sc_get_last_created_process_handle()
+        sc_get_current_process_handle() :
+        sc_get_last_created_process_handle()
     );
-    sc_thread_handle thread_h;  // Current process as thread.
+//    sc_thread_handle thread_h;  // Current process as thread.
 
 
-    thread_h = (sc_thread_handle)proc_h;
-    if ( thread_h ) 
+//    thread_h = (sc_thread_handle)proc_h;
+//    if ( thread_h ) 
+//    {
+//        thread_h->set_stack_size( size );
+//    }
+//    else
+//    {
+//        SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
+//    }
+
+// 04/03/2015 GL: now the current process may be a thread or method
+    if ( proc_h.proc_kind() == SC_METHOD_PROC_ ) // this is a method process
     {
-	thread_h->set_stack_size( size );
+        ((sc_method_handle)proc_h)->set_stack_size( size );
+    }
+    // this is a (c)thread process
+    else if ( ( proc_h.proc_kind() == SC_THREAD_PROC_ ) || 
+              ( proc_h.proc_kind() == SC_CTHREAD_PROC_ ) )
+    {
+        ((sc_thread_handle)proc_h)->set_stack_size( size );
     }
     else
     {
-	SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
+        SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
     }
 }
 
@@ -715,6 +743,49 @@ sc_module::operator () ( const sc_bind_proxy& p001,
     TRY_BIND( p062 );
     TRY_BIND( p063 );
     TRY_BIND( p064 );
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_channel
+//
+//  Base class for all hierarchical channels.
+//
+//  (04/07/2015 GL).
+// ----------------------------------------------------------------------------
+
+sc_channel::sc_channel()
+: sc_module()
+{
+    CHNL_MTX_INIT_(m_mutex);
+}
+
+sc_channel::sc_channel( const sc_module_name& nm )
+: sc_module( nm )
+{
+    CHNL_MTX_INIT_(m_mutex);
+}
+
+/* --------------------------------------------------------------------
+ *
+ * Deprecated constructors:
+ *   sc_module( const char* )
+ *   sc_module( const std::string& )
+ */
+sc_channel::sc_channel( const char* nm )
+: sc_module( nm )
+{
+    CHNL_MTX_INIT_(m_mutex);
+}
+
+sc_channel::sc_channel( const std::string& nm )
+: sc_module( nm )
+{
+    CHNL_MTX_INIT_(m_mutex);
+}
+
+sc_channel::~sc_channel()
+{
+    CHNL_MTX_DESTROY_(m_mutex);
 }
 
 } // namespace sc_core

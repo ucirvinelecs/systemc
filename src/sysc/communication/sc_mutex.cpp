@@ -43,33 +43,44 @@ sc_mutex::sc_mutex()
 : sc_object( sc_gen_unique_name( "mutex" ) ),
   m_owner( 0 ),
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() )
-{}
+{
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
+}
 
 sc_mutex::sc_mutex( const char* name_ )
 : sc_object( name_ ),
   m_owner( 0 ),
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() )
-{}
+{
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
+}
 
 
 // destructor
 
 sc_mutex::~sc_mutex()
-{}
+{
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/10/2015 GL: destroy the channel lock
+}
 
 // interface methods
 
 // blocks until mutex could be locked
+// 08/19/2015 GL: modified for the OoO simulation
 
 int
-sc_mutex::lock()
+sc_mutex::lock( int seg_id )
 {
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     if ( m_owner == sc_get_current_process_b()) return 0;
     while( in_use() ) {
-	sc_core::wait( m_free, sc_get_curr_simcontext() );
+	sc_core::wait( m_free, seg_id, sc_get_curr_simcontext() );
     }
     m_owner = sc_get_current_process_b();
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
@@ -78,12 +89,16 @@ sc_mutex::lock()
 int
 sc_mutex::trylock()
 {
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     if ( m_owner == sc_get_current_process_b()) return 0;
     if( in_use() ) {
 	return -1;
     }
     m_owner = sc_get_current_process_b();
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
@@ -92,12 +107,16 @@ sc_mutex::trylock()
 int
 sc_mutex::unlock()
 {
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     if( m_owner != sc_get_current_process_b() ) {
 	return -1;
     }
     m_owner = 0;
     m_free.notify();
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 } // namespace sc_core

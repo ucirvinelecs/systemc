@@ -209,6 +209,7 @@ sc_in<sc_dt::sc_logic>::vbind( sc_port_base& parent_ )
 
 sc_inout<bool>::~sc_inout()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
     delete m_change_finder_p;
     delete m_neg_finder_p;
     delete m_pos_finder_p;
@@ -300,6 +301,7 @@ sc_inout<bool>::remove_traces() const
 
 sc_inout<sc_dt::sc_logic>::~sc_inout()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
     delete m_change_finder_p;
     delete m_neg_finder_p;
     delete m_pos_finder_p;

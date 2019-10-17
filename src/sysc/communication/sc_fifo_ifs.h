@@ -29,16 +29,16 @@
 #ifndef SC_FIFO_IFS_H
 #define SC_FIFO_IFS_H
 
-
+#include "sysc/kernel/sc_simcontext.h"
 #include "sysc/communication/sc_interface.h"
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_nonblocking_in_if<T>
-//
-//  The sc_fifo<T> input nonblocking interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_nonblocking_in_if<T>
+ *
+ *  \brief The sc_fifo<T> input nonblocking interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_nonblocking_in_if 
@@ -53,11 +53,11 @@ public:
     virtual const sc_event& data_written_event() const = 0; 
 }; 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_blocking_in_if<T>
-//
-//  The sc_fifo<T> input blocking interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_blocking_in_if<T>
+ *
+ *  \brief The sc_fifo<T> input blocking interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_blocking_in_if 
@@ -65,16 +65,30 @@ class sc_fifo_blocking_in_if
 { 
 public: 
 
-    // blocking read 
-    virtual void read( T& ) = 0; 
-    virtual T read() = 0; 
+    // blocking read
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual void read( T&, sc_segid ) = 0; 
+    virtual void read( T&) = 0; 
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual T read( sc_segid ) = 0; 
+    virtual T read( ) = 0; 
 }; 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_in_if<T>
-//
-//  The sc_fifo<T> input interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_in_if<T>
+ *
+ *  \brief The sc_fifo<T> input interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_in_if 
@@ -91,7 +105,7 @@ protected:
     // constructor 
 
     sc_fifo_in_if() 
-        {} 
+    {} 
 
 private: 
 
@@ -101,11 +115,11 @@ private:
 }; 
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_nonblocking_out_if<T>
-//
-//  The sc_fifo<T> nonblocking output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_nonblocking_out_if<T>
+ *
+ *  \brief The sc_fifo<T> nonblocking output interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_nonblocking_out_if 
@@ -120,11 +134,11 @@ public:
     virtual const sc_event& data_read_event() const = 0; 
 }; 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_blocking_out_if<T>
-//
-//  The sc_fifo<T> blocking output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_blocking_out_if<T>
+ *
+ *  \brief The sc_fifo<T> blocking output interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_blocking_out_if 
@@ -132,16 +146,23 @@ class sc_fifo_blocking_out_if
 { 
 public: 
 
-    // blocking write 
-    virtual void write( const T& ) = 0; 
+    // blocking write
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual void write( const T&, int ) = 0; 
+    virtual void write( const T&) = 0; 
 
 }; 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fifo_out_if<T>
-//
-//  The sc_fifo<T> output interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_fifo_out_if<T>
+ *
+ *  \brief The sc_fifo<T> output interface class.
+ *****************************************************************************/
 
 template <class T> 
 class sc_fifo_out_if 

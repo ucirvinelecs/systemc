@@ -16,7 +16,7 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
   sc_module.h -- Base class of all hierarchical modules and channels.
@@ -41,20 +41,26 @@
 #include "sysc/kernel/sc_process.h"
 #include "sysc/kernel/sc_process_handle.h"
 #include "sysc/utils/sc_list.h"
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
+
+class Invoker; //DM 05/17/2019
 
 class sc_name_gen;
 template<class T> class sc_in;
 template<class T> class sc_inout;
 template<class T> class sc_out;
 
-// ----------------------------------------------------------------------------
-//  STRUCT : sc_bind_proxy
-//
-//  Struct for temporarily storing a pointer to an interface or port.
-//  Used for positional binding.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \struct sc_bind_proxy
+ *
+ *  \brief Struct for temporarily storing a pointer to an interface or port.
+ *
+ *  Used for positional binding.
+ *****************************************************************************/
 
 struct sc_bind_proxy
 {
@@ -70,20 +76,22 @@ struct sc_bind_proxy
 extern const sc_bind_proxy SC_BIND_PROXY_NIL;
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_module
-//
-//  Base class for all structural entities.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_module
+ *
+ *  \brief Base class for all structural entities.
+ *****************************************************************************/
 
 class sc_module
 : public sc_object, public sc_process_host
 {
+    friend class Invoker; //DM 05/17/2019 
+
     friend class sc_module_name;
     friend class sc_module_registry;
     friend class sc_object;
     friend class sc_port_registry;
-	friend class sc_process_b;
+    friend class sc_process_b;
     friend class sc_simcontext;
 
 public:
@@ -96,7 +104,7 @@ public:
 
     virtual const char* kind() const
         { return "sc_module"; }
-
+	void test_message();
 protected:
   
     // called by construction_done 
@@ -171,90 +179,220 @@ protected:
     void reset_signal_is( const sc_inout<bool>& port, bool level );
     void reset_signal_is( const sc_out<bool>& port, bool level );
     void reset_signal_is( const sc_signal_in_if<bool>& iface, bool level );
-
+ 
     // static sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait()
-        { ::sc_core::wait( simcontext() ); }
+	void seg_bound()
+	{
+		::sc_core::aux_seg_bound(simcontext());
+	}
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( int seg_id = -1)
+        { ::sc_core::wait( seg_id, simcontext() ); }
 
     // dynamic sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait( const sc_event& e )
-        { ::sc_core::wait( e, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event& e, int seg_id = -1 )
+        { 
+		::sc_core::wait( e, seg_id, simcontext() ); }
 
-    void wait( const sc_event_or_list& el )
-	{ ::sc_core::wait( el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_or_list& el, int seg_id = -1)
+	{ ::sc_core::wait( el, seg_id, simcontext() ); }
 
-    void wait( const sc_event_and_list& el )
-	{ ::sc_core::wait( el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_and_list& el, int seg_id = -1)
+	{ ::sc_core::wait( el, seg_id, simcontext() ); }
 
-    void wait( const sc_time& t )
-        { ::sc_core::wait( t, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, int seg_id = -1)
+        { ::sc_core::wait( t, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu )
-        { ::sc_core::wait( sc_time( v, tu, simcontext() ), simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, int seg_id = -1)
+        { ::sc_core::wait( sc_time( v, tu, simcontext() ), seg_id, 
+                           simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event& e )
-        { ::sc_core::wait( t, e, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event& e, int seg_id = -1)
+        { ::sc_core::wait( t, e, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event& e )
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event& e, int seg_id = -1)
         { ::sc_core::wait( 
-		sc_time( v, tu, simcontext() ), e, simcontext() ); }
+		sc_time( v, tu, simcontext() ), e, seg_id, simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event_or_list& el )
-        { ::sc_core::wait( t, el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event_or_list& el, int seg_id = -1)
+        { ::sc_core::wait( t, el, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event_or_list& el )
-        { ::sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event_or_list& el, 
+               int seg_id = -1)
+        { ::sc_core::wait( sc_time( v, tu, simcontext() ), el, seg_id, 
+                           simcontext() ); }
 
-    void wait( const sc_time& t, const sc_event_and_list& el )
-        { ::sc_core::wait( t, el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( const sc_time& t, const sc_event_and_list& el, int seg_id = -1)
+        { ::sc_core::wait( t, el, seg_id, simcontext() ); }
 
-    void wait( double v, sc_time_unit tu, const sc_event_and_list& el )
-        { ::sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( double v, sc_time_unit tu, const sc_event_and_list& el,
+               int seg_id = -1)
+        { ::sc_core::wait( sc_time( v, tu, simcontext() ), el, seg_id, 
+                           simcontext() ); }
 
 
     // static sensitivity for SC_METHODs
 
-    void next_trigger()
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void next_trigger( )
 	{ ::sc_core::next_trigger( simcontext() ); }
 
 
     // dynamic sensitivty for SC_METHODs
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event& e )
         { ::sc_core::next_trigger( e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event_or_list& el )
         { ::sc_core::next_trigger( el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_event_and_list& el )
         { ::sc_core::next_trigger( el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t )
         { ::sc_core::next_trigger( t, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu )
         { ::sc_core::next_trigger( 
 	    sc_time( v, tu, simcontext() ), simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event& e )
         { ::sc_core::next_trigger( t, e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event& e )
         { ::sc_core::next_trigger( 
 		sc_time( v, tu, simcontext() ), e, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event_or_list& el )
         { ::sc_core::next_trigger( t, el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
         { ::sc_core::next_trigger( 
 	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( const sc_time& t, const sc_event_and_list& el )
         { ::sc_core::next_trigger( t, el, simcontext() ); }
 
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
     void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
         { ::sc_core::next_trigger( 
 	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
@@ -268,23 +406,53 @@ protected:
 
     // for SC_CTHREADs
 
-    void halt()
-        { ::sc_core::halt( simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void halt( int seg_id )
+        { ::sc_core::halt( seg_id, simcontext() ); }
 
-    void wait( int n )
-        { ::sc_core::wait( n, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait( int n, int seg_id)
+        { ::sc_core::wait( n, seg_id, simcontext() ); }
 
-    void at_posedge( const sc_signal_in_if<bool>& s )
-	{ ::sc_core::at_posedge( s, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void at_posedge( const sc_signal_in_if<bool>& s, int seg_id )
+	{ ::sc_core::at_posedge( s, seg_id, simcontext() ); }
 
-    void at_posedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
-	{ ::sc_core::at_posedge( s, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void at_posedge( const sc_signal_in_if<sc_dt::sc_logic>& s, int seg_id )
+	{ ::sc_core::at_posedge( s, seg_id, simcontext() ); }
 
-    void at_negedge( const sc_signal_in_if<bool>& s )
-	{ ::sc_core::at_negedge( s, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void at_negedge( const sc_signal_in_if<bool>& s, int seg_id )
+	{ ::sc_core::at_negedge( s, seg_id, simcontext() ); }
 
-    void at_negedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
-	{ ::sc_core::at_negedge( s, simcontext() ); }
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void at_negedge( const sc_signal_in_if<sc_dt::sc_logic>& s, int seg_id )
+	{ ::sc_core::at_negedge( s, seg_id, simcontext() ); }
 
     // Catch uses of watching:
     void watching( bool /* expr */ )
@@ -295,10 +463,20 @@ protected:
     sc_sensitive_pos sensitive_pos;
     sc_sensitive_neg sensitive_neg;
 
-    // Function to set the stack size of the current (c)thread process.
+    /** 
+     *  \brief Function to set the stack size of the current (c)thread process
+     *         and method process.
+     */
+    // 04/03/2015 GL.
     void set_stack_size( std::size_t );
 
     int append_port( sc_port_base* );
+
+    /** 
+     *  \brief Instance ID of this module.
+     */
+    // 09/01/2015 GL.
+    int m_instance_id;
 
 private:
     sc_module( const sc_module& );
@@ -383,6 +561,10 @@ public:
 		       const sc_bind_proxy& p063 = SC_BIND_PROXY_NIL,
 		       const sc_bind_proxy& p064 = SC_BIND_PROXY_NIL );
 
+//DM 05/20/2019
+private:
+	void invoke_method(SC_ENTRY_FUNC);
+
 };
 
 extern sc_module* sc_module_dynalloc(sc_module*);
@@ -395,6 +577,10 @@ extern sc_module* sc_module_dynalloc(sc_module*);
 
 #define SC_MODULE(user_module_name)                                           \
     struct user_module_name : ::sc_core::sc_module
+
+// 04/07/2015 GL: create a separate sc_channel class
+#define SC_CHANNEL(user_module_name)                                           \
+    struct user_module_name : ::sc_core::sc_channel
 
 #define SC_CTOR(user_module_name)                                             \
     typedef user_module_name SC_CURRENT_USER_MODULE;                          \
@@ -413,55 +599,100 @@ extern sc_module* sc_module_dynalloc(sc_module*);
 // template<typename X>
 // class A : public B<X>
 
-#define declare_method_process(handle, name, host_tag, func)        \
-    {		                                                    \
-        ::sc_core::sc_process_handle handle =                      \
-	    sc_core::sc_get_curr_simcontext()->create_method_process( \
-		name,  false, SC_MAKE_FUNC_PTR( host_tag, func ), \
-		this, 0 ); \
-        this->sensitive << handle;                                        \
-        this->sensitive_pos << handle;                                    \
-        this->sensitive_neg << handle;                                    \
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define declare_method_process(handle, name, host_tag, func, seg_id, inst_id)  \
+    {		                                                               \
+        ::sc_core::sc_process_handle handle =                                  \
+            sc_core::sc_get_curr_simcontext()->create_method_process(          \
+                name,  false, SC_MAKE_FUNC_PTR( host_tag, func ),              \
+                this, 0, seg_id, inst_id );                                    \
+        this->sensitive << handle;                                             \
+        this->sensitive_pos << handle;                                         \
+        this->sensitive_neg << handle;                                         \
     }
 
-#define declare_thread_process(handle, name, host_tag, func)        \
-    {                                                               \
-        ::sc_core::sc_process_handle handle =                      \
-	     sc_core::sc_get_curr_simcontext()->create_thread_process( \
-                 name,  false,           \
-                 SC_MAKE_FUNC_PTR( host_tag, func ), this, 0 ); \
-        this->sensitive << handle;                                        \
-        this->sensitive_pos << handle;                                    \
-        this->sensitive_neg << handle;                                    \
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define declare_thread_process(handle, name, host_tag, func, seg_id, inst_id)  \
+    {                                                                          \
+        ::sc_core::sc_process_handle handle =                                  \
+             sc_core::sc_get_curr_simcontext()->create_thread_process(         \
+                 name,  false,                                                 \
+                 SC_MAKE_FUNC_PTR( host_tag, func ),                           \
+                 this, 0, seg_id, inst_id );                                   \
+        this->sensitive << handle;                                             \
+        this->sensitive_pos << handle;                                         \
+        this->sensitive_neg << handle;                                         \
     }
 
-#define declare_cthread_process(handle, name, host_tag, func, edge) \
-    {                                                               \
-        ::sc_core::sc_process_handle handle =                     \
-	     sc_core::sc_get_curr_simcontext()->create_cthread_process( \
-            name,  false,          \
-                     SC_MAKE_FUNC_PTR( host_tag, func ), this, 0 ); \
-        this->sensitive.operator() ( handle, edge );\
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define declare_cthread_process(handle, name, host_tag, func, edge,            \
+                                seg_id, inst_id)                               \
+    {                                                                          \
+        ::sc_core::sc_process_handle handle =                                  \
+             sc_core::sc_get_curr_simcontext()->create_cthread_process(        \
+                 name,  false,                                                 \
+                 SC_MAKE_FUNC_PTR( host_tag, func ),                           \
+                 this, 0, seg_id, inst_id );                                   \
+        this->sensitive.operator() ( handle, edge );                           \
     }
 
-#define SC_CTHREAD(func, edge)                                                \
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define SC_CTHREAD(func, edge, seg_id, inst_id)                               \
     declare_cthread_process( func ## _handle,                                 \
                              #func,                                           \
                              SC_CURRENT_USER_MODULE,                          \
                              func,                                            \
-                             edge )
+                             edge,                                            \
+                             seg_id,                                          \
+                             inst_id )
 
-#define SC_METHOD(func)                                                       \
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define SC_METHOD(func, seg_id, inst_id)                                      \
     declare_method_process( func ## _handle,                                  \
                             #func,                                            \
                             SC_CURRENT_USER_MODULE,                           \
-                            func )
+                            func,                                             \
+                            seg_id,                                           \
+                            inst_id )
 
-#define SC_THREAD(func)                                                       \
+/**
+  *  \brief Two new parameters segment ID and instance ID are added for the 
+  *         out-of-order simulation.
+  */
+// 06/10/2015 GL: modified for the OoO simulation
+// 09/01/2015 GL: set the instance id of newly created processes
+#define SC_THREAD(func, seg_id, inst_id)                                      \
     declare_thread_process( func ## _handle,                                  \
                             #func,                                            \
                             SC_CURRENT_USER_MODULE,                           \
-                            func )
+                            func,                                             \
+                            seg_id,                                           \
+                            inst_id )
 
 
 
@@ -469,8 +700,58 @@ extern sc_module* sc_module_dynalloc(sc_module*);
 //  TYPEDEFS
 // ----------------------------------------------------------------------------
 
-typedef sc_module sc_channel;
+// 04/07/2015 GL: create a separate sc_channel class
+//typedef sc_module sc_channel;
 typedef sc_module sc_behavior;
+
+
+/**************************************************************************//**
+ *  \class sc_channel
+ *
+ *  \brief Base class for all hierarchical channels.
+ *****************************************************************************/
+// 04/07/2015 GL.
+class sc_channel
+: public sc_module
+{
+    friend class sc_module_name;
+    friend class sc_module_registry;
+    friend class sc_object;
+    friend class sc_port_registry;
+    friend class sc_process_b;
+    friend class sc_simcontext;
+
+public:
+
+    virtual const char* kind() const
+        { return "sc_channel"; }
+
+protected:
+
+    // constructor
+    sc_channel();
+    sc_channel( const sc_module_name& nm ); /* for those used to old style */
+
+    /* DEPRECATED */ sc_channel( const char* nm ); 
+    /* DEPRECATED */ sc_channel( const std::string& nm );
+
+public:
+
+    // destructor
+    virtual ~sc_channel();
+
+private:
+    sc_channel( const sc_channel& );
+    const sc_channel& operator = ( const sc_channel& );
+
+protected:
+
+    /** 
+     *  \brief A mutex to protect concurrent communication.
+     */
+    // 04/08/2015 GL.
+    mutable CHNL_MTX_TYPE_ m_mutex;
+};
 
 } // namespace sc_core
 

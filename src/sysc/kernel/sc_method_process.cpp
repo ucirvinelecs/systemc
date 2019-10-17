@@ -19,18 +19,25 @@
 
 /*****************************************************************************
 
-  sc_method_process.cpp -- Method process implementation
+  sc_method_process.cpp -- Thread process implementation
 
   Original Author: Andy Goodrich, Forte Design Systems, 4 August 2005
                
-  CHANGE LOG AT THE END OF THE FILE
+ CHANGE LOG AT THE END OF THE FILE
  *****************************************************************************/
-
+ 
+#include "sysc/kernel/sc_cmnhdr.h"
+#include "sysc/kernel/sc_constants.h"
 #include "sysc/kernel/sc_method_process.h"
+#include "sysc/kernel/sc_process_handle.h"
 #include "sysc/kernel/sc_simcontext_int.h"
 #include "sysc/kernel/sc_module.h"
-#include "sysc/kernel/sc_spawn_options.h"
-
+#include "sysc/utils/sc_machine.h"
+//#include "sysc/kernel/sc_simcontext.cpp"
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 // DEBUGGING MACROS:
 //
 // DEBUG_MSG(NAME,P,MSG)
@@ -52,32 +59,123 @@
 #   define DEBUG_MSG(NAME,P,MSG) 
 #endif
 
+
+//------------------------------------------------------------------------------
+// user-defined default stack-size
+//------------------------------------------------------------------------------
+#if defined(SC_OVERRIDE_DEFAULT_STACK_SIZE)
+#   define SC_DEFAULT_STACK_SIZE_ SC_OVERRIDE_DEFAULT_STACK_SIZE
+
+//------------------------------------------------------------------------------
+// architecture-specific default stack sizes
+//------------------------------------------------------------------------------
+#elif !defined(SC_USE_PTHREADS) && (defined(__CYGWIN32__) || defined(__CYGWIN32))
+#   define SC_DEFAULT_STACK_SIZE_ 0x50000
+
+#elif defined(SC_LONG_64) || defined(__x86_64__) || defined(__LP64__) || \
+      defined(_M_X64) || defined(_M_AMD64)
+#   define SC_DEFAULT_STACK_SIZE_ 0x40000
+
+#else
+#   define SC_DEFAULT_STACK_SIZE_ 0x20000
+
+#endif // SC_DEFAULT_STACK_SIZE_
+
+
+//------------------------------------------------------------------------------
+// force 16-byte alignment on coroutine entry functions, needed for
+// QuickThreads (32-bit, see also fixes in qt/md/{i386,iX86_64}.[hs]),
+// and MinGW32 / Cygwin32 compilers on Windows platforms
+#if defined(__GNUC__) && !defined(__ICC) && !defined(__x86_64__) && \
+    (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ > 1 )
+# define SC_ALIGNED_STACK_ \
+    __attribute__((force_align_arg_pointer))
+#else
+# define SC_ALIGNED_STACK_ /* empty */
+#endif
+
+
 namespace sc_core {
 
-// +----------------------------------------------------------------------------
-// |"sc_method_process::check_for_throws"
-// | 
-// | This method checks to see if this method process should throw an exception
-// | or not. It is called from sc_simcontext::preempt_with() to see if the
-// | thread that was executed during the preemption did a kill or other 
-// | manipulation on this object instance that requires it to throw an 
-// | exception.
-// +----------------------------------------------------------------------------
-void sc_method_process::check_for_throws()
+extern const int SC_DEFAULT_STACK_SIZE;
+#undef SC_DEFAULT_STACK_SIZE_
+#undef SC_OVERRIDE_DEFAULT_STACK_SIZE
+
+//------------------------------------------------------------------------------
+//"sc_method_cor_fn"
+// 
+// This function invokes the coroutine for the supplied object instance.
+//------------------------------------------------------------------------------
+SC_ALIGNED_STACK_
+void sc_method_cor_fn( void* arg )
 {
-    if ( !m_unwinding )
-    {
-	switch( m_throw_status )
-	{
-	  case THROW_ASYNC_RESET:
-	    simcontext()->preempt_with(this);
-	    break;
-          case THROW_KILL:
-	    throw sc_unwind_exception( this, false );
-	  default:
-	    break;
-	}
+    sc_simcontext*   simc_p = sc_get_curr_simcontext();
+    sc_method_handle thread_h = RCAST<sc_method_handle>( arg );
+
+    // PROCESS THE THREAD AND PROCESS ANY EXCEPTIONS THAT ARE THROWN:
+
+    while( true ) {
+
+        try {
+            thread_h->semantics();
+        }
+        catch( sc_user ) {
+            continue;
+        }
+        catch( sc_halt ) {
+            ::std::cout << "Terminating process "
+                      << thread_h->name() << ::std::endl;
+        }
+        catch( const sc_unwind_exception& ex ) {
+	    ex.clear();
+            if ( ex.is_reset() ) continue;
+        }
+        catch( ... ) {
+            sc_report* err_p = sc_handle_exception();
+            thread_h->simcontext()->set_error( err_p );
+        }
+        break;
     }
+
+//    sc_process_b*    active_p = sc_get_current_process_b();
+
+    // REMOVE ALL TRACES OF OUR THREAD FROM THE SIMULATORS DATA STRUCTURES:
+
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        thread_h->disconnect_process();
+
+    // IF WE AREN'T ACTIVE MAKE SURE WE WON'T EXECUTE:
+
+        if ( thread_h->next_runnable() != 0 )
+        {
+	    simc_p->remove_runnable_method( thread_h );
+        }
+
+    // IF WE ARE THE ACTIVE PROCESS ABORT OUR EXECUTION:
+
+
+        simc_p->remove_running_process( (sc_process_b*)thread_h );
+		
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR)) //ZC
+		// 	printf("\n%s calling sc_method_cor_func, state change to 4\n", thread_h->name());
+		
+		thread_h->m_process_state=4;
+        // 08/19/2015 GL: OoO scheduling
+        //simc_p->schedule( thread_h->m_cor_p );
+        simc_p->oooschedule( thread_h->m_cor_p );
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+
 }
 
 //------------------------------------------------------------------------------
@@ -85,8 +183,18 @@ void sc_method_process::check_for_throws()
 //
 // This method clears any pending trigger for this object instance.
 //------------------------------------------------------------------------------
-void sc_method_process::clear_trigger()
+void sc_method_process::clear_trigger( )
 {
+    // 08/17/2015 GL: Note: currently we change the segment ID of the method 
+    // when the next_trigger function is called. However, at this time, it may 
+    // not be the end of the current segment and the beginning of a new 
+    // segment. Thus, the segment ID of the method may be "premature". As we 
+    // only need to use the segment ID when we issue a new method, it seems 
+    // safe to change the segment ID at this time. If we want to keep the 
+    // segment ID of the method process accurate, we can use a temporal 
+    // variable to keep the new segment ID, and only update it at the end of
+    // the function execution.
+
     switch( m_trigger_type ) {
       case STATIC: 
         return;
@@ -134,10 +242,11 @@ void sc_method_process::clear_trigger()
     m_trigger_type = STATIC;
 }
 
+
 //------------------------------------------------------------------------------
 //"sc_method_process::disable_process"
 //
-// This virtual method disables this process and its children if requested to.
+// This virtual method suspends this process and its children if requested to.
 //     descendants = indicator of whether this process' children should also
 //                   be suspended
 //------------------------------------------------------------------------------
@@ -145,7 +254,7 @@ void sc_method_process::disable_process(
     sc_descendant_inclusion_info descendants )
 {     
 
-    // IF NEEDED PROPOGATE THE SUSPEND REQUEST THROUGH OUR DESCENDANTS:
+    // IF NEEDED PROPOGATE THE DISABLE REQUEST THROUGH OUR DESCENDANTS:
 
     if ( descendants == SC_INCLUDE_DESCENDANTS )
     {
@@ -169,8 +278,8 @@ void sc_method_process::disable_process(
 	  case EVENT_TIMEOUT: 
 	  case OR_LIST_TIMEOUT:
 	  case TIMEOUT:
-	    report_error( SC_ID_PROCESS_CONTROL_CORNER_CASE_,
-	                  "attempt to disable a method with timeout wait" );
+	    report_error(SC_ID_PROCESS_CONTROL_CORNER_CASE_,
+		         "attempt to disable a thread with timeout wait");
 	    break;
 	  default:
 	    break;
@@ -179,21 +288,21 @@ void sc_method_process::disable_process(
 
     // DISABLE OUR OBJECT INSTANCE:
 
-    m_state = m_state | ps_bit_disabled;
+    m_state = m_state | ps_bit_disabled; 
 
-    // IF THIS CALL IS BEFORE THE SIMULATION DON'T RUN THE METHOD:
+    // IF THIS CALL IS BEFORE THE SIMULATION DON'T RUN THE THREAD:
 
-    if ( !sc_is_running() )
+    if ( !sc_is_running() ) 
     {
-        sc_get_curr_simcontext()->remove_runnable_method(this);
+	m_state = m_state | ps_bit_ready_to_run;
+        simcontext()->remove_runnable_method(this);
     }
 }
-
 
 //------------------------------------------------------------------------------
 //"sc_method_process::enable_process"
 //
-// This method enables the execution of this process, and if requested, its
+// This method resumes the execution of this process, and if requested, its
 // descendants. If the process was suspended and has a resumption pending it 
 // will be dispatched in the next delta cycle. Otherwise the state will be
 // adjusted to indicate it is no longer suspended, but no immediate execution
@@ -203,7 +312,7 @@ void sc_method_process::enable_process(
     sc_descendant_inclusion_info descendants )
 {
 
-    // IF NEEDED PROPOGATE THE RESUME REQUEST THROUGH OUR DESCENDANTS:
+    // IF NEEDED PROPOGATE THE ENABLE REQUEST THROUGH OUR DESCENDANTS:
 
     if ( descendants == SC_INCLUDE_DESCENDANTS )
     {
@@ -221,8 +330,8 @@ void sc_method_process::enable_process(
     //
     // If it was disabled and ready to run then put it on the run queue.
 
-    m_state = m_state & ~ps_bit_disabled;
-    if ( m_state == ps_bit_ready_to_run )
+    m_state = m_state & ~ps_bit_disabled; 
+    if ( m_state == ps_bit_ready_to_run && sc_allow_process_control_corners )
     {
         m_state = ps_normal;
 	if ( next_runnable() == 0 )
@@ -234,20 +343,21 @@ void sc_method_process::enable_process(
 //------------------------------------------------------------------------------
 //"sc_method_process::kill_process"
 //
-// This method removes throws a kill for this object instance. It calls the
-// sc_process_b::kill_process() method to perform low level clean up. 
+// This method removes this object instance from use. It calls the
+// sc_process_b::kill_process() method to perform low level clean up. Then
+// it aborts this process if it is the active process.
 //------------------------------------------------------------------------------
-void sc_method_process::kill_process(sc_descendant_inclusion_info descendants)
+void sc_method_process::kill_process(sc_descendant_inclusion_info descendants )
 {
 
     // IF THE SIMULATION HAS NOT BEEN INITIALIZED YET THAT IS AN ERROR:
 
-    if ( sc_get_status() == SC_ELABORATION )
+    if ( !sc_is_running() )
     {
         report_error( SC_ID_KILL_PROCESS_WHILE_UNITIALIZED_ );
     }
 
-    // IF NEEDED, PROPOGATE THE KILL REQUEST THROUGH OUR DESCENDANTS:
+    // IF NEEDED PROPOGATE THE KILL REQUEST THROUGH OUR DESCENDANTS:
 
     if ( descendants == SC_INCLUDE_DESCENDANTS )
     {
@@ -273,22 +383,89 @@ void sc_method_process::kill_process(sc_descendant_inclusion_info descendants)
     if ( m_state & ps_bit_zombie )
         return;
 
+    // SET UP TO KILL THE PROCESS IF SIMULATION HAS STARTED:
+    //
+    // If the thread does not have a stack don't try the throw!
 
-    // REMOVE OUR PROCESS FROM EVENTS, ETC., AND IF ITS THE ACTIVE PROCESS
-    // THROW ITS KILL. 
-    // 
-    // Note we set the throw status to kill regardless if we throw or not.
-    // That lets check_for_throws stumble across it if we were in the call
-    // chain when the kill call occurred.
-
-    if ( next_runnable() != 0 )
-        simcontext()->remove_runnable_method( this );
-    disconnect_process();
-
-    m_throw_status = THROW_KILL; 
-    if ( sc_get_current_process_b() == this )
+    if ( sc_is_running() && m_has_stack )
     {
-        throw sc_unwind_exception( this, false );
+        m_throw_status = THROW_KILL;
+        m_wait_cycle_n = 0;
+        simcontext()->preempt_with(this);
+    }
+
+    // IF THE SIMULATION HAS NOT STARTED REMOVE TRACES OF OUR PROCESS FROM 
+    // EVENT QUEUES, ETC.:
+
+    else
+    {
+        disconnect_process();
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_method_process::prepare_for_simulation"
+//
+// This method prepares this object instance for simulation. It calls the
+// coroutine package to create the actual thread.
+//------------------------------------------------------------------------------
+void sc_method_process::prepare_for_simulation()
+{
+    m_cor_p = simcontext()->cor_pkg()->create( m_stack_size,
+                         sc_method_cor_fn, this );
+    m_cor_p->stack_protect( true );
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_method_process::resume_process"
+//
+// This method resumes the execution of this process, and if requested, its
+// descendants. If the process was suspended and has a resumption pending it 
+// will be dispatched in the next delta cycle. Otherwise the state will be
+// adjusted to indicate it is no longer suspended, but no immediate execution
+// will occur.
+//------------------------------------------------------------------------------
+void sc_method_process::resume_process(
+    sc_descendant_inclusion_info descendants )
+{
+
+    // IF NEEDED PROPOGATE THE RESUME REQUEST THROUGH OUR DESCENDANTS:
+
+    if ( descendants == SC_INCLUDE_DESCENDANTS )
+    {
+        const std::vector<sc_object*>& children = get_child_objects();
+        int                            child_n  = children.size();
+
+        for ( int child_i = 0; child_i < child_n; child_i++ )
+        {
+            sc_process_b* child_p = DCAST<sc_process_b*>(children[child_i]);
+            if ( child_p ) child_p->resume_process(descendants);
+        }
+    }
+
+    // BY DEFAULT THE CORNER CASE IS AN ERROR:
+
+    if ( !sc_allow_process_control_corners && (m_state & ps_bit_disabled) &&
+         (m_state & ps_bit_suspended) )
+    {
+	m_state = m_state & ~ps_bit_suspended;
+        report_error(SC_ID_PROCESS_CONTROL_CORNER_CASE_, 
+	             "call to resume() on a disabled suspended thread");
+    }
+
+    // CLEAR THE SUSPENDED BIT:
+
+    m_state = m_state & ~ps_bit_suspended;
+
+    // RESUME OBJECT INSTANCE IF IT IS READY TO RUN:
+
+    if ( m_state & ps_bit_ready_to_run )
+    {
+	m_state = m_state & ~ps_bit_ready_to_run;
+	if ( next_runnable() == 0 )  
+	    simcontext()->push_runnable_method(this);
+	remove_dynamic_events();  // order important.
     }
 }
 
@@ -297,21 +474,22 @@ void sc_method_process::kill_process(sc_descendant_inclusion_info descendants)
 //
 // This is the object instance constructor for this class.
 //------------------------------------------------------------------------------
-sc_method_process::sc_method_process( const char* name_p, 
-    bool free_host, SC_ENTRY_FUNC method_p, 
-    sc_process_host* host_p, const sc_spawn_options* opt_p 
+sc_method_process::sc_method_process( const char* name_p, bool free_host,
+    SC_ENTRY_FUNC method_p, sc_process_host* host_p, 
+    const sc_spawn_options* opt_p 
 ):
     sc_process_b(
-        name_p ? name_p : sc_gen_unique_name("method_p"), 
-        false, free_host, method_p, host_p, opt_p),
-	m_cor(0), m_stack_size(0), m_monitor_q()
+        name_p ? name_p : sc_gen_unique_name("thread_p"), 
+        true, free_host, method_p, host_p, opt_p),
+    m_cor_p(0), m_monitor_q(), m_stack_size(SC_DEFAULT_STACK_SIZE),
+    m_wait_cycle_n(0)
 {
 
-    // CHECK IF THIS IS AN sc_module-BASED PROCESS AND SIMUALTION HAS STARTED:
+    // CHECK IF THIS IS AN sc_module-BASED PROCESS AND SIMULATION HAS STARTED:
 
     if ( DCAST<sc_module*>(host_p) != 0 && sc_is_running() )
     {
-        report_error( SC_ID_MODULE_METHOD_AFTER_START_, "" );
+        report_error( SC_ID_MODULE_THREAD_AFTER_START_ );
     }
 
     // INITIALIZE VALUES:
@@ -319,8 +497,10 @@ sc_method_process::sc_method_process( const char* name_p,
     // If there are spawn options use them.
 
     m_process_kind = SC_METHOD_PROC_;
+
     if (opt_p) {
         m_dont_init = opt_p->m_dont_initialize;
+        if ( opt_p->m_stack_size ) m_stack_size = opt_p->m_stack_size;
 
         // traverse event sensitivity list
         for (unsigned int i = 0; i < opt_p->m_sensitive_events.size(); i++) {
@@ -350,25 +530,50 @@ sc_method_process::sc_method_process( const char* name_p,
                 this, *opt_p->m_sensitive_event_finders[i]);
         }
 
-	// process any reset signal specification:
+        // process any reset signal specification:
 
 	opt_p->specify_resets();
+
     }
 
     else
     {
         m_dont_init = false;
     }
+
 }
 
 //------------------------------------------------------------------------------
-//"sc_method_process::sc_method_process"
+//"sc_method_process::~sc_method_process"
 //
-// This is the object instance destructor for this class.
+// This is the object instance constructor for this class.
 //------------------------------------------------------------------------------
 sc_method_process::~sc_method_process()
 {
+
+    // DESTROY THE COROUTINE FOR THIS THREAD:
+
+    if( m_cor_p != 0 ) {
+        m_cor_p->stack_protect( false );
+        delete m_cor_p;
+        m_cor_p = 0;
+    }
 }
+
+
+//------------------------------------------------------------------------------
+//"sc_method_process::signal_monitors"
+//
+// This methods signals the list of monitors for this object instance.
+//------------------------------------------------------------------------------
+void sc_method_process::signal_monitors(int type)
+{       
+    int mon_n;  // # of monitors present.
+        
+    mon_n = m_monitor_q.size();
+    for ( int mon_i = 0; mon_i < mon_n; mon_i++ )
+        m_monitor_q[mon_i]->signal(this, type);
+}   
 
 
 //------------------------------------------------------------------------------
@@ -381,6 +586,7 @@ sc_method_process::~sc_method_process()
 void sc_method_process::suspend_process(
     sc_descendant_inclusion_info descendants )
 {     
+    assert(0); // 11/21/2014 GL TODO: clean up the codes later
 
     // IF NEEDED PROPOGATE THE SUSPEND REQUEST THROUGH OUR DESCENDANTS:
 
@@ -397,18 +603,18 @@ void sc_method_process::suspend_process(
     }
 
     // CORNER CASE CHECKS, THE FOLLOWING ARE ERRORS:
-    //   (a) if this method has a reset_signal_is specification 
-    //   (b) if this method is in synchronous reset
+    //   (a) if this thread has a reset_signal_is specification 
+    //   (b) if this thread is in synchronous reset
 
     if ( !sc_allow_process_control_corners && m_has_reset_signal )
     {
 	report_error(SC_ID_PROCESS_CONTROL_CORNER_CASE_,
-		     "attempt to suspend a method that has a reset signal");
+		     "attempt to suspend a thread that has a reset signal");
     }
     else if ( !sc_allow_process_control_corners && m_sticky_reset )
     {
 	report_error(SC_ID_PROCESS_CONTROL_CORNER_CASE_,
-		     "attempt to suspend a method in synchronous reset");
+		     "attempt to suspend a thread in synchronous reset");
     }
 
     // SUSPEND OUR OBJECT INSTANCE:
@@ -416,7 +622,7 @@ void sc_method_process::suspend_process(
     // (1) If we are on the runnable queue then set suspended and ready_to_run,
     //     and remove ourselves from the run queue.
     // (2) If this is a self-suspension then a resume should cause immediate
-    //     scheduling of the process.
+    //     scheduling of the process, and we need to call suspend_me() here.
 
     m_state = m_state | ps_bit_suspended;
     if ( next_runnable() != 0 ) 
@@ -427,92 +633,19 @@ void sc_method_process::suspend_process(
     if ( sc_get_current_process_b() == DCAST<sc_process_b*>(this)  )
     {
 	m_state = m_state | ps_bit_ready_to_run;
-    }
-}
-
-//------------------------------------------------------------------------------
-//"sc_method_process::resume_process"
-//
-// This method resumes the execution of this process, and if requested, its
-// descendants. If the process was suspended and has a resumption pending it 
-// will be dispatched in the next delta cycle. Otherwise the state will be
-// adjusted to indicate it is no longer suspended, but no immediate execution
-// will occur.
-//------------------------------------------------------------------------------
-void sc_method_process::resume_process(
-    sc_descendant_inclusion_info descendants )
-{
-
-    // IF NEEDED PROPOGATE THE RESUME REQUEST THROUGH OUR DESCENDANTS:
-
-    if ( descendants == SC_INCLUDE_DESCENDANTS )
-    {
-        const std::vector<sc_object*>& children = get_child_objects();
-        int                            child_n  = children.size();
-
-        for ( int child_i = 0; child_i < child_n; child_i++ )
-        {
-            sc_process_b* child_p = DCAST<sc_process_b*>(children[child_i]);
-            if ( child_p ) child_p->resume_process(descendants);
-        }
-    }
-
-
-    // BY DEFAULT THE CORNER CASE IS AN ERROR:
-
-    if ( !sc_allow_process_control_corners && (m_state & ps_bit_disabled) &&
-         (m_state & ps_bit_suspended) )
-    {
-	m_state = m_state & ~ps_bit_suspended;
-        report_error( SC_ID_PROCESS_CONTROL_CORNER_CASE_, 
-	              "call to resume() on a disabled suspended method");
-    }
-
-    // CLEAR THE SUSPENDED BIT:
-
-    m_state = m_state & ~ps_bit_suspended;
-
-    // RESUME OBJECT INSTANCE:
-    //
-    // If this is not a self-resume and the method is ready to run then
-    // put it on the runnable queue.
-
-    if ( m_state & ps_bit_ready_to_run )
-    {
-	m_state = m_state & ~ps_bit_ready_to_run;
-	if ( next_runnable() == 0 && 
-	   ( sc_get_current_process_b() != DCAST<sc_process_b*>(this) ) )
-        {
-	    simcontext()->push_runnable_method(this);
-	    remove_dynamic_events();  
-	}
+	//suspend_me(); DM 05/29/2019 this func never called!
     }
 }
 
 //------------------------------------------------------------------------------
 //"sc_method_process::throw_reset"
 //
-// This virtual method is invoked to "throw" a reset. 
-//
-// If the reset is synchronous this is a no-op, except for triggering the
-// reset event if it is present.
-//
-// If the reset is asynchronous we:
-//   (a) cancel any dynamic waits 
-//   (b) if it is the active process actually throw a reset exception.
-//   (c) if it was not the active process and does not have a static
-//       sensitivity emit an error if corner cases are to be considered
-//       errors.
-//
-// Notes:
-//   (1) If the process had a reset event it will have been triggered in 
-//       sc_process_b::semantics()
-//
-// Arguments:
-//   async = true if this is an asynchronous reset.
+// This virtual method is invoked when an reset is to be thrown. The
+// method will cancel any dynamic waits. If the reset is asynchronous it will 
+// queue this object instance to be executed. 
 //------------------------------------------------------------------------------
 void sc_method_process::throw_reset( bool async )
-{
+{     
     // IF THE PROCESS IS CURRENTLY UNWINDING OR IS ALREADY A ZOMBIE
     // IGNORE THE RESET:
 
@@ -525,24 +658,33 @@ void sc_method_process::throw_reset( bool async )
     if ( m_state & ps_bit_zombie )
         return;
 
-    // Set the throw status and if its an asynchronous reset throw an
-    // exception:
+
+    // Set the throw type and clear any pending dynamic events: 
 
     m_throw_status = async ? THROW_ASYNC_RESET : THROW_SYNC_RESET;
-    if ( async )
+    m_wait_cycle_n = 0;
+
+    // If this is an asynchronous reset:
+    //
+    //   (a) Cancel any dynamic events 
+    //   (b) Set the thread up for execution:
+    //         (i) If we are in the execution phase do it now.
+    //         (ii) If we are not queue it to execute next when we hit
+    //              the execution phase.
+
+    if ( async ) 
     {
+        m_state = m_state & ~ps_bit_ready_to_run;
         remove_dynamic_events();
-	if ( sc_get_current_process_b() == this )
+	if ( simcontext()->evaluation_phase() )
 	{
-	    DEBUG_MSG(DEBUG_NAME,this,"throw_reset: throwing exception");
-	    m_throw_status = THROW_ASYNC_RESET;
-	    throw sc_unwind_exception( this, true );
+            simcontext()->preempt_with( this );
 	}
-	else 
+	else
 	{
-	    DEBUG_MSG(DEBUG_NAME,this,
-	              "throw_reset: queueing this method for execution");
-	    simcontext()->preempt_with(this);
+	    if ( is_runnable() )
+	        simcontext()->remove_runnable_method(this);
+	    simcontext()->execute_method_next(this);
 	}
     }
 }
@@ -553,10 +695,12 @@ void sc_method_process::throw_reset( bool async )
 //
 // This virtual method is invoked when a user exception is to be thrown.
 // If requested it will also throw the exception to the children of this 
-// object instance. Since this is a method no throw will occur for this
-// object instance. The children will be awakened from youngest child to
-// eldest.
-//     helper_p    -> object to use to throw the exception.
+// object instance. The order of dispatch for the processes that are 
+// thrown the exception is from youngest child to oldest child and then
+// this process instance. This means that this instance will be pushed onto
+// the front of the simulator's runnable queue and then the children will
+// be processed recursively.
+//     helper_p    =  helper object to use to throw the exception.
 //     descendants =  indicator of whether this process' children should also
 //                    be suspended
 //------------------------------------------------------------------------------
@@ -564,11 +708,11 @@ void sc_method_process::throw_user( const sc_throw_it_helper& helper,
     sc_descendant_inclusion_info descendants )
 {     
 
-    // IF THE SIMULATION IS NOT ACTUALLY RUNNING THIS IS AN ERROR:
+    // IF THE SIMULATION IS NOT ACTAULLY RUNNING THIS IS AN ERROR:
 
-    if (  sc_get_status() != SC_RUNNING )
+    if ( sc_get_status() != SC_RUNNING )
     {
-        report_error( SC_ID_THROW_IT_WHILE_NOT_RUNNING_ );
+        report_error( SC_ID_THROW_IT_WHILE_NOT_RUNNING_ ); 
     }
 
     // IF NEEDED PROPOGATE THE THROW REQUEST THROUGH OUR DESCENDANTS:
@@ -581,7 +725,7 @@ void sc_method_process::throw_user( const sc_throw_it_helper& helper,
         for ( int child_i = 0; child_i < child_n; child_i++ )
         {
             sc_process_b* child_p = DCAST<sc_process_b*>(children[child_i]);
-            if ( child_p ) 
+            if ( child_p )
 	    {
 	        DEBUG_MSG(DEBUG_NAME,child_p,"about to throw user on");
 	        child_p->throw_user(helper, descendants);
@@ -589,28 +733,380 @@ void sc_method_process::throw_user( const sc_throw_it_helper& helper,
         }
     }
 
-#if 0 // shouldn't we throw, if we're currently running?
+    // IF THE PROCESS IS CURRENTLY UNWINDING IGNORE THE THROW:
 
-    if ( sc_get_current_process_b() == (sc_process_b*)this )
+    if ( m_unwinding )
+    {
+        SC_REPORT_WARNING( SC_ID_PROCESS_ALREADY_UNWINDING_, name() );
+	return; 
+    }
+
+    // SET UP THE THROW REQUEST FOR THIS OBJECT INSTANCE AND QUEUE IT FOR
+    // EXECUTION:
+
+    if( m_has_stack )
     {
         remove_dynamic_events();
+        DEBUG_MSG(DEBUG_NAME,this,"throwing user exception to");
         m_throw_status = THROW_USER;
         if ( m_throw_helper_p != 0 ) delete m_throw_helper_p;
         m_throw_helper_p = helper.clone();
-        m_throw_helper_p->throw_it();
+        simcontext()->preempt_with( this );
+    }
+    else
+    {
+        SC_REPORT_WARNING( SC_ID_THROW_IT_IGNORED_, name() );
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_method_process::deliver_event_at_time"
+//
+// This method delivers an event at specific time for the thread
+//
+//
+//------------------------------------------------------------------------------
+void sc_method_process::deliver_event_at_time( sc_event* e, 
+                                sc_timestamp e_delivery_time )
+{ 
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel 
+    //    lock is acquired
+
+    // No time outs yet, and keep gcc happy.
+
+    m_timed_out = false;
+
+    // Escape cases:
+    //   (a) If this thread issued the notify() don't schedule it for
+    //       execution, but leave the sensitivity in place.
+    //   (b) If this thread is already runnable can't trigger an event.
+
+    // not possible for thread processes!
+    #if 0 // ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
+    if ( sc_get_current_process_b() == (sc_process_b*)this )
+    {
+    report_immediate_self_notification();
+    return false;
+    }
+    #endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
+
+    if( is_runnable() ) 
+        return;// true;
+
+    // If a process is disabled then we ignore any events, leaving them enabled:
+    //
+    // But if this is a time out event we need to remove both it and the
+    // event that was being waited for.
+
+    if ( m_state & ps_bit_disabled )
+    {
+        if ( e == m_timeout_event_p )
+        {
+            remove_dynamic_events( true );  
+            return;// true;
+        }
+        else
+        {
+            return;// false;
+        }
     }
 
-    // throw_it HAS NO EFFECT ON A METHOD, ISSUE A WARNING:
 
+    // (commented off the following line, GCC 4.8.x correctly warns that this is never used; 5/18/18, RD)
+
+
+    //if a thread starts waiting on event e at time 10,
+    //and e are all notified before 10, then the thread should
+    //not wake up and return false, and can_wake_up is also false
+    if( e->m_notify_type == sc_event::DELTA){
+
+        bool flag_exit = e_delivery_time < m_timestamp;
+
+        if(flag_exit){
+            //can_wake_up = false;
+            return;// false;
+        }
+    }
+    //Now, we know that the event will for sure be delivered to this thread
+    //so we can safely remove the thread from the event
+    e->remove_dynamic( this);
+    //check if this can put here 
+    //can_wake_up = true;
+    // GL
+    // Process based on the event type and current process state:
+    //
+    // Every case needs to set 'rc' and continue on to the end of
+    // this method to allow suspend processing to work correctly.
+
+
+    //10:15 2018/7/8 ZC
+    /*
+    / changes for andlist and orlist
+    / comment off "m_trigger_type = STATIC;"
+    / and move it down 
+    / so that when the last event is triggered,
+    / we are able to know the type
+    */
+    switch( m_trigger_type ) 
+    {
+        case EVENT: 
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+            break;
+
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the last notified event in andlist has the highest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when m_event_count goes to zero
+        //However, I still write code this way to make the logic clear
+        case AND_LIST: 
+        {
+
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time > wake_up_time_for_event_list) //10>1
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{  
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                //can_wake_up = true;
+            }
+            else
+            {
+                //can_wake_up = false;  
+                return;// true;
+            }
+            break;
+        }   
+        
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the first notified event in orlist has the lowest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when an event is notified
+        //However, I still write code this way to make the logic clear
+        case OR_LIST:
+        {
+            /*
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time < wake_up_time_for_event_list) 
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            { 
+                can_wake_up = false;
+                return true;
+            }
+            */
+            event_list_member_triggered = true;
+            wake_up_time_for_event_list = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+            m_event_list_p->remove_all_dynamic( this);
+            m_event_count = 0;
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0;
+            m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+            //can_wake_up = true;
+            break;
+
+        }
+        /* GL implementation for or_list, which ZC thought is not complete
+        However, on 2018.8.5, zc thinks it is correct
+        m_event_list_p->remove_dynamic( this, e );
+        m_event_list_p->auto_delete();
+        m_event_list_p = 0;
+        m_trigger_type = STATIC;
+        break;
+        */
+        case TIMEOUT: //wait for time, e.g.,  wait(1,sc_ns)
+        m_trigger_type = STATIC;
+        break;
+
+        //dont bother with the following code for now
+        //ZC 2018.8.6
+        case EVENT_TIMEOUT: //wait for time and event list, wait(1,sc_ns, el)
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_p->remove_dynamic( this );
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case OR_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case AND_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            -- m_event_count;
+            if ( m_event_count == 0 )
+            {
+                m_timeout_event_p->cancel();
+                m_timeout_event_p->reset();
+        // no need to remove_dynamic
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0; 
+                m_trigger_type = STATIC;
+            }
+            else
+            {
+                return;// true;
+            }
+        }
+        break;
+
+        case STATIC: {
+        // we should never get here, but throw_it() can make it happen.
+            SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
+            return;// true;
+        }
+    }
+
+    // If we get here then the thread has satisfied its wait criteria, if 
+    // its suspended mark its state as ready to run. If its not suspended then 
+    // push it onto the runnable queue.
+
+    if ( (m_state & ps_bit_suspended) )
+    {
+        m_state = m_state | ps_bit_ready_to_run;
+    }
     else
+    {
+        // 12/22/2016 GL: store the current time before updating
+        sc_time curr_time = m_timestamp.get_time_count();
+        // 08/14/2015 GL: update the local time stamp of this thread process
+        sc_timestamp ts = e->get_notify_timestamp();
 
-#endif
-   {
-        SC_REPORT_WARNING( SC_ID_THROW_IT_IGNORED_, name() );
-   }
+        switch( e->m_notify_type )
+        {
 
+            case sc_event::DELTA: // delta notification
 
-}
+                //zc 2018.8.5 shoul not be here,
+                //move to very first
+                //e->remove_dynamic( this);   
+
+                //15:09 2018/7/8 ZC
+                //for event_list
+                if(m_trigger_type == AND_LIST || m_trigger_type == OR_LIST ){
+
+                    set_timestamp(wake_up_time_for_event_list);
+
+                    event_list_member_triggered = false;
+                    break;
+
+                }
+                //for single event
+                else{
+
+                    set_timestamp( sc_timestamp( e_delivery_time.get_time_count(),
+                        e_delivery_time.get_delta_count() +1) );
+                    break;
+                }
+            case sc_event::TIMED: // timed notification
+                set_timestamp( ts );
+                break;
+            case sc_event::NONE:
+                assert( 0 ); // wrong type
+        }   
+
+        //push thread to ready queue
+        if(_SYSC_SYNC_PAR_SIM==true){
+            simcontext()->m_synch_thread_queue.push_back(this);
+            this->m_process_state=32;
+ 
+        }else{
+            if(sc_core::verbosity_flag_4)
+            {
+                std::cout << "event notification : ["
+                    << e->name() << " at " << e_delivery_time.to_string()
+                    << "] wakes up thread: " << this->name() << std::endl;
+                    
+                std::cout << "----------------------------------------------\n";
+            }
+            simcontext()->push_runnable_method(this);
+        }   
+
+        // 12/22/2016 GL: update m_oldest_time in sc_simcontext if necessary
+        simcontext()->update_oldest_time( curr_time );
+    }
+
+    return;// true;
+} 
+//end
 
 //------------------------------------------------------------------------------
 //"sc_method_process::trigger_dynamic"
@@ -618,38 +1114,42 @@ void sc_method_process::throw_user( const sc_throw_it_helper& helper,
 // This method sets up a dynamic trigger on an event.
 //
 // Notes:
-//   (1) This method is identical to sc_thread_process::trigger_dynamic(), 
+//   (1) This method is identical to sc_method_process::trigger_dynamic(), 
 //       but they cannot be combined as sc_process_b::trigger_dynamic() 
 //       because the signatures things like sc_event::remove_dynamic()
-//       have different overloads for sc_method_process* and sc_thread_process*.
+//       have different overloads for sc_method_process* and sc_method_process*.
 //       So if you change code here you'll also need to change it in 
-//       sc_thread_process.cpp.
+//       sc_method_process.cpp.
 //
 // Result is true if this process should be removed from the event's list,
 // false if not.
-//
-// If the triggering process is the same process, the trigger is
-// ignored as well, unless SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
-// is defined.
 //------------------------------------------------------------------------------
-bool sc_method_process::trigger_dynamic( sc_event* e )
-{
+bool sc_method_process::trigger_dynamic( sc_event* e, bool& can_wake_up )
+{ 
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel 
+    //    lock is acquired
+
     // No time outs yet, and keep gcc happy.
 
     m_timed_out = false;
 
     // Escape cases:
-    //   (a) If this method issued the notify() don't schedule it for
+    //   (a) If this thread issued the notify() don't schedule it for
     //       execution, but leave the sensitivity in place.
-    //   (b) If this method is already runnable can't trigger an event.
+    //   (b) If this thread is already runnable can't trigger an event.
 
-#if ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
-    if( SC_UNLIKELY_( sc_get_current_process_b() == this ) )
+    // not possible for thread processes!
+    #if 0 // ! defined( SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS )
+    if ( sc_get_current_process_b() == (sc_process_b*)this )
     {
-        report_immediate_self_notification();
-        return false;
+    report_immediate_self_notification();
+    return false;
     }
-#endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
+    #endif // SC_ENABLE_IMMEDIATE_SELF_NOTIFICATIONS
 
     if( is_runnable() ) 
         return true;
@@ -662,143 +1162,313 @@ bool sc_method_process::trigger_dynamic( sc_event* e )
     if ( m_state & ps_bit_disabled )
     {
         if ( e == m_timeout_event_p )
-	{
-	    remove_dynamic_events( true );  
-	    return true;
-	}
-	else
-	{
-	    return false;
-	}
+        {
+            remove_dynamic_events( true );  
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
 
+    // (commented off the following line, GCC 4.8.x correctly warns that this is never used; 5/18/18, RD)
+
+    sc_timestamp e_delivery_time = e->get_earliest_notification_time();
+
+    //if a thread starts waiting on event e at time 10,
+    //and e are all notified before 10, then the thread should
+    //not wake up and return false, and can_wake_up is also false
+    if( e->m_notify_type == sc_event::DELTA){
+
+        bool flag_exit = e_delivery_time < m_timestamp;
+
+        if(flag_exit){
+            can_wake_up = false;
+            return false;
+        }
+    }
+    //Now, we know that the event will for sure be delivered to this thread
+    //so we can safely remove the thread from the event
+    e->remove_dynamic( this);
+    //check if this can put here 
+    can_wake_up = true;
+    // GL
     // Process based on the event type and current process state:
     //
     // Every case needs to set 'rc' and continue on to the end of
     // this method to allow suspend processing to work correctly.
 
+
+    //10:15 2018/7/8 ZC
+    /*
+    / changes for andlist and orlist
+    / comment off "m_trigger_type = STATIC;"
+    / and move it down 
+    / so that when the last event is triggered,
+    / we are able to know the type
+    */
     switch( m_trigger_type ) 
     {
-      case EVENT: 
-	m_event_p = 0;
-	m_trigger_type = STATIC;
-	break;
-
-      case AND_LIST:
-        -- m_event_count;
-	if ( m_event_count == 0 )
-	{
-	    m_event_list_p->auto_delete();
-	    m_event_list_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	else
-	{
-	    return true;
-	}
-	break;
-
-      case OR_LIST:
-	m_event_list_p->remove_dynamic( this, e );
-	m_event_list_p->auto_delete();
-	m_event_list_p = 0;
-	m_trigger_type = STATIC;
-	break;
-
-      case TIMEOUT: 
-	m_trigger_type = STATIC;
-	break;
-
-      case EVENT_TIMEOUT: 
-        if ( e == m_timeout_event_p )
-	{
-	    m_timed_out = true;
-	    m_event_p->remove_dynamic( this );
-	    m_event_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	else
-	{
-	    m_timeout_event_p->cancel();
-	    m_timeout_event_p->reset();
-	    m_event_p = 0;
-	    m_trigger_type = STATIC;
-	}
-	break;
-
-      case OR_LIST_TIMEOUT:
-        if ( e == m_timeout_event_p )
-	{
-            m_timed_out = true;
-            m_event_list_p->remove_dynamic( this, e ); 
-            m_event_list_p->auto_delete();
-            m_event_list_p = 0; 
+        case EVENT: 
+            m_event_p = 0;
             m_trigger_type = STATIC;
-	}
+            break;
 
-	else
-	{
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the last notified event in andlist has the highest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when m_event_count goes to zero
+        //However, I still write code this way to make the logic clear
+        case AND_LIST: 
+        {
+
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time > wake_up_time_for_event_list) //10>1
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{  
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            {
+                can_wake_up = false;  
+                return true;
+            }
+            break;
+        }   
+        
+        //the following code is probably not good
+        //because events are notified in time ascending order,
+        //so the first notified event in orlist has the lowest
+        //time stamp. So we actually dont need to compare the 
+        //two timestams, and can directly wake up the thread
+        //when an event is notified
+        //However, I still write code this way to make the logic clear
+        case OR_LIST:
+        {
+            /*
+            sc_timestamp wake_up_time = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+
+            if(event_list_member_triggered){ 
+                // meaning wake_up_time_for_event_list has initial value
+                if(wake_up_time < wake_up_time_for_event_list) 
+                    wake_up_time_for_event_list = wake_up_time;
+            }else{
+                wake_up_time_for_event_list = wake_up_time;
+                event_list_member_triggered = true;
+            }
+
+            -- m_event_count;
+
+            if ( m_event_count == 0 )
+            {
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0;
+                m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+                can_wake_up = true;
+            }
+            else
+            { 
+                can_wake_up = false;
+                return true;
+            }
+            */
+            event_list_member_triggered = true;
+            wake_up_time_for_event_list = sc_timestamp( e_delivery_time.get_time_count(),
+                e_delivery_time.get_delta_count() +1);
+            m_event_list_p->remove_all_dynamic( this);
+            m_event_count = 0;
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0;
+            m_trigger_type = STATIC; //commented off by ZC 15:01 2018/7/8
+            can_wake_up = true;
+            break;
+
+        }
+        /* GL implementation for or_list, which ZC thought is not complete
+        However, on 2018.8.5, zc thinks it is correct
+        m_event_list_p->remove_dynamic( this, e );
+        m_event_list_p->auto_delete();
+        m_event_list_p = 0;
+        m_trigger_type = STATIC;
+        break;
+        */
+        case TIMEOUT: //wait for time, e.g.,  wait(1,sc_ns)
+        m_trigger_type = STATIC;
+        break;
+
+        //dont bother with the following code for now
+        //ZC 2018.8.6
+        case EVENT_TIMEOUT: //wait for time and event list, wait(1,sc_ns, el)
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_p->remove_dynamic( this );
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        else
+        {
             m_timeout_event_p->cancel();
             m_timeout_event_p->reset();
-	    m_event_list_p->remove_dynamic( this, e ); 
-	    m_event_list_p->auto_delete();
-	    m_event_list_p = 0; 
-	    m_trigger_type = STATIC;
-	}
-	break;
-      
-      case AND_LIST_TIMEOUT:
+            m_event_p = 0;
+            m_trigger_type = STATIC;
+        }
+        break;
+
+        case OR_LIST_TIMEOUT:
         if ( e == m_timeout_event_p )
-	{
+        {
             m_timed_out = true;
             m_event_list_p->remove_dynamic( this, e ); 
             m_event_list_p->auto_delete();
             m_event_list_p = 0; 
             m_trigger_type = STATIC;
-	}
+        }
 
-	else
-	{
-	    -- m_event_count;
-	    if ( m_event_count == 0 )
-	    {
-		m_timeout_event_p->cancel();
-		m_timeout_event_p->reset();
-		// no need to remove_dynamic
-		m_event_list_p->auto_delete();
-		m_event_list_p = 0; 
-		m_trigger_type = STATIC;
-	    }
-	    else
-	    {
-	        return true;
-	    }
-	}
-	break;
+        else
+        {
+            m_timeout_event_p->cancel();
+            m_timeout_event_p->reset();
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+        break;
 
-      case STATIC: {
+        case AND_LIST_TIMEOUT:
+        if ( e == m_timeout_event_p )
+        {
+            m_timed_out = true;
+            m_event_list_p->remove_dynamic( this, e ); 
+            m_event_list_p->auto_delete();
+            m_event_list_p = 0; 
+            m_trigger_type = STATIC;
+        }
+
+        else
+        {
+            -- m_event_count;
+            if ( m_event_count == 0 )
+            {
+                m_timeout_event_p->cancel();
+                m_timeout_event_p->reset();
+        // no need to remove_dynamic
+                m_event_list_p->auto_delete();
+                m_event_list_p = 0; 
+                m_trigger_type = STATIC;
+            }
+            else
+            {
+                return true;
+            }
+        }
+        break;
+
+        case STATIC: {
         // we should never get here, but throw_it() can make it happen.
-	SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
-        return true;
-      }
+            SC_REPORT_WARNING(SC_ID_NOT_EXPECTING_DYNAMIC_EVENT_NOTIFY_, name());
+            return true;
+        }
     }
 
-    // If we get here then the method has satisfied its next_trigger, if its 
-    // suspended mark its state as ready to run. If its not suspended then push
-    // it onto the runnable queue.
+    // If we get here then the thread has satisfied its wait criteria, if 
+    // its suspended mark its state as ready to run. If its not suspended then 
+    // push it onto the runnable queue.
 
     if ( (m_state & ps_bit_suspended) )
     {
-	m_state = m_state | ps_bit_ready_to_run;
+        m_state = m_state | ps_bit_ready_to_run;
     }
     else
     {
-        simcontext()->push_runnable_method(this);
+        // 12/22/2016 GL: store the current time before updating
+        sc_time curr_time = m_timestamp.get_time_count();
+        // 08/14/2015 GL: update the local time stamp of this thread process
+        sc_timestamp ts = e->get_notify_timestamp();
+
+        switch( e->m_notify_type )
+        {
+
+            case sc_event::DELTA: // delta notification
+
+                //zc 2018.8.5 shoul not be here,
+                //move to very first
+                //e->remove_dynamic( this);   
+
+                //15:09 2018/7/8 ZC
+                //for event_list
+                if(m_trigger_type == AND_LIST || m_trigger_type == OR_LIST ){
+
+                    set_timestamp(wake_up_time_for_event_list);
+
+                    event_list_member_triggered = false;
+                    break;
+
+                }
+                //for single event
+                else{
+
+                    set_timestamp( sc_timestamp( e_delivery_time.get_time_count(),
+                        e_delivery_time.get_delta_count() +1) );
+                    break;
+                }
+            case sc_event::TIMED: // timed notification
+                set_timestamp( ts );
+                break;
+            case sc_event::NONE:
+                assert( 0 ); // wrong type
+        }   
+
+        //push thread to ready queue
+        if(_SYSC_SYNC_PAR_SIM==true){
+            simcontext()->m_synch_thread_queue.push_back(this);
+            this->m_process_state=32;
+ 
+        }else{
+            simcontext()->push_runnable_method(this);
+        }   
+
+        // 12/22/2016 GL: update m_oldest_time in sc_simcontext if necessary
+        simcontext()->update_oldest_time( curr_time );
     }
 
     return true;
 }
+
+//------------------------------------------------------------------------------
+//"sc_set_stack_size"
+//
+//------------------------------------------------------------------------------
+void
+sc_set_stack_size( sc_method_handle thread_h, std::size_t size )
+{
+    thread_h->set_stack_size( size );
+}
+
+#undef DEBUG_MSG
+#undef DEBUG_NAME
 
 } // namespace sc_core 
 
@@ -814,71 +1484,68 @@ bool sc_method_process::trigger_dynamic( sc_event* e )
  *****************************************************************************/
 
 // $Log: sc_method_process.cpp,v $
-// Revision 1.49  2011/08/29 18:24:47  acg
-//  Andy Goodrich: remove temporary comment flagging new preempt_with() call.
-//
-// Revision 1.48  2011/08/29 18:04:32  acg
-//  Philipp A. Hartmann: miscellaneous clean ups.
-//
-// Revision 1.47  2011/08/24 22:05:50  acg
+// Revision 1.57  2011/08/24 22:05:51  acg
 //  Torsten Maehne: initialization changes to remove warnings.
 //
-// Revision 1.46  2011/08/07 19:08:04  acg
+// Revision 1.56  2011/08/07 19:08:04  acg
 //  Andy Goodrich: moved logs to end of file so line number synching works
 //  better between versions.
 //
-// Revision 1.45  2011/07/29 22:42:45  acg
-//  Andy Goodrich: added check_for_throws() to fix case where a method is
-//  deleted by a process it resets or kills so that it can throw itself.
+// Revision 1.55  2011/08/04 17:16:22  acg
+//  Philipp A. Hartmann: fix handling of child objects in kill routine, need
+//  to use a copy rather than a reference.
+//
+// Revision 1.53  2011/07/29 22:45:38  acg
 //  Philipp A. Hartmann: changes to handle case where a process control
 //  invocation on a child process causes the list of child processes to change.
 //
-// Revision 1.44  2011/07/24 11:27:04  acg
+// Revision 1.52  2011/07/24 11:27:04  acg
 //  Andy Goodrich: moved the check for unwinding processes until after the
 //  descendants have been processed in throw_user and kill.
 //
-// Revision 1.43  2011/07/24 11:20:03  acg
+// Revision 1.51  2011/07/24 11:20:03  acg
 //  Philipp A. Hartmann: process control error message improvements:
 //  (1) Downgrade error to warning for re-kills of processes.
 //  (2) Add process name to process messages.
 //  (3) drop some superfluous colons in messages.
 //
-// Revision 1.42  2011/05/05 17:45:27  acg
+// Revision 1.50  2011/05/09 04:07:49  acg
+//  Philipp A. Hartmann:
+//    (1) Restore hierarchy in all phase callbacks.
+//    (2) Ensure calls to before_end_of_elaboration.
+//
+// Revision 1.49  2011/05/05 17:45:27  acg
 //  Philip A. Hartmann: changes in WIN64 support.
 //  Andy Goodrich: additional DEBUG_MSG instances to trace process handling.
 //
-// Revision 1.41  2011/04/19 19:15:41  acg
-//  Andy Goodrich: fix so warning message is always issued for a throw_it()
-//  on a method process.
-//
-// Revision 1.40  2011/04/19 15:04:27  acg
+// Revision 1.48  2011/04/19 15:04:27  acg
 //  Philipp A. Hartmann: clean up SC_ID messages.
 //
-// Revision 1.39  2011/04/19 02:39:09  acg
+// Revision 1.47  2011/04/19 02:39:09  acg
 //  Philipp A. Hartmann: added checks for additional throws during stack unwinds.
 //
-// Revision 1.38  2011/04/13 02:41:34  acg
-//  Andy Goodrich: eliminate warning messages generated when the DEBUG_MSG
-//  macro is used.
+// Revision 1.46  2011/04/14 22:33:43  acg
+//  Andy Goodrich: added missing checks for a process being a zombie.
 //
-// Revision 1.37  2011/04/11 22:10:46  acg
-//  Andy Goodrich:
-//    (1) Add DEBUG_MSG macro and use it to generate a journal of method
-//        throws if it is enabled.
-//    (2) Trim down to the expected behavior of scheduling a method that
-//        is asynchronously reset in anticipation of IEEE 1666 being revised.
+// Revision 1.45  2011/04/13 02:45:11  acg
+//  Andy Goodrich: eliminated warning message that occurred if the DEBUG_MSG
+//  macro was used.
 //
-// Revision 1.36  2011/04/10 22:15:29  acg
-//  Andy Goodrich: change to call methods on asynchronous reset.
+// Revision 1.44  2011/04/11 22:04:33  acg
+//  Andy Goodrich: use the DEBUG_NAME macro for DEBUG_MSG messages.
 //
-// Revision 1.35  2011/04/08 22:31:40  acg
-//  Andy Goodrich: removed unused code.
+// Revision 1.43  2011/04/10 22:12:32  acg
+//  Andy Goodrich: adding debugging macros.
 //
-// Revision 1.34  2011/04/08 18:24:07  acg
+// Revision 1.42  2011/04/08 22:40:26  acg
+//  Andy Goodrich: moved the reset event notification code out of throw_reset()
+//  and into suspend_me.
+//
+// Revision 1.41  2011/04/08 18:24:07  acg
 //  Andy Goodrich: fix asynchronous reset dispatch and when the reset_event()
 //  is fired.
 //
-// Revision 1.33  2011/04/05 20:50:56  acg
+// Revision 1.40  2011/04/05 20:50:57  acg
 //  Andy Goodrich:
 //    (1) changes to make sure that event(), posedge() and negedge() only
 //        return true if the clock has not moved.
@@ -887,137 +1554,170 @@ bool sc_method_process::trigger_dynamic( sc_event* e )
 //    (4) removed kernel events from the object hierarchy, added
 //        sc_hierarchy_name_exists().
 //
-// Revision 1.32  2011/04/01 22:30:39  acg
+// Revision 1.39  2011/04/01 22:30:39  acg
 //  Andy Goodrich: change hard assertion to warning for trigger_dynamic()
 //  getting called when there is only STATIC sensitivity. This can result
 //  because of sc_process_handle::throw_it().
 //
-// Revision 1.31  2011/03/28 13:02:51  acg
-//  Andy Goodrich: Changes for disable() interactions.
-//
-// Revision 1.30  2011/03/23 16:17:52  acg
+// Revision 1.38  2011/03/23 16:17:52  acg
 //  Andy Goodrich: don't emit an error message for a resume on a disabled
 //  process that is not suspended.
 //
-// Revision 1.29  2011/03/20 13:43:23  acg
+// Revision 1.37  2011/03/20 13:43:23  acg
 //  Andy Goodrich: added async_signal_is() plus suspend() as a corner case.
 //
-// Revision 1.28  2011/03/08 20:49:30  acg
+// Revision 1.36  2011/03/08 20:49:31  acg
 //  Andy Goodrich: implement coarse checking for synchronous reset - suspend
 //  interaction.
 //
-// Revision 1.27  2011/03/08 20:32:28  acg
+// Revision 1.35  2011/03/08 20:32:28  acg
 //  Andy Goodrich: implemented "coarse" checking for undefined process
 //  control interactions.
 //
-// Revision 1.26  2011/03/07 18:25:19  acg
+// Revision 1.34  2011/03/07 18:25:19  acg
 //  Andy Goodrich: tightening of check for resume on a disabled process to
 //  only produce an error if it is ready to run.
 //
-// Revision 1.25  2011/03/07 17:38:43  acg
+// Revision 1.33  2011/03/07 17:38:44  acg
 //  Andy Goodrich: tightening up of checks for undefined interaction between
 //  synchronous reset and suspend.
 //
-// Revision 1.24  2011/03/06 23:30:13  acg
+// Revision 1.32  2011/03/06 23:30:13  acg
 //  Andy Goodrich: refining suspend - sync reset corner case checking so that
 //  the following are error situations:
 //    (1) Calling suspend on a process with a reset_signal_is() specification
 //        or sync_reset_on() is active.
 //    (2) Calling sync_reset_on() on a suspended process.
 //
-// Revision 1.23  2011/03/06 19:57:11  acg
+// Revision 1.31  2011/03/06 19:57:11  acg
 //  Andy Goodrich: refinements for the illegal suspend - synchronous reset
 //  interaction.
 //
-// Revision 1.22  2011/03/06 16:47:09  acg
+// Revision 1.30  2011/03/06 16:47:09  acg
 //  Andy Goodrich: changes for testing sync_reset - suspend corner cases.
 //
-// Revision 1.21  2011/03/06 15:57:08  acg
+// Revision 1.29  2011/03/06 15:59:23  acg
 //  Andy Goodrich: added process control corner case checks.
 //
-// Revision 1.20  2011/03/05 19:44:20  acg
+// Revision 1.28  2011/03/05 19:44:20  acg
 //  Andy Goodrich: changes for object and event naming and structures.
 //
-// Revision 1.19  2011/02/18 20:27:14  acg
+// Revision 1.27  2011/02/19 08:30:53  acg
+//  Andy Goodrich: Moved process queueing into trigger_static from
+//  sc_event::notify.
+//
+// Revision 1.26  2011/02/18 20:27:14  acg
 //  Andy Goodrich: Updated Copyrights.
 //
-// Revision 1.18  2011/02/17 19:50:43  acg
+// Revision 1.25  2011/02/17 19:54:33  acg
 //  Andy Goodrich:
-//    (1) Changed signature of trigger_dynamic back to a bool.
-//    (2) Added run queue processing into trigger dynamic.
-//    (3) Simplified process control support.
+//    (1) Changed signature of trigger_dynamic() back to bool, and moved
+//        run queue processing into trigger_dynamic.
+//    (2) Simplified process control usage.
 //
-// Revision 1.17  2011/02/16 22:37:30  acg
+// Revision 1.24  2011/02/16 22:37:31  acg
 //  Andy Goodrich: clean up to remove need for ps_disable_pending.
 //
-// Revision 1.16  2011/02/13 23:09:58  acg
+// Revision 1.23  2011/02/14 17:51:40  acg
+//  Andy Goodrich: proper pushing an poppping of the module hierarchy for
+//  start_of_simulation() and end_of_simulation.
+//
+// Revision 1.22  2011/02/13 23:09:58  acg
 //  Andy Goodrich: only remove dynamic events for asynchronous resets.
 //
-// Revision 1.15  2011/02/13 21:47:37  acg
+// Revision 1.21  2011/02/13 21:47:38  acg
 //  Andy Goodrich: update copyright notice.
 //
-// Revision 1.14  2011/02/13 21:31:02  acg
-//  Andy Goodrich: added error messages for throws when simulator has not
-//  been initialized. Added missing remove_dynamic_events() call to the
-//  reset code.
+// Revision 1.20  2011/02/13 21:37:13  acg
+//  Andy Goodrich: removed temporary diagnostic. Also there is
+//  remove_dynamic_events() call in reset code.
 //
-// Revision 1.13  2011/02/11 13:25:24  acg
+// Revision 1.19  2011/02/13 21:35:09  acg
+//  Andy Goodrich: added error messages for throws before the simulator is
+//  initialized.
+//
+// Revision 1.18  2011/02/11 13:25:24  acg
 //  Andy Goodrich: Philipp A. Hartmann's changes:
 //    (1) Removal of SC_CTHREAD method overloads.
 //    (2) New exception processing code.
 //
-// Revision 1.12  2011/02/07 19:17:20  acg
+// Revision 1.17  2011/02/08 08:18:16  acg
+//  Andy Goodrich: removed obsolete code.
+//
+// Revision 1.16  2011/02/07 19:17:20  acg
 //  Andy Goodrich: changes for IEEE 1666 compatibility.
 //
-// Revision 1.11  2011/02/04 15:27:36  acg
+// Revision 1.15  2011/02/04 15:27:36  acg
 //  Andy Goodrich: changes for suspend-resume semantics.
 //
-// Revision 1.10  2011/02/01 23:01:53  acg
+// Revision 1.14  2011/02/01 23:01:53  acg
 //  Andy Goodrich: removed dead code.
 //
-// Revision 1.9  2011/02/01 21:05:05  acg
-//  Andy Goodrich: Changes in trigger_dynamic methods to handle new
-//  process control rules about event sensitivity.
+// Revision 1.13  2011/02/01 21:16:36  acg
+//  Andy Goodrich:
+//  (1) New version of trigger_dynamic() to implement new return codes and
+//      proper processing of events with new dynamic process rules.
+//  (2) Recoding of kill_process(), throw_user() and reset support to
+//      consolidate preemptive thread execution in sc_simcontext::preempt_with().
 //
-// Revision 1.8  2011/01/25 20:50:37  acg
+// Revision 1.12  2011/01/25 20:50:37  acg
 //  Andy Goodrich: changes for IEEE 1666 2011.
 //
-// Revision 1.7  2011/01/18 20:10:44  acg
+// Revision 1.11  2011/01/20 16:52:20  acg
+//  Andy Goodrich: changes for IEEE 1666 2011.
+//
+// Revision 1.10  2011/01/19 23:21:50  acg
+//  Andy Goodrich: changes for IEEE 1666 2011
+//
+// Revision 1.9  2011/01/18 20:10:45  acg
 //  Andy Goodrich: changes for IEEE1666_2011 semantics.
 //
-// Revision 1.6  2011/01/06 18:02:43  acg
-//  Andy Goodrich: added check for ps_disabled to method_dynamic().
+// Revision 1.8  2011/01/06 18:02:16  acg
+//  Andy Goodrich: added check for disabled thread to trigger_dynamic().
 //
-// Revision 1.5  2010/11/20 17:10:56  acg
+// Revision 1.7  2010/11/20 17:10:57  acg
 //  Andy Goodrich: reset processing changes for new IEEE 1666 standard.
 //
-// Revision 1.4  2010/07/22 20:02:33  acg
+// Revision 1.6  2010/07/22 20:02:33  acg
 //  Andy Goodrich: bug fixes.
 //
-// Revision 1.3  2009/05/22 16:06:29  acg
+// Revision 1.5  2009/07/28 01:10:53  acg
+//  Andy Goodrich: updates for 2.3 release candidate.
+//
+// Revision 1.4  2009/05/22 16:06:29  acg
 //  Andy Goodrich: process control updates.
 //
-// Revision 1.2  2008/05/22 17:06:25  acg
-//  Andy Goodrich: updated copyright notice to include 2008.
+// Revision 1.3  2008/05/22 17:06:06  acg
+//  Andy Goodrich: formatting and comments.
+//
+// Revision 1.2  2007/09/20 20:32:35  acg
+//  Andy Goodrich: changes to the semantics of throw_it() to match the
+//  specification. A call to throw_it() will immediately suspend the calling
+//  thread until all the throwees have executed. At that point the calling
+//  thread will be restarted before the execution of any other threads.
 //
 // Revision 1.1.1.1  2006/12/15 20:20:05  acg
 // SystemC 2.3
 //
-// Revision 1.7  2006/04/20 17:08:16  acg
+// Revision 1.8  2006/04/20 17:08:17  acg
 //  Andy Goodrich: 3.0 style process changes.
 //
-// Revision 1.6  2006/04/11 23:13:20  acg
+// Revision 1.7  2006/04/11 23:13:21  acg
 //   Andy Goodrich: Changes for reduced reset support that only includes
 //   sc_cthread, but has preliminary hooks for expanding to method and thread
 //   processes also.
 //
-// Revision 1.5  2006/01/26 21:04:54  acg
+// Revision 1.6  2006/03/21 00:00:34  acg
+//   Andy Goodrich: changed name of sc_get_current_process_base() to be
+//   sc_get_current_process_b() since its returning an sc_process_b instance.
+//
+// Revision 1.5  2006/01/26 21:04:55  acg
 //  Andy Goodrich: deprecation message changes and additional messages.
 //
 // Revision 1.4  2006/01/24 20:49:05  acg
 // Andy Goodrich: changes to remove the use of deprecated features within the
 // simulator, and to issue warning messages when deprecated features are used.
 //
-// Revision 1.3  2006/01/13 18:44:29  acg
+// Revision 1.3  2006/01/13 18:44:30  acg
 // Added $Log to record CVS changes into the source.
 //

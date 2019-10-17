@@ -56,6 +56,8 @@
 #include "sysc/datatypes/fx/scfx_utils.h"
 #include "sysc/kernel/sc_macros.h"
 
+#include <pthread.h> // 08/03/2015 GL: to implement scfx_mant_free_words_lock
+
 
 namespace sc_dt
 {
@@ -67,6 +69,16 @@ class scfx_mant_ref;
 
 typedef unsigned int  word;       // Using int because of 64-bit machines.
 typedef unsigned short half_word;
+
+/**
+ *  \brief A scoped mutex for static word_list* free_words.
+ */
+// 08/03/2015 GL.
+struct scfx_mant_free_words_lock {
+    static pthread_mutex_t m_mutex;
+    explicit scfx_mant_free_words_lock();
+    ~scfx_mant_free_words_lock();
+};
 
 
 // ----------------------------------------------------------------------------

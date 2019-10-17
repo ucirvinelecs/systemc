@@ -77,6 +77,7 @@ class sc_reset {
     friend class sc_cthread_process;
     friend class sc_method_process; 
     friend class sc_module; 
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_process_b;
     friend class sc_signal<bool, SC_ONE_WRITER>;
     friend class sc_signal<bool, SC_MANY_WRITERS>;

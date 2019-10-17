@@ -41,13 +41,18 @@ void halt( sc_simcontext* );
 void wait( int, sc_simcontext* );
 
 
-//==============================================================================
-// sc_cthread_process -
-//
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_cthread_process
+ *
+ *  \brief A cthread process.
+ *****************************************************************************/
 class sc_cthread_process : public sc_thread_process {
 
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend class sc_process_handle;
     friend class sc_process_table;
     friend class sc_thread_process;
@@ -55,8 +60,9 @@ class sc_cthread_process : public sc_thread_process {
 
     friend void sc_cthread_cor_fn( void* );
 
-    friend void halt( sc_simcontext* );
-    friend void wait( int, sc_simcontext* );
+    // 08/19/2015 GL: modified for the OoO simulation
+    friend void halt( int, sc_simcontext* );
+    friend void wait( int, int, sc_simcontext* );
 
   public:
     sc_cthread_process( const char* name_p, bool free_host,
@@ -79,7 +85,12 @@ private:
     bool eval_watchlist();
     bool eval_watchlist_curr_level();
 
-    void wait_halt();
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    void wait_halt( int );
 
 };
 
@@ -87,11 +98,29 @@ private:
 //"sc_cthread_process::wait_halt"
 //
 //------------------------------------------------------------------------------
-inline void sc_cthread_process::wait_halt()
+inline void sc_cthread_process::wait_halt( int seg_id )
 {
+    // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+    sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    // 08/19/2015 GL: set the new segment ID of this thread
+    set_segment_id( seg_id );
+
+    // 04/28/2015 GL: release all the channel locks (not sure sc_cthread
+    //                can be used in sc_channel)
+    unlock_all_channels(); 
+
     m_wait_cycle_n = 0;
     suspend_me();
+
+    // 04/28/2015 GL: as we are going to throw an exception, we do not need
+    //                to acquire the channel locks
     throw sc_halt();
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 } // namespace sc_core 

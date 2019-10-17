@@ -33,11 +33,11 @@
 
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_semaphore_if
-//
-//  The sc_semaphore_if interface class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_semaphore_if
+ *
+ *  \brief The sc_semaphore_if interface class.
+ *****************************************************************************/
 
 class sc_semaphore_if
 : virtual public sc_interface
@@ -47,7 +47,13 @@ public:
     // the classical operations: wait(), trywait(), and post()
 
     // lock (take) the semaphore, block if not available
-    virtual int wait() = 0;
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual int wait( int ) = 0;
 
     // lock (take) the semaphore, return -1 if not available
     virtual int trywait() = 0;

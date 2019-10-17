@@ -57,9 +57,18 @@
 #   define DEBUG_MSG(NAME,P,MSG) 
 #endif
 
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
-
+extern bool verbosity_flag_1;
+extern bool verbosity_flag_2;
+extern bool verbosity_flag_3;
+extern bool verbosity_flag_4;
+extern bool verbosity_flag_5;
+extern bool verbosity_flag_6;
+extern bool verbosity_flag;
 inline
 const char*
 sc_get_current_process_name()
@@ -67,7 +76,7 @@ sc_get_current_process_name()
     sc_process_b* active_p; // active process to get name of.
     const char*   result;   // name of active process.
 
-    active_p = sc_get_curr_simcontext()->get_curr_proc_info()->process_handle;
+    active_p = sc_get_curr_simcontext()->get_curr_proc();
     if ( active_p )
         result = active_p->name();
     else
@@ -85,18 +94,19 @@ inline
 void
 sc_simcontext::set_curr_proc( sc_process_b* process_h )
 {
-    m_curr_proc_info.process_handle = process_h;
-    m_curr_proc_info.kind           = process_h->proc_kind();
-    m_current_writer = m_write_check ? process_h : (sc_object*)0;
+    assert( 0 ); // 10/29/2014 GL TODO: clean up the codes later
+    //m_curr_proc_info.process_handle = process_h;
+    //m_curr_proc_info.kind           = process_h->proc_kind();
+    //m_current_writer = m_write_check ? process_h : (sc_object*)0;
 }
 
 inline
 void
 sc_simcontext::reset_curr_proc()
 {
-    m_curr_proc_info.process_handle = 0;
-    m_curr_proc_info.kind           = SC_NO_PROC_;
-    m_current_writer                = 0;
+    //m_curr_proc_info.process_handle = 0;
+    //m_curr_proc_info.kind           = SC_NO_PROC_;
+    //m_current_writer                = 0;
     sc_process_b::m_last_created_process_p = 0; 
 }
 
@@ -133,6 +143,9 @@ inline
 void
 sc_simcontext::preempt_with( sc_thread_handle thread_h )
 {
+    assert( 0 ); // 10/28/2014 GL TODO: clean up the codes later
+/*
+
     sc_thread_handle  active_p;    // active thread or null.
     sc_curr_proc_info caller_info; // process info for caller.
 
@@ -207,7 +220,7 @@ sc_simcontext::preempt_with( sc_thread_handle thread_h )
         DEBUG_MSG(DEBUG_NAME,thread_h,"self preemption of active thread");
 	execute_thread_next( thread_h );
 	active_p->suspend_me();
-    }
+    }*/
 }
 
 
@@ -215,6 +228,7 @@ inline
 void
 sc_simcontext::push_runnable_method( sc_method_handle method_h )
 {
+		
     m_runnable->push_back_method( method_h );
 }
 
@@ -229,6 +243,7 @@ inline
 void
 sc_simcontext::push_runnable_thread( sc_thread_handle thread_h )
 {
+	
     m_runnable->push_back_thread( thread_h );
 }
 
@@ -236,6 +251,7 @@ inline
 void
 sc_simcontext::push_runnable_thread_front( sc_thread_handle thread_h )
 {
+	
     m_runnable->push_front_thread( thread_h );
 }
 
@@ -246,10 +262,10 @@ sc_simcontext::pop_runnable_method()
 {
     sc_method_handle method_h = m_runnable->pop_method();
     if( method_h == 0 ) {
-	reset_curr_proc();
-	return 0;
+        reset_curr_proc();
+        return 0;
     }
-    set_curr_proc( (sc_process_b*)method_h );
+//    set_curr_proc( (sc_process_b*)method_h );
     return method_h;
 }
 
@@ -262,7 +278,7 @@ sc_simcontext::pop_runnable_thread()
 	reset_curr_proc();
 	return 0;
     }
-    set_curr_proc( (sc_process_b*)thread_h );
+//    set_curr_proc( (sc_process_b*)thread_h );
     return thread_h;
 }
 

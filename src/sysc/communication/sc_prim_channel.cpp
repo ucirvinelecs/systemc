@@ -53,6 +53,8 @@ sc_prim_channel::sc_prim_channel()
   m_update_next_p( 0 ) 
 {
     m_registry->insert( *this );
+    CHNL_MTX_INIT_( m_mutex ); // 02/25/2015 GL: initialize the mutex
+    _SYSC_SYNC_PAR_SIM = true; // 06/16/2016 GL: enable synchronized parallel simulation
 }
 
 sc_prim_channel::sc_prim_channel( const char* name_ )
@@ -61,6 +63,8 @@ sc_prim_channel::sc_prim_channel( const char* name_ )
   m_update_next_p( 0 )
 {
     m_registry->insert( *this );
+    CHNL_MTX_INIT_( m_mutex ); // 02/25/2015 GL: initialize the mutex
+    _SYSC_SYNC_PAR_SIM = true; // 06/16/2016 GL: enable synchronized parallel simulation
 }
 
 
@@ -69,6 +73,7 @@ sc_prim_channel::sc_prim_channel( const char* name_ )
 sc_prim_channel::~sc_prim_channel()
 {
     m_registry->remove( *this );
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/25/2015 GL: destroy the mutex
 }
 
 
@@ -151,7 +156,7 @@ class sc_prim_channel_registry::async_update_list
 #ifndef SC_DISABLE_ASYNC_UPDATES
 public:
 
-    bool pending() const
+    bool pending() const 
     {
 	return m_push_queue.size() != 0;
     }
@@ -201,6 +206,9 @@ private:
 void
 sc_prim_channel_registry::insert( sc_prim_channel& prim_channel_ )
 {
+    // 12/04/2014 GL: as sc_prim_channel can only be constructed during 
+    //                elaboration, we do not need to acquire a lock here
+
     if( sc_is_running() ) {
        SC_REPORT_ERROR( SC_ID_INSERT_PRIM_CHANNEL_, "simulation running" );
     }
@@ -221,12 +229,14 @@ sc_prim_channel_registry::insert( sc_prim_channel& prim_channel_ )
 
     // insert
     m_prim_channel_vec.push_back( &prim_channel_ );
-
 }
 
 void
 sc_prim_channel_registry::remove( sc_prim_channel& prim_channel_ )
 {
+    // 12/04/2014 GL: as sc_prim_channel can only be destructed during 
+    //                cleanup, we do not need to acquire a lock here
+
     int i;
     for( i = 0; i < size(); ++ i ) {
 	if( &prim_channel_ == m_prim_channel_vec[i] ) {
@@ -271,6 +281,9 @@ sc_prim_channel_registry::async_request_update( sc_prim_channel& prim_channel_ )
 void
 sc_prim_channel_registry::perform_update()
 {
+    // 06/16/2016 GL: add a lock to protect concurrent access
+    chnl_scoped_lock lock( m_mutex );
+
     // Update the values for the primitive channels set external to the
     // simulator.
 
@@ -292,6 +305,8 @@ sc_prim_channel_registry::perform_update()
 	next_p = now_p->m_update_next_p;
 	now_p->perform_update();
     }
+
+    // 06/16/2016 GL: return releases the lock
 }
 
 // constructor
@@ -303,6 +318,8 @@ sc_prim_channel_registry::sc_prim_channel_registry( sc_simcontext& simc_ )
   ,  m_simc( &simc_ )
   ,  m_update_list_p((sc_prim_channel*)sc_prim_channel::list_end)
 {
+    CHNL_MTX_INIT_( m_mutex ); // initialize the mutex, DM 8/22/2018
+
 #   ifndef SC_DISABLE_ASYNC_UPDATES
         m_async_update_list_p = new async_update_list();
 #   endif
@@ -313,6 +330,7 @@ sc_prim_channel_registry::sc_prim_channel_registry( sc_simcontext& simc_ )
 
 sc_prim_channel_registry::~sc_prim_channel_registry()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // destroy the mutex (01/11/19, RD)
     delete m_async_update_list_p;
 }
 

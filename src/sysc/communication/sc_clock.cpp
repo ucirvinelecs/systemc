@@ -215,7 +215,9 @@ sc_clock::sc_clock( const char* name_,
 // so that the processes are registered with the global simcontext rather
 // than the scope of the clock's parent.
 //------------------------------------------------------------------------------
-#if ( defined(_MSC_VER) && _MSC_VER < 1300 ) //VC++6.0 doesn't support sc_spawn with functor.
+
+//VC++6.0 doesn't support sc_spawn with functor.
+#if ( defined(_MSC_VER) && _MSC_VER < 1300 )
 #   define sc_clock_posedge_callback(ptr) sc_clock_posedge_callback
 
 #   define sc_clock_negedge_callback(ptr) sc_clock_negedge_callback
@@ -269,6 +271,7 @@ void sc_clock::register_port( sc_port_base& /*port*/, const char* if_typename_ )
 void
 sc_clock::write( const bool& /* value */ )
 {
+    // 02/23/2015 GL: take care of error handling in the future
     SC_REPORT_ERROR(SC_ID_ATTEMPT_TO_WRITE_TO_CLOCK_, "");
 }
 

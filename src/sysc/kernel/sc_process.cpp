@@ -37,7 +37,10 @@
 #include "sysc/kernel/sc_process_handle.h"
 #include "sysc/kernel/sc_event.h"
 #include <sstream>
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 // sc_process_handle entities that are returned for null pointer instances:
@@ -49,6 +52,10 @@ std::vector<sc_event*> sc_process_handle::empty_event_vector;
 std::vector<sc_object*> sc_process_handle::empty_object_vector;
 sc_event                sc_process_handle::non_event(SC_KERNEL_EVENT_PREFIX);
 
+
+void sc_process_b::add_sensitivity_event(const sc_event& e){
+    *m_sensitivity_events |= e;
+}
 // Last process that was created:
 
 sc_process_b* sc_process_b::m_last_created_process_p = 0;
@@ -92,6 +99,18 @@ void sc_process_b::add_static_event( const sc_event& e )
         assert( false );
         break;
     }
+}
+
+std::string sc_process_b::event_names()
+{
+    std::string res;
+    if(m_event_p)
+        res = res + "event: " + std::string(m_event_p->name());
+    if(m_event_list_p)
+    {
+        res = res + m_event_list_p->to_string();
+    }
+    return res;
 }
 
 //------------------------------------------------------------------------------
@@ -540,6 +559,8 @@ sc_process_b::sc_process_b( const char* name_p, bool is_thread, bool free_host,
      SC_ENTRY_FUNC method_p, sc_process_host* host_p, 
      const sc_spawn_options* /* opt_p  */
 ) :
+	//process_name( name_p ), //ZC 2017/3/9 replaced by name()
+	
     sc_object( name_p ),
     file(0),
     lineno(0),
@@ -575,15 +596,25 @@ sc_process_b::sc_process_b( const char* name_p, bool is_thread, bool free_host,
     m_timed_out(false),
     m_timeout_event_p(0),
     m_trigger_type(STATIC),
-    m_unwinding(false)
+    m_unwinding(false),
+    m_acq_chnl_lock_queue(),
+    m_segment_id(-1),
+    m_timestamp(),
+    m_instance_id(-1),
+    seg_offset_(0),
+    possible_wakeup_time(-1,-1),
+//DM 05/20/2019 for sc_method invoker
+    invoker(false),
+    cur_invoker_method_handle(NULL)
 {
 
     // THIS OBJECT INSTANCE IS NOW THE LAST CREATED PROCESS:
-
+	m_process_state =-1;
     m_last_created_process_p = this;
     m_timeout_event_p = new sc_event(
 	          (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() );
-}
+    m_sensitivity_events = new sc_event_or_list();
+} 
 
 //------------------------------------------------------------------------------
 //"sc_process_b::~sc_process_b"
@@ -607,7 +638,7 @@ sc_process_b::~sc_process_b()
 
 
     // REMOVE ANY STRUCTURES THAT MAY HAVE BEEN BUILT:
-
+    delete m_sensitivity_events;
     delete m_last_report_p;
     delete m_name_gen_p;
     delete m_reset_event_p;
@@ -632,6 +663,114 @@ sc_event& sc_process_b::terminated_event()
 	          (std::string(SC_KERNEL_EVENT_PREFIX)+"_term_event").c_str() );
     }
     return *m_term_event_p;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::lock_and_push"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::lock_and_push( CHNL_MTX_TYPE_ *lock )
+{
+    m_acq_chnl_lock_queue.lock_and_push( lock );
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::pop_and_unlock"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::pop_and_unlock( CHNL_MTX_TYPE_ *lock )
+{
+    m_acq_chnl_lock_queue.pop_and_unlock( lock );
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::lock_all_channels"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::lock_all_channels( void )
+{
+    m_acq_chnl_lock_queue.lock_all();
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::unlock_all_channels"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::unlock_all_channels( void )
+{
+    m_acq_chnl_lock_queue.unlock_all();
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::get_segment_id"
+//
+// This method gets the current segment ID of this process.
+//
+// (08/12/2015 GL)
+//------------------------------------------------------------------------------
+int sc_process_b::get_segment_id()
+{
+    return m_segment_id;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::set_segment_id"
+//
+// This method sets the current segment ID of this process.
+//
+// (08/12/2015 GL)
+//------------------------------------------------------------------------------
+void sc_process_b::set_segment_id( int id )
+{
+    m_segment_id = id;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::get_timestamp"
+//
+// This method gets the local time stamp of this process.
+//
+// (08/12/2015 GL)
+//------------------------------------------------------------------------------
+const sc_timestamp& sc_process_b::get_timestamp()
+{
+    return m_timestamp;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::set_timestamp"
+//
+// This method sets the local time stamp of this process.
+//
+// (08/12/2015 GL)
+//------------------------------------------------------------------------------
+void sc_process_b::set_timestamp( const sc_timestamp& ts )
+{
+    m_timestamp = ts;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::get_instance_id"
+//
+// This method gets the instance ID of this process.
+//
+// (09/01/2015 GL)
+//------------------------------------------------------------------------------
+int sc_process_b::get_instance_id()
+{
+    return m_instance_id;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::set_instance_id"
+//
+// This method sets the instance ID of this process.
+//
+// (09/01/2015 GL)
+//------------------------------------------------------------------------------
+void sc_process_b::set_instance_id( int id )
+{
+    m_instance_id = id;
 }
 
 // +----------------------------------------------------------------------------
@@ -671,6 +810,351 @@ sc_process_handle::operator sc_method_handle()
 sc_process_handle::operator sc_thread_handle()  
 {
     return DCAST<sc_thread_handle>(m_target_p); 
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::lock_and_push"
+//
+// This method locks the channel lock and pushes it into the list.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::lock_and_push( CHNL_MTX_TYPE_ *lock )
+{
+#ifdef FANCY_DEBUG
+    for ( std::list<sc_chnl_lock*>::iterator it=queue.begin(); 
+          it!=(queue.end()-1); it++ )
+    {
+         // 02/13/2015 GL: the new lock cannot be in the queue except at the 
+         //                last position
+         assert( lock != (*it)->lock_p ); 
+    }
+#endif
+
+    // 02/13/2015 GL: the new lock is not the same as the previous one
+    if ( queue.empty() || ( queue.back()->lock_p != lock ) )
+    {
+        CHNL_MTX_LOCK_( *lock );
+        sc_chnl_lock *chnl_lock = new sc_chnl_lock( lock );
+        queue.push_back( chnl_lock );
+    }
+    else // 02/13/2015 GL: the new lock is the same as the previous one
+    {
+#ifdef FANCY_DEBUG
+        assert( queue.back()->lock_p == lock );
+#endif
+        queue.back()->counter ++;
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::pop_and_unlock"
+//
+// This method pops the channel lock from the list and releases it.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::pop_and_unlock( CHNL_MTX_TYPE_ *lock )
+{
+#ifdef FANCY_DEBUG
+    // 02/13/2015 GL: it is required to release the lock in the reverse order
+    assert( queue.back()->lock_p == lock );
+#endif
+
+    // 02/13/2015 GL: only one (or the last) instance of the lock is 
+    //                encountered
+    if ( queue.back()->counter == 1 )
+    {
+        sc_chnl_lock *chnl_lock = queue.back();
+        queue.pop_back();
+        delete chnl_lock;
+        CHNL_MTX_UNLOCK_( *lock );
+    }
+    // 02/13/2015 GL: more than one instances are encountered, and only to unlock
+    //                at the last instance
+    else
+    {
+        queue.back()->counter --;
+#ifdef FANCY_DEBUG
+        assert( queue.back()->counter >= 1 );
+#endif
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::lock_all"
+//
+// This method locks all the channel locks in the list.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::lock_all( void )
+{
+    for ( std::list<sc_chnl_lock*>::iterator it=queue.begin(); it!=queue.end(); 
+          it++ )
+        CHNL_MTX_LOCK_( *((*it)->lock_p) );
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::unlock_all"
+//
+// This method unlocks all the channel locks in the list (in the reverse order).
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::unlock_all( void )
+{
+    for ( std::list<sc_chnl_lock*>::reverse_iterator it=queue.rbegin(); 
+          it!=queue.rend(); it++ )
+        CHNL_MTX_UNLOCK_( *((*it)->lock_p) );
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::sc_timestamp"
+//
+// This is the object instance constructor for this class.
+//------------------------------------------------------------------------------
+sc_timestamp::sc_timestamp()
+: m_time_count(),
+  m_delta_count(0),
+  m_infinite(false)
+{}
+
+sc_timestamp::sc_timestamp( sc_time time_count, 
+                            sc_timestamp::value_type delta_count )
+{
+    m_time_count = time_count;
+    m_delta_count = delta_count;
+    m_infinite = false;
+}
+
+sc_timestamp::sc_timestamp( long long time_count, int delta_count )
+{
+    if ( time_count < 0 || delta_count < 0 ) // infinite amount of time
+    {
+        m_time_count = sc_time::from_value( 0 );
+        m_delta_count = -1;
+        m_infinite = true;
+    }
+    else
+    {
+        m_time_count = sc_time::from_value( time_count );
+        m_delta_count = delta_count;
+        m_infinite = false;
+    }
+}
+
+sc_timestamp::sc_timestamp( const sc_timestamp& ts )
+{
+    m_time_count = ts.m_time_count;
+    m_delta_count = ts.m_delta_count;
+    m_infinite = ts.m_infinite;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator ="
+//
+// This method overloads the assignment operator for this class.
+//------------------------------------------------------------------------------
+sc_timestamp&
+sc_timestamp::operator = ( const sc_timestamp& ts )
+{
+    m_time_count = ts.m_time_count;
+    m_delta_count = ts.m_delta_count;
+    m_infinite = ts.m_infinite;
+
+    return *this;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator =="
+//
+// This method overloads the == operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator == ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite || ts.m_infinite ) // either one is infinite
+        return false;
+    else
+        return ( m_time_count == ts.m_time_count ) && 
+               ( m_delta_count == ts.m_delta_count );
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator !="
+//
+// This method overloads the != operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator != ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite || ts.m_infinite ) // either one is infinite
+        return true;
+    else
+        return ( m_time_count != ts.m_time_count ) || 
+               ( m_delta_count != ts.m_delta_count );
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator <"
+//
+// This method overloads the < operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator <  ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite && ts.m_infinite ) // both are infinite
+        return false;
+    else if ( m_infinite && !ts.m_infinite )
+        return false;
+    else if ( !m_infinite && ts.m_infinite )
+        return true;
+    else if ( m_time_count < ts.m_time_count )
+        return true;
+    else if ( ( m_time_count == ts.m_time_count ) && 
+              ( m_delta_count < ts.m_delta_count ) )
+        return true;
+    else
+        return false;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator <="
+//
+// This method overloads the <= operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator <= ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite && ts.m_infinite ) // both are infinite
+        return false;
+    else if ( m_infinite && !ts.m_infinite )
+        return false;
+    else if ( !m_infinite && ts.m_infinite )
+        return true;
+    else if ( m_time_count < ts.m_time_count )
+        return true;
+    else if ( ( m_time_count == ts.m_time_count ) && 
+              ( m_delta_count <= ts.m_delta_count ) )
+        return true;
+    else
+        return false;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator >"
+//
+// This method overloads the > operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator >  ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite && ts.m_infinite ) // both are infinite
+        return false;
+    else if ( m_infinite && !ts.m_infinite )
+        return true;
+    else if ( !m_infinite && ts.m_infinite )
+        return false;
+    else if ( m_time_count > ts.m_time_count )
+        return true;
+    else if ( ( m_time_count == ts.m_time_count ) && 
+              ( m_delta_count > ts.m_delta_count ) )
+        return true;
+    else
+        return false; 
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator >="
+//
+// This method overloads the >= operator for this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::operator >= ( const sc_timestamp& ts ) const
+{
+    if ( m_infinite && ts.m_infinite ) // both are infinite
+        return false;
+    else if ( m_infinite && !ts.m_infinite )
+        return true;
+    else if ( !m_infinite && ts.m_infinite )
+        return false;
+    else if ( m_time_count > ts.m_time_count )
+        return true;
+    else if ( ( m_time_count == ts.m_time_count ) && 
+              ( m_delta_count >= ts.m_delta_count ) )
+        return true;
+    else
+        return false;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::operator +"
+//
+// This method overloads the + operator for this class.
+//------------------------------------------------------------------------------
+sc_timestamp
+sc_timestamp::operator + ( const sc_timestamp& ts )
+{
+    sc_time    time_count;
+    value_type delta_count;
+
+    if ( m_infinite || ts.m_infinite )
+        return sc_timestamp( -1, -1 ); // infinite
+    else
+    { 
+        time_count = m_time_count + ts.m_time_count;
+
+        if ( ts.m_time_count > sc_time::from_value( 0 ) )
+            delta_count = 0;
+        else
+            delta_count = m_delta_count + ts.m_delta_count;
+
+        return sc_timestamp( time_count, delta_count );
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::get_time_count"
+//
+// This method returns m_time_count of this class.
+//------------------------------------------------------------------------------
+const sc_time&
+sc_timestamp::get_time_count() const
+{
+    assert( !m_infinite ); // not infinite time stamp
+    return m_time_count;
+}
+
+//------------------------------------------------------------------------------
+//"sc_timestamp::get_delta_count"
+//
+// This method returns m_delta_count of this class.
+//------------------------------------------------------------------------------
+sc_timestamp::value_type
+sc_timestamp::get_delta_count() const
+{
+    assert( !m_infinite ); // not infinite time stamp
+    return m_delta_count;
+}
+
+void sc_timestamp::show() const{
+    std::cout << "time = " << m_time_count.to_double() 
+        << " delta = " << m_delta_count << std::endl;
+}
+
+std::string sc_timestamp::to_string() const
+{
+    std::string res;
+    res += m_time_count.to_string();
+    res += " , ";
+
+    char buf[BUFSIZ];
+    std::sprintf( buf, "%lld", m_delta_count );
+    res += std::string(buf);
+    return res;
+}
+//------------------------------------------------------------------------------
+//"sc_timestamp::get_infinite"
+//
+// This method returns m_infinite of this class.
+//------------------------------------------------------------------------------
+bool
+sc_timestamp::get_infinite() const
+{
+    return m_infinite;
 }
 
 } // namespace sc_core 

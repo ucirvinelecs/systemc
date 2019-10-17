@@ -16,7 +16,7 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
   sc_thread_process.h -- Thread process declarations
@@ -59,7 +59,10 @@
 #   define DEBUG_MSG(NAME,P,MSG) 
 #endif
 
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 // forward references:
@@ -76,27 +79,34 @@ class sc_process_table;
 class sc_simcontext;
 class sc_runnable;
 
+class Invoker; //DM 05/16/2019
+
 sc_cor* get_cor_pointer( sc_process_b* process_p );
 void sc_set_stack_size( sc_thread_handle thread_h, std::size_t size );
-void wait( sc_simcontext* );
-void wait( const sc_event&, sc_simcontext* );
-void wait( const sc_event_or_list&, sc_simcontext* );
-void wait( const sc_event_and_list&, sc_simcontext* );
-void wait( const sc_time&, sc_simcontext* );
-void wait( const sc_time&, const sc_event&, sc_simcontext* );
-void wait( const sc_time&, const sc_event_or_list&, sc_simcontext* );
-void wait( const sc_time&, const sc_event_and_list&, sc_simcontext* );
+void wait( int , sc_simcontext* );
+void wait( const sc_event&, int , sc_simcontext* );
+void wait( const sc_event_or_list&, int , sc_simcontext* );
+void wait( const sc_event_and_list&, int , sc_simcontext* );
+void wait( const sc_time&, int , sc_simcontext* );
+void wait( const sc_time&, const sc_event&, int , sc_simcontext* );
+void wait( const sc_time&, const sc_event_or_list&, int , sc_simcontext* );
+void wait( const sc_time&, const sc_event_and_list&, int , sc_simcontext* );
 
-//==============================================================================
-// sc_thread_process -
-//
-//==============================================================================
+/**************************************************************************//**
+ *  \class sc_thread_process
+ *
+ *  \brief A thread process.
+ *****************************************************************************/
 class sc_thread_process : public sc_process_b {
     friend void sc_thread_cor_fn( void* );
     friend void sc_set_stack_size( sc_thread_handle, std::size_t );
     friend class sc_event;
     friend class sc_join;
     friend class sc_module;
+
+    // 04/07/2015 GL: a new sc_channel class is derived from sc_module
+    friend class sc_channel;
+
     friend class sc_process_b;
     friend class sc_process_handle;
     friend class sc_process_table;
@@ -104,23 +114,33 @@ class sc_thread_process : public sc_process_b {
     friend class sc_runnable;
     friend sc_cor* get_cor_pointer( sc_process_b* process_p );
 
-    friend void wait( sc_simcontext* );
-    friend void wait( const sc_event&, sc_simcontext* );
-    friend void wait( const sc_event_or_list&, sc_simcontext* );
-    friend void wait( const sc_event_and_list&, sc_simcontext* );
-    friend void wait( const sc_time&, sc_simcontext* );
-    friend void wait( const sc_time&, const sc_event&, sc_simcontext* );
-    friend void wait( const sc_time&, const sc_event_or_list&, sc_simcontext* );
-    friend void wait( const sc_time&, const sc_event_and_list&, sc_simcontext*);
+    friend class Invoker; //DM 05/16/2019
+
+    // 06/12/2015 GL: modified for the OoO simulation
+    friend void wait( int , sc_simcontext* );
+    friend void wait( const sc_event&, int , sc_simcontext* );
+    friend void wait( const sc_event_or_list&, int , sc_simcontext* );
+    friend void wait( const sc_event_and_list&, int , sc_simcontext* );
+    friend void wait( const sc_time&, int , sc_simcontext* );
+    friend void wait( const sc_time&, const sc_event&, int , sc_simcontext* );
+    friend void wait( const sc_time&, const sc_event_or_list&, int , 
+                      sc_simcontext* );
+    friend void wait( const sc_time&, const sc_event_and_list&, int , 
+                      sc_simcontext*);
+
   public:
-    sc_thread_process( const char* name_p, bool free_host, 
-        SC_ENTRY_FUNC method_p, sc_process_host* host_p, 
-        const sc_spawn_options* opt_p );
+    
+	sc_event* waiting_event;
+	sc_timestamp first_triggerable_time;
+  sc_thread_process( const char* name_p, bool free_host, 
+      SC_ENTRY_FUNC method_p, sc_process_host* host_p, 
+      const sc_spawn_options* opt_p );
 
-    virtual const char* kind() const
-        { return "sc_thread_process"; }
-
-  protected:
+  virtual const char* kind() const
+  { return "sc_thread_process"; }
+	
+	void aux_boundary();
+  protected: 
     // may not be deleted manually (called from sc_process_b)
     virtual ~sc_thread_process();
 
@@ -130,7 +150,7 @@ class sc_thread_process : public sc_process_b {
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
     virtual void kill_process(
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
-    sc_thread_handle next_exist();
+    sc_thread_handle next_exist(); 
     sc_thread_handle next_runnable();
     virtual void prepare_for_simulation();
     virtual void resume_process( 
@@ -145,18 +165,75 @@ class sc_thread_process : public sc_process_b {
     virtual void throw_reset( bool async );
     virtual void throw_user( const sc_throw_it_helper& helper,
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
+ 
+    bool trigger_dynamic( sc_event*, bool& );
+    bool deliver_event_at_time( sc_event* e, sc_timestamp e_delivery_time );
 
-    bool trigger_dynamic( sc_event* );
-    inline void trigger_static();
+    /**
+     *  \brief A new parameter is added to update the local time stamp in the
+     *         thread process.
+     */
+    // 08/14/2015 GL: add a new parameter to update the local time stamp
+    //inline void trigger_static();
+    inline void trigger_static( sc_event* );
 
-    void wait( const sc_event& );
-    void wait( const sc_event_or_list& );
-    void wait( const sc_event_and_list& );
-    void wait( const sc_time& );
-    void wait( const sc_time&, const sc_event& );
-    void wait( const sc_time&, const sc_event_or_list& );
-    void wait( const sc_time&, const sc_event_and_list& );
-    void wait_cycles( int n=1 );
+	
+	
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_event&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_or_list&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_event_and_list&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_time&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_time&, const sc_event&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_time&, const sc_event_or_list&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait( const sc_time&, const sc_event_and_list&, int = -1 );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 06/12/2015 GL: modified for the OoO simulation
+    void wait_cycles( int, int n=1 );
 
   protected:
     void add_monitor( sc_process_monitor* monitor_p );
@@ -206,19 +283,46 @@ inline void sc_thread_process::set_stack_size( std::size_t size )
 //------------------------------------------------------------------------------
 inline void sc_thread_process::suspend_me()
 {
+    // 11/21/2014 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     // remember, if we're currently unwinding
 
     bool unwinding_preempted = m_unwinding;
 
     sc_simcontext* simc_p = simcontext();
-    sc_cor*         cor_p = simc_p->next_cor();
+    //sc_cor*         cor_p = simc_p->next_cor();
+		
+    simc_p->remove_running_process( (sc_process_b*)this ); 
+	
+	//the following code should not be here, because suspend_me only removes
+	//a process from running queue
+	//put it into waiting queue and set its state 10:23 2017/3/10 ZC
+	//simc_p->add_to_wait_queue( (sc_process_b*)this );
+	//this->m_process_state=12;
+	
+	//printf("calling oooschedule() from process %s",this->process_name);
+    // simc_p->schedule( m_cor_p );
+	// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+	// 	printf("%s is calling suspend_me()\n",this->name());
+    simc_p->oooschedule( m_cor_p ); // 08/19/2015 GL: OoO scheduling
 
     // do not switch, if we're about to execute next (e.g. suicide)
 
-    if( m_cor_p != cor_p )
+    //if( m_cor_p != cor_p )
+    //{
+    //    DEBUG_MSG( DEBUG_NAME , this, "suspending thread");
+    //    simc_p->cor_pkg()->yield( cor_p );
+    //    DEBUG_MSG( DEBUG_NAME , this, "resuming thread");
+    //}
+
+    // if I am not scheduled to execute again
+    if ( !simc_p->is_running_process( (sc_process_b*)this ) )
     {
         DEBUG_MSG( DEBUG_NAME , this, "suspending thread");
-        simc_p->cor_pkg()->yield( cor_p );
+        simc_p->suspend_cor( m_cor_p );
         DEBUG_MSG( DEBUG_NAME , this, "resuming thread");
     }
 
@@ -264,104 +368,398 @@ inline void sc_thread_process::suspend_me()
 //------------------------------------------------------------------------------
 //"sc_thread_process::wait"
 //
+// Notes:
+//   (1) The correct order to lock and unlock channel locks (to avoid deadlocks
+//       and races) for SystemC functions with context switch:
+//
+//       outer_channel.lock_and_push
+//           [outer channel work]
+//           inner_channel.lock_and_push
+//               [inner channel work]
+//   +----------------------------------WAIT----------------------------------+
+//   |   +------------------------Simulation Kernel------------------------+  |
+//   |   |       acquire kernel lock                                       |  |
+//   |   |       +------unlock_all_channels-----+                          |  |
+//   |   |       |       inner_channel.unlock   |                          |  |
+//   |   |       |   outer_channel.unlock       |                          |  |
+//   |   |       +------------------------------+                          |  |
+//   |   |           [kernel work]                                         |  |
+//   |   |           pthread_cond_wait: release kernel lock                |  |
+//   |   |           [sleep]                                               |  |
+//   |   |           pthread_cond_wait (upon wakeup): acquire kernel lock  |  |
+//   |   |           [kernel work]                                         |  |
+//   |   |       release kernel lock                                       |  |
+//   |   +-----------------------------------------------------------------+  |
+//   |           [no lock/no work]                                            |
+//   |           +------lock_all_channels-------+                             |
+//   |           |   outer_channel.lock         |                             |
+//   |           |       inner_channel.lock     |                             |
+//   |           +------------------------------+                             |
+//   +------------------------------------------------------------------------+
+//               [inner channel work]
+//           inner_channel.pop_and_unlock
+//           [outer channel work]
+//       outer_channel.pop_and_unlock
+//
+//   (2) If we did not consider immediate notification, a more cleaner locking
+//       order should be:
+//
+//       outer_channel.lock_and_push
+//           [outer channel work]
+//           inner_channel.lock_and_push
+//               [inner channel work]
+//   +----------------------------------WAIT----------------------------------+
+//   | +----unlock_all_channels----+                                          |
+//   | |     inner_channel.unlock  |                                          |
+//   | | outer_channel.unlock      |                                          |
+//   | +---------------------------+                                          |
+//   |   [no lock/no work]                                                    |        
+//   | +-------------------------Simulation Kernel-------------------------+  |
+//   | | acquire kernel lock                                               |  |
+//   | |     [kernel work]                                                 |  |
+//   | |     pthread_cond_wait: release kernel lock                        |  |
+//   | |     [sleep]                                                       |  |
+//   | |     pthread_cond_wait (upon wakeup): acquire kernel lock          |  |
+//   | |     [kernel work]                                                 |  |
+//   | | release kernel lock                                               |  |
+//   | +-------------------------------------------------------------------+  |
+//   |   [no lock/no work]                                                    |
+//   | +-----lock_all_channels-----+                                          |
+//   | | outer_channel.lock        |                                          |
+//   | |     inner_channel.lock    |                                          |
+//   | +---------------------------+                                          |
+//   +------------------------------------------------------------------------+
+//               [inner channel work]
+//           inner_channel.pop_and_unlock
+//           [outer channel work]
+//       outer_channel.pop_and_unlock
+//
+//   (3) When acquiring the channel locks, we may encounter the same lock for 
+//       several times (a channel method calls another one in the same channel).
+//       But we should encounter them one right after another, so the same lock
+//       is at the end of the lock queue. If we encounter a lock that is in the
+//       middle of the queue, then it is a bad coding style and simulation may 
+//       break (meaning an inner channel method calls an outer channel method).
+//
+//   (4) For more information, please refer to the following files:
+//       sc_method_process.h: 184       (sc_method_process::next_trigger)
+//       sc_event.cpp: 79               (sc_event::notify)
+//
+// (02/19/2015 GL)
 //------------------------------------------------------------------------------
 inline
 void
-sc_thread_process::wait( const sc_event& e )
+sc_thread_process::aux_boundary()
+{
+	
+	
+	
+	
+    if( m_unwinding )
+        SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
+
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( -2 ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+       
+		
+		//ZC 9:06 2017/3/14
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+		// 	printf("\n%s is calling wait for nothing\n",this->name());
+		
+		
+        sc_get_curr_simcontext()->oooschedule( m_cor_p );
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
+	
+	
+	
+}
+
+inline
+void
+sc_thread_process::wait( const sc_event& e, int seg_id )
 {   
+
+	
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_event_p = &e; // for cleanup.
-    e.add_dynamic( this );
-    m_trigger_type = EVENT;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_event_p = &e; // for cleanup.
+        e.add_dynamic( this );
+		
+		
+        m_trigger_type = EVENT;
+		
+		//ZC 9:06 2017/3/14
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+		// 	printf("\n%s is calling wait for event %s\n",this->name(),e.name());
+		this->m_process_state=2;
+		sc_get_curr_simcontext()->add_to_wait_queue( (sc_process_b*)this )		;
+		
+	
+	
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_event_or_list& el )
+sc_thread_process::wait( const sc_event_or_list& el, int seg_id )
 {   
+
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    el.add_dynamic( this );
-    m_event_list_p = &el;
-    m_trigger_type = OR_LIST;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        el.add_dynamic( this );
+        m_event_list_p = &el;
+        m_event_count = el.size(); //ZC 2018/7/9
+        //std::cout << "wait for or_list m_event_count = " << m_event_count << std::endl;
+        m_trigger_type = OR_LIST;
+        
+        //ZC 19:59 2018/7/9 copied for the andlist downward
+        //I dont know why I didnt do this before
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+		// 	printf("\n%s is calling wait for event list\n",this->name());
+		this->m_process_state=2;
+		sc_get_curr_simcontext()->add_to_wait_queue( (sc_process_b*)this )		;
+		
+    
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_event_and_list& el )
+sc_thread_process::wait( const sc_event_and_list& el, int seg_id )
 {
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    el.add_dynamic( this );
-    m_event_list_p = &el;
-    m_event_count = el.size();
-    m_trigger_type = AND_LIST;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        el.add_dynamic( this );
+        m_event_list_p = &el;
+        m_event_count = el.size();
+        //this->m_process_state=7;
+        //std::cout << "wait for and_list m_event_count = " << m_event_count << std::endl;
+        m_trigger_type = AND_LIST;
+		
+		//ZC 9:06 2017/3/14
+		// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+		// 	printf("\n%s is calling wait for event list\n",this->name());
+		this->m_process_state=2;
+		sc_get_curr_simcontext()->add_to_wait_queue( (sc_process_b*)this )		;
+		
+		
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_time& t )
+sc_thread_process::wait( const sc_time& t, int seg_id )
 {
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_timeout_event_p->notify_internal( t );
-    m_timeout_event_p->add_dynamic( this );
-    m_trigger_type = TIMEOUT;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id );
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_timeout_event_p->notify_internal( t );
+        m_timeout_event_p->add_dynamic( this );
+		
+		if(t==SC_ZERO_TIME){
+			this->m_process_state=3;
+			//sc_get_curr_simcontext()->add_to_wait_queue( (sc_process_b*)this )		;
+			// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+			// 	printf("\n%s is calling wait for delta time\n",this->name());
+		}
+		else {
+			this->m_process_state=3; //ZC
+			// if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+			// 	printf("\n%s is calling wait for time\n",this->name());
+		}
+        m_trigger_type = TIMEOUT;
+		
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_time& t, const sc_event& e )
+sc_thread_process::wait( const sc_time& t, const sc_event& e, int seg_id )
 {
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_timeout_event_p->notify_internal( t );
-    m_timeout_event_p->add_dynamic( this );
-    e.add_dynamic( this );
-    m_event_p = &e;
-    m_trigger_type = EVENT_TIMEOUT;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_timeout_event_p->notify_internal( t );
+        m_timeout_event_p->add_dynamic( this );
+        e.add_dynamic( this );
+        m_event_p = &e;
+        m_trigger_type = EVENT_TIMEOUT;
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_time& t, const sc_event_or_list& el )
+sc_thread_process::wait( const sc_time& t, const sc_event_or_list& el, int seg_id )
 {
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_timeout_event_p->notify_internal( t );
-    m_timeout_event_p->add_dynamic( this );
-    el.add_dynamic( this );
-    m_event_list_p = &el;
-    m_trigger_type = OR_LIST_TIMEOUT;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_timeout_event_p->notify_internal( t );
+        m_timeout_event_p->add_dynamic( this );
+        el.add_dynamic( this );
+        m_event_list_p = &el;
+        m_trigger_type = OR_LIST_TIMEOUT;
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 inline
 void
-sc_thread_process::wait( const sc_time& t, const sc_event_and_list& el )
+sc_thread_process::wait( const sc_time& t, const sc_event_and_list& el, int seg_id )
 {
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_timeout_event_p->notify_internal( t );
-    m_timeout_event_p->add_dynamic( this );
-    el.add_dynamic( this );
-    m_event_list_p = &el;
-    m_event_count = el.size();
-    m_trigger_type = AND_LIST_TIMEOUT;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id ); 
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_timeout_event_p->notify_internal( t );
+        m_timeout_event_p->add_dynamic( this );
+        el.add_dynamic( this );
+        m_event_list_p = &el;
+        m_event_count = el.size();
+        m_trigger_type = AND_LIST_TIMEOUT;
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 //------------------------------------------------------------------------------
@@ -375,13 +773,31 @@ sc_thread_process::wait( const sc_time& t, const sc_event_and_list& el )
 //------------------------------------------------------------------------------
 inline
 void
-sc_thread_process::wait_cycles( int n )
+sc_thread_process::wait_cycles( int seg_id, int n )
 {   
     if( m_unwinding )
         SC_REPORT_ERROR( SC_ID_WAIT_DURING_UNWINDING_, name() );
 
-    m_wait_cycle_n = n-1;
-    suspend_me();
+    {
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+        // 08/14/2015 GL: set the new segment ID of this thread
+        set_segment_id( seg_id );
+
+        unlock_all_channels(); // 02/16/2015 GL: release all the channel locks
+        m_wait_cycle_n = n-1;
+        suspend_me();
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    lock_all_channels(); // 02/16/2015 GL: acquire all the channel locks
 }
 
 //------------------------------------------------------------------------------
@@ -434,12 +850,6 @@ sc_thread_handle sc_thread_process::next_runnable()
     return (sc_thread_handle)m_runnable_p;
 }
 
-inline sc_cor* get_cor_pointer( sc_process_b* process_p )
-{
-    sc_thread_handle thread_p = DCAST<sc_thread_handle>(process_p);
-    return thread_p->m_cor_p;
-}
-
 //------------------------------------------------------------------------------
 //"sc_thread_process::trigger_static"
 //
@@ -458,8 +868,17 @@ inline sc_cor* get_cor_pointer( sc_process_b* process_p )
 //------------------------------------------------------------------------------
 inline
 void
-sc_thread_process::trigger_static()
+// 08/14/2015 GL: add a new parameter to update the local time stamp
+//sc_thread_process::trigger_static()
+sc_thread_process::trigger_static( sc_event* e )
 {
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel 
+    //    lock is acquired
+
     // No need to try queueing this thread if one of the following is true:
     //    (a) its disabled
     //    (b) its already queued for execution
@@ -494,7 +913,34 @@ sc_thread_process::trigger_static()
     }
     else
     {
+        // 12/22/2016 GL: store the current time before updating
+        sc_time curr_time = m_timestamp.get_time_count();
+
+        // 08/14/2015 GL: update the local time stamp of this thread process
+        sc_timestamp ts = e->get_notify_timestamp();
+        switch( e->m_notify_type )
+        {
+            case sc_event::DELTA: // delta notification
+                if ( ts > m_timestamp ) {
+                    set_timestamp( sc_timestamp( ts.get_time_count(),
+                                                 ts.get_delta_count() + 1 ) );
+                } else {
+                    set_timestamp( sc_timestamp( m_timestamp.get_time_count(),
+                                                 m_timestamp.get_delta_count() 
+                                                     + 1 ) );
+                }
+                break;
+            case sc_event::TIMED: // timed notification
+                set_timestamp( ts );
+                break;
+            case sc_event::NONE:
+                assert( 0 ); // wrong type
+        }
+
 	simcontext()->push_runnable_thread(this);
+
+        // 12/22/2016 GL: update m_oldest_time in sc_simcontext if necessary
+        simcontext()->update_oldest_time( curr_time );
     }
 }
 

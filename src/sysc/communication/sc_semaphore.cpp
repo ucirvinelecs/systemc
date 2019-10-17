@@ -61,6 +61,7 @@ sc_semaphore::sc_semaphore( int init_value_ )
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() ),
   m_value( init_value_ )
 {
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
     if( m_value < 0 ) {
 	report_error( SC_ID_INVALID_SEMAPHORE_VALUE_ );
     }
@@ -71,6 +72,7 @@ sc_semaphore::sc_semaphore( const char* name_, int init_value_ )
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() ),
   m_value( init_value_ )
 {
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
     if( m_value < 0 ) {
 	report_error( SC_ID_INVALID_SEMAPHORE_VALUE_ );
     }
@@ -80,15 +82,20 @@ sc_semaphore::sc_semaphore( const char* name_, int init_value_ )
 // interface methods
 
 // lock (take) the semaphore, block if not available
+// 08/19/2015 GL: modified for the OoO simulation
 
 int
-sc_semaphore::wait()
+sc_semaphore::wait( int seg_id )
 {
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     while( in_use() ) {
-	sc_core::wait( m_free, sc_get_curr_simcontext() );
+	sc_core::wait( m_free, seg_id, sc_get_curr_simcontext() ); 
     }
     -- m_value;
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
@@ -97,11 +104,15 @@ sc_semaphore::wait()
 int
 sc_semaphore::trywait()
 {
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     if( in_use() ) {
 	return -1;
     }
     -- m_value;
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
@@ -110,9 +121,20 @@ sc_semaphore::trywait()
 int
 sc_semaphore::post()
 {
+    // 02/16/2015 GL: acquire the channel lock
+    //sc_get_current_process_b()->lock_and_push( &m_mutex );
+
+    // 02/24/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex );
+
     ++m_value;
     m_free.notify();
+
+    // 02/16/2015 GL: release the channel lock
+    //sc_get_current_process_b()->pop_and_unlock( &m_mutex );
+
     return 0;
+    // 02/24/2015 GL: return releases the lock
 }
 
 } // namespace sc_core

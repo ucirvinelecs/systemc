@@ -1,0 +1,57 @@
+/*! \mainpage OoO PDES for SystemC 2.3.1 (RISC v0.6.0)
+ *
+ * \section Introduction
+ *
+ * Derived from Accellera SystemC 2.3.1, this library enables
+ * Out-of-Order Parallel Discrete Event Simulation (OoO PDES)
+ * for SystemC model simulation on multi- and many-core architectures.
+ * This software provides the simulator component of the
+ * Recoding Infrastructure for SystemC (RISC).\n
+ * \n
+ * Use this all at your own risk! (Yes, it's a running gag!)
+ *
+ * \section Installation
+ *
+ * As an integral part of the RISC software, this OoO PDES library
+ * is installed together with the other RISC components.
+ * Please refer to the RISC installation instructions.
+ *
+ * \section Run-time Configuration
+ *
+ * \li Environment variable \c SYSC_PRINT_MODE_MESSAGE
+ *     can be defined to print the current simulation mode used.
+ * \li Environment variable \c SYSC_PAR_SIM_CPUS
+ *     can be set to the number of CPU cores available for parallel use.
+ * \li Environment variable \c SYSC_DISABLE_PREDICTION
+ *     can be defined to disable prediction optimization during simulation.
+ * \li Environment variable \c SYSC_SYNC_PAR_SIM
+ *     can be defined to force synchronous PDES (no out-of-order execution).
+ * \li Environment variable \c SYSC_VERBOSITY_FLAG_1
+ *     can be defined to print logging information about thread states.
+ * \li Environment variable \c SYSC_VERBOSITY_FLAG_2
+ *     can be defined to print logging information about event notifications.
+ * \li Environment variable \c SYSC_VERBOSITY_FLAG_3
+ *     can be defined to print logging information about waiting threads.
+ * \li Environment variable \c SYSC_VERBOSITY_FLAG_4
+ *     can be defined to print logging information about what threads an event triggers.
+ * \li Environment variable \c SYSC_VERBOSITY_FLAG
+ *     can be defined to enable all logging information listed above.
+ *
+ * \section Status
+ *
+ * \subsection Version
+ * Version 0.6.0.
+ *
+ * \subsection Limitations
+ * This is an academic proof-of-concept prototype implementation,
+ * not commercial-quality software.
+ *
+ * \subsection Authors
+ * Farah Arabi    (farabi@uci.edu) \n
+ * Zhongqi Cheng  (zhongqi@uci.edu) \n
+ * Rainer Doemer  (doemer@uci.edu) \n
+ * Guantao Liu    (guantaol@uci.edu) \n
+ * Daniel Mendoza (dmmendo1@uci.edu) \n
+ * Tim Schmidt    (schmidtt@uci.edu) \n
+ *
+ */

@@ -292,7 +292,7 @@ void sc_object::detach()
         sc_object_manager* object_manager = m_simc->get_object_manager();
         object_manager->remove_object(m_name);
 
-		// REMOVE OBJECT FROM PARENT'S LIST OF OBJECTS:
+        // REMOVE OBJECT FROM PARENT'S LIST OF OBJECTS:
 
         if ( m_parent )
 	    m_parent->remove_child_object( this );

@@ -16,7 +16,7 @@
   permissions and limitations under the License.
 
  *****************************************************************************/
-
+ 
 /*****************************************************************************
 
   sc_wait.cpp -- Wait() and related functions.
@@ -36,9 +36,19 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/utils/sc_utils_ids.h"
 
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
+// 06/12/2015 GL: modified for the OoO simulation
+
 // static sensitivity for SC_THREADs and SC_CTHREADs
+
+void message_test(){
+	printf("testing\n");
+}
 
 void warn_cthread_wait()
 {
@@ -54,13 +64,24 @@ void warn_cthread_wait()
 }
 
 void
-wait( sc_simcontext* simc )
+wait( int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: 
+
+        RCAST<sc_thread_handle>( cp )->wait(*(cp->m_sensitivity_events), seg_id);
+        break;
     case SC_CTHREAD_PROC_: {
-	RCAST<sc_cthread_handle>( cpi->process_handle )->wait_cycles();
+	RCAST<sc_cthread_handle>( cp )->wait_cycles( seg_id );
         break;
     }
     default:
@@ -68,25 +89,51 @@ wait( sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+    assert(seg_id != -1 && "in wait for nothing");
 }
 
+void aux_seg_bound(sc_simcontext* simc)
+{
+	
+    sc_process_b* cp = simc->get_curr_proc();
+	//printf("%s calling top wait\n",cp->name()); //ZC
+    switch( cp->proc_kind() ) {
+    case SC_THREAD_PROC_: {
+		RCAST<sc_thread_handle>( cp )->aux_boundary( );
+		break;
+    }
+    default:
+	SC_REPORT_ERROR( SC_ID_WAIT_NOT_ALLOWED_, "\n        "
+			 "in SC_METHODs use next_trigger() instead" );
+        break;
+    }
+}
 // dynamic sensitivity for SC_THREADs and SC_CTHREADs
 
 void
-wait( const sc_event& e, sc_simcontext* simc )
+wait( const sc_event& e, int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for event : " << e.name()
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+	//printf("%s calling top wait\n",cp->name()); //ZC
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( e );
+	RCAST<sc_thread_handle>( cp )->wait( e, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( e );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( e, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
@@ -94,15 +141,25 @@ wait( const sc_event& e, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+
+    assert(seg_id != -1 && "in wait for event");
 }
 
 void
-wait( const sc_event_or_list& el, sc_simcontext* simc )
+wait( const sc_event_or_list& el, int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for eventorlist"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( el );
+	RCAST<sc_thread_handle>( cp )->wait( el, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
@@ -110,9 +167,9 @@ wait( const sc_event_or_list& el, sc_simcontext* simc )
         SC_REPORT_INFO(SC_ID_IEEE_1666_DEPRECATION_,
 	    "wait(event_list) is deprecated for SC_CTHREAD, use SC_THREAD");
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( el );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( el, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
@@ -120,23 +177,33 @@ wait( const sc_event_or_list& el, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+
+    assert(seg_id != -1 && "in wait for eventorlist");
 }
 
 void
-wait( const sc_event_and_list& el, sc_simcontext* simc )
+wait( const sc_event_and_list& el, int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for eventandlist"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( el );
+	RCAST<sc_thread_handle>( cp )->wait( el, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( el );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( el, seg_id );
+	cthread_h->wait_cycles( seg_id );
 	break;
     }
     default:
@@ -144,23 +211,33 @@ wait( const sc_event_and_list& el, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+
+    assert(seg_id != -1 && "in wait for eventandlist");
 }
 
 void
-wait( const sc_time& t, sc_simcontext* simc )
+wait( const sc_time& t, int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for time"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t );
+	RCAST<sc_thread_handle>( cp )->wait( t, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( t );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( t, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
@@ -168,23 +245,34 @@ wait( const sc_time& t, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+
+    assert(seg_id != -1 && "in wait for time");
 }
 
 void
-wait( const sc_time& t, const sc_event& e, sc_simcontext* simc )
+wait( const sc_time& t, const sc_event& e, 
+      int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for timed event : " << e.name()
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+   sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, e );
+	RCAST<sc_thread_handle>( cp )->wait( t, e, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( t, e );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( t, e, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
@@ -192,47 +280,67 @@ wait( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+    assert(seg_id != -1 && "in wait for timed event");
 }
 
 void
-wait( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc )
+wait( const sc_time& t, const sc_event_or_list& el, 
+      int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for timed eventorlist"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, el );
+	RCAST<sc_thread_handle>( cp )->wait( t, el, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( t, el );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( t, el, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
 	SC_REPORT_ERROR( SC_ID_WAIT_NOT_ALLOWED_, "\n        "
 			 "in SC_METHODs use next_trigger() instead" );
         break;
-    }
+    } 
+    assert(seg_id != -1 && "in wait for timed eventorlist");
 }
 
 void
-wait( const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc )
+wait( const sc_time& t, const sc_event_and_list& el, 
+      int seg_id, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    if(seg_id == -1 && sc_core::verbosity_flag_6)
+    {
+        std::cout << "Warning: wait for timed eventandlist"
+            << ", by thread : " << simc->get_curr_proc()->name()
+            << ", with timestamp : " << simc->get_curr_proc()->get_timestamp().to_string()
+            << ", and segment id : -1"
+            << std::endl;
+    }
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, el );
+	RCAST<sc_thread_handle>( cp )->wait( t, el, seg_id );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
-	cthread_h->wait( t, el );
-	cthread_h->wait_cycles();
+            RCAST<sc_cthread_handle>( cp );
+	cthread_h->wait( t, el, seg_id );
+	cthread_h->wait_cycles( seg_id + 1 );
 	break;
     }
     default:
@@ -240,6 +348,7 @@ wait( const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc )
 			 "in SC_METHODs use next_trigger() instead" );
         break;
     }
+    assert(seg_id != -1 && "in wait for timed eventandlist");
 }
 
 
@@ -248,9 +357,9 @@ wait( const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc )
 void
 next_trigger( sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->clear_trigger();
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->clear_trigger( );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -263,9 +372,9 @@ next_trigger( sc_simcontext* simc )
 void
 next_trigger( const sc_event& e, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( e );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( e );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -275,9 +384,9 @@ next_trigger( const sc_event& e, sc_simcontext* simc )
 void
 next_trigger( const sc_event_or_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -287,9 +396,9 @@ next_trigger( const sc_event_or_list& el, sc_simcontext* simc )
 void
 next_trigger( const sc_event_and_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -299,9 +408,9 @@ next_trigger( const sc_event_and_list& el, sc_simcontext* simc )
 void
 next_trigger( const sc_time& t, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( t );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -309,11 +418,12 @@ next_trigger( const sc_time& t, sc_simcontext* simc )
 }
 
 void
-next_trigger( const sc_time& t, const sc_event& e, sc_simcontext* simc )
+next_trigger( const sc_time& t, const sc_event& e,
+              sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, e );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( t, e );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -321,11 +431,12 @@ next_trigger( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 }
 
 void
-next_trigger( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc)
+next_trigger( const sc_time& t, const sc_event_or_list& el,
+              sc_simcontext* simc)
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( t, el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -333,11 +444,12 @@ next_trigger( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc)
 }
 
 void
-next_trigger(const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc)
+next_trigger(const sc_time& t, const sc_event_and_list& el,
+             sc_simcontext* simc)
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_THREAD_PROC_ && cp->invoker ) {
+	RCAST<sc_method_handle>( cp->cur_invoker_method_handle )->next_trigger( t, el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -358,8 +470,8 @@ timed_out( sc_simcontext* simc )
 	    "timed_out() function is deprecated" );
     }
 
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    return cpi->process_handle->timed_out();
+    sc_process_b* cp = simc->get_curr_proc();
+    return cp->timed_out();
 }
 
 
@@ -369,8 +481,7 @@ timed_out( sc_simcontext* simc )
 void
 sc_set_location( const char* file, int lineno, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    sc_process_b* handle = cpi->process_handle;
+    sc_process_b* handle = simc->get_curr_proc();
     handle->file = file;
     handle->lineno = lineno;
 }

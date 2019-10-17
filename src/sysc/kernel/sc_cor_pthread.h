@@ -42,17 +42,17 @@ namespace sc_core {
 class sc_cor_pkg_pthread;
 typedef sc_cor_pkg_pthread sc_cor_pkg_t;
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_cor_pthread
-//
-//  Coroutine class implemented with Posix Threads.
-//
-// Notes:
-//   (1) The thread creation mutex and the creation condition are used to
-//       suspend the thread creating another one until the created thread
-//       reaches its invoke_module_method. This allows us to get control of
-//       thread scheduling away from the pthread package.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_cor_pthread
+ *
+ *  \brief Coroutine class implemented with Posix Threads.
+ *
+ * Notes:
+ *   (1) The thread creation mutex and the creation condition are used to
+ *       suspend the thread creating another one until the created thread
+ *       reaches its invoke_module_method. This allows us to get control of
+ *       thread scheduling away from the pthread package.
+ *****************************************************************************/
 
 class sc_cor_pthread : public sc_cor
 {
@@ -64,19 +64,44 @@ class sc_cor_pthread : public sc_cor
     // destructor
     virtual ~sc_cor_pthread();
 
-	// module method invocator (starts thread execution)
-	static void* invoke_module_method( void* context_p );
+    // module method invocator (starts thread execution)
+    static void* invoke_module_method( void* context_p );
+
+    /** 
+     *  \brief Increment the lock counter.
+     */
+    virtual void increment_counter();
+
+    /** 
+     *  \brief Decrement the lock counter.
+     */
+    virtual void decrement_counter();
+
+    /** 
+     *  \brief Get the value of the lock counter.
+     */
+    virtual unsigned int get_counter();
 
   public:
-	static sc_cor_pthread* m_active_cor_p;	   // Active coroutine.
+    // 06/10/2015 GL: obsolete in parallel simulation
+    static sc_cor_pthread* m_active_cor_p;	   // Active coroutine. 
 
   public:
-	sc_cor_fn*          m_cor_fn;		// Core function.
-	void*               m_cor_fn_arg;	// Core function argument.
-	pthread_mutex_t     m_mutex;        // Mutex to suspend thread on.
+    sc_cor_fn*          m_cor_fn;	// Core function.
+    void*               m_cor_fn_arg;	// Core function argument.
+
+    // 10/21/2014 GL: now we use central mutex to suspend thread
+    pthread_mutex_t     m_mutex;        // Mutex to suspend thread on. 
+
     sc_cor_pkg_pthread* m_pkg_p;        // the creating coroutine package
-	pthread_cond_t      m_pt_condition; // Condition waiting for.
-	pthread_t           m_thread;       // Our pthread storage.
+    pthread_cond_t      m_pt_condition; // Condition waiting for.
+    pthread_t           m_thread;       // Our pthread storage.
+
+    /**
+     *  \brief The counter tracking the lock attempts of the kernel lock.
+     */
+    // 05/27/2015 GL.
+    unsigned int        m_counter;
 
 private:
 
@@ -86,11 +111,11 @@ private:
 };
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_cor_pkg_pthread
-//
-//  Coroutine package class implemented with Posix Threads.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_cor_pkg_pthread
+ *
+ *  \brief Coroutine package class implemented with Posix Threads.
+ *****************************************************************************/
 
 class sc_cor_pkg_pthread
 : public sc_cor_pkg
@@ -109,11 +134,70 @@ public:
     // yield to the next coroutine
     virtual void yield( sc_cor* next_cor );
 
+    /** 
+     *  \brief Suspend the current coroutine.
+     */
+    virtual void wait( sc_cor* cur_cor );
+
+    /** 
+     *  \brief Resume the next coroutine.
+     */
+    virtual void go( sc_cor* next_cor );
+
     // abort the current coroutine (and resume the next coroutine)
     virtual void abort( sc_cor* next_cor );
 
+    // join another coroutine
+    virtual void join( sc_cor* join_cor );
+
     // get the main coroutine
     virtual sc_cor* get_main();
+
+    /** 
+     *  \brief Acquire the kernel lock.
+     */
+    virtual void acquire_sched_mutex();
+
+    /** 
+     *  \brief Release the kernel lock.
+     */
+    virtual void release_sched_mutex();
+
+    /** 
+     *  \brief Set the thread specific data value.
+     */
+    virtual void set_thread_specific( void* process_b );
+
+    /** 
+     *  \brief Get the thread specific data value.
+     */
+    virtual void* get_thread_specific();
+
+    /** 
+     *  \brief Check whether the kernel lock is acquired.
+     */
+    virtual bool is_locked();
+
+    /** 
+     *  \brief Check whether the kernel lock is released.
+     */
+    virtual bool is_unlocked();
+
+    /** 
+     *  \brief Check whether the kernel lock is owned by this coroutine.
+     */
+    virtual bool is_lock_owner();
+
+    /** 
+     *  \brief Check whether the kernel lock is not owned by this coroutine.
+     */
+    virtual bool is_not_owner();
+
+    /** 
+     *  \brief Check whether the kernel lock is acquired and owned by this 
+     *         coroutine.
+     */
+    virtual bool is_locked_and_owner();
 
 private:
 

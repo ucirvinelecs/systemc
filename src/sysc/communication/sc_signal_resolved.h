@@ -40,11 +40,11 @@ class sc_process_b;
 extern const sc_dt::sc_logic_value_t sc_logic_resolution_tbl[4][4];
 
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_signal_resolved
-//
-//  The resolved signal class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_signal_resolved
+ *
+ *  \brief The resolved signal class.
+ *****************************************************************************/
 
 class sc_signal_resolved
 : public sc_signal<sc_dt::sc_logic,SC_MANY_WRITERS>

@@ -37,7 +37,10 @@
 #include "sysc/kernel/sc_simcontext_int.h"
 #include "sysc/kernel/sc_object_manager.h"
 #include "sysc/utils/sc_utils_ids.h"
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -45,6 +48,72 @@ namespace sc_core {
 //
 //  The event class.
 // ----------------------------------------------------------------------------
+
+//newly added ZC 2019.Mar.4. remember nio
+sc_timestamp
+sc_event::get_earliest_time_after_certain_time(sc_timestamp t0){
+
+    //for example, t0 is (10,1)
+    //then return the smallest t that is >= (10,1)
+    /*
+    sc_timestamp t(-1,-1); // infinite time stamp
+    for(std::vector<sc_timestamp>::iterator it = m_notify_timestamp_list.begin();
+        it != m_notify_timestamp_list.end();
+        it ++)
+    {
+        if(*it >= t0) 
+            t = ((*it) < t) ? (*it) : t;
+    }
+
+    return t;
+    */
+
+    typedef std::set<sc_timestamp>::iterator SIT;
+    SIT it = m_notify_timestamp_set.lower_bound(t0);
+    if(it == m_notify_timestamp_set.end()) return sc_timestamp(-1,-1);
+    else return *it;
+
+}
+
+
+//newly added ZC 2018.8.4
+sc_timestamp
+sc_event::get_earliest_notification_time(){
+    /*
+    sc_timestamp t(-1,-1); // infinite time stamp
+    for(std::vector<sc_timestamp>::iterator it = m_notify_timestamp_list.begin();
+        it != m_notify_timestamp_list.end();
+        it ++)
+    {
+        t = ((*it) < t) ? (*it) : t;
+    }
+
+    return t;
+    */
+    if(m_notify_timestamp_set.empty()) return sc_timestamp(-1,-1);
+    else return *(m_notify_timestamp_set.begin());
+
+}
+
+//newly added ZC 2018.8.4
+void
+sc_event::erase_notification_time(sc_timestamp t){
+    /*
+    for(std::vector<sc_timestamp>::iterator it = m_notify_timestamp_list.begin();
+        it != m_notify_timestamp_list.end();
+        )
+    {
+        if((*it) == t){
+            it = m_notify_timestamp_list.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    */
+    if(m_notify_timestamp_set.count(t)!=0) m_notify_timestamp_set.erase(t);
+
+}
+
 
 const char*
 sc_event::basename() const
@@ -66,7 +135,7 @@ sc_event::cancel()
     }
     case TIMED: {
         // remove this event from the timed events set
-        sc_assert( m_timed != 0 );
+        //sc_assert( m_timed != 0 );
         m_timed->m_event = 0;
         m_timed = 0;
         m_notify_type = NONE;
@@ -78,9 +147,47 @@ sc_event::cancel()
 }
 
 
+//------------------------------------------------------------------------------
+//"sc_event::notify"
+//
+// Notes:
+//   (1) The correct order to lock and unlock channel locks (to avoid deadlocks
+//       and races) for SystemC functions without context switch:
+//
+//       outer_channel.lock_and_push
+//           [outer channel work]
+//           inner_channel.lock_and_push
+//               [inner channel work]
+//   +---------------------------------NOTIFY---------------------------------+
+//   |   +------------------------Simulation Kernel------------------------+  |
+//   |   |       acquire kernel lock                                       |  |
+//   |   |           [kernel work]                                         |  |
+//   |   |       release kernel lock                                       |  |
+//   |   +-----------------------------------------------------------------+  |
+//   +------------------------------------------------------------------------+
+//               [inner channel work]
+//           inner_channel.pop_and_unlock
+//           [outer channel work]
+//       outer_channel.pop_and_unlock
+//
+//   (2) For more information, please refer to sc_thread_process.h: 272
+//
+// (02/20/2015 GL)
+//------------------------------------------------------------------------------
 void
 sc_event::notify()
 {
+    // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+    sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    // 08/13/2015 GL TODO: no supports to immediate notification in the OoO 
+    //                     simulation
+    assert( 0 );
+
     // immediate notification
     if(
         // coming from sc_prim_channel::update
@@ -93,18 +200,53 @@ sc_event::notify()
     {
         SC_REPORT_ERROR( SC_ID_IMMEDIATE_NOTIFICATION_, "" );
         return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     cancel();
     trigger();
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 void
 sc_event::notify( const sc_time& t )
 {
-    if( m_notify_type == DELTA ) {
-        return;
+    // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+    sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    m_simc->event_notification_update = true; //DM 06/23/2019 events can be notified while simulation is paused
+
+    // 08/13/2015 GL: to get the local time stamp of this coroutine
+    sc_process_b* m_proc = m_simc->get_curr_proc();
+    if(m_proc != NULL && m_proc->invoker) { //DM 05/21/2019 special functionality for sc_method invokers
+    	m_proc = m_proc->cur_invoker_method_handle;
     }
+    /*if( m_notify_type == DELTA ) {
+        return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }*/
+	
+	if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR)){
+		if(m_proc != NULL) { //DM ADDING FOR SIMICS
+		printf("sc_event.cpp 161 event %s notified by %s on time ",this->name(),m_proc->name());
+		sc_timestamp ts_tmp=m_proc->get_timestamp();
+		sc_time t_tmp=ts_tmp.get_time_count();
+		t_tmp.print();
+		printf(",%lld\n",ts_tmp.get_delta_count());  
+		}
+		else {
+			printf("sc_event.cpp 161 event %s notified by non-SystemC thread on time ",this->name());
+			sc_time t_tmp = m_simc->time_stamp();
+			t_tmp.print();
+			printf("\n");
+		}
+	} 
+	
     if( t == SC_ZERO_TIME ) {
+		//printf("hehre~~~@@@@@@@@@@@@@@@@@@@@@@@@@@@~~~\n");
 #       if SC_HAS_PHASE_CALLBACKS_
             if( SC_UNLIKELY_( m_simc->get_status()
                               & (SC_END_OF_UPDATE|SC_BEFORE_TIMESTEP) ) )
@@ -116,6 +258,8 @@ sc_event::notify( const sc_time& t )
                 SC_REPORT_WARNING( SC_ID_PHASE_CALLBACK_FORBIDDEN_
                                  , msg.str().c_str() );
                 return;
+                // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel
+                //                lock
             }
 #       endif
         if( m_notify_type == TIMED ) {
@@ -124,10 +268,46 @@ sc_event::notify( const sc_time& t )
             m_timed->m_event = 0;
             m_timed = 0;
         }
+
+        // 08/13/2015 GL: set the time stamp of the event notification
+        //DM MODIFYING FOR SIMICS
+	//set_notify_timestamp( m_proc->get_timestamp() );
+	//	push_notify_timestamp_list(m_proc->get_timestamp());
+	if(m_proc != NULL) { //DM ADDING TO CHECK IF THE CURRENT PROC IS A SYSTEMC PROC
+
+		set_notify_timestamp( m_proc->get_timestamp() );
+		push_notify_timestamp_list(m_proc->get_timestamp());
+	} else {
+		//DM MAKING ASSUMPTION THAT SIMULATION IS NOT RUNNNING AND THE THREAD WAITING ON 
+		//THE EVENT BEING NOTIFIED IS EXCLUSIVELY NOTIFIED BY A NON-SYSTEMC THREAD
+		set_notify_timestamp(m_simc->m_simulation_duration);
+		push_notify_timestamp_list(m_simc->m_simulation_duration);
+        
+	}
+
+
+
+		int flag_tmp=1;
         // add this event to the delta events set
-        m_delta_event_index = m_simc->add_delta_event( this );
+		
+		//ZC check if the event is already in the event list
+		for ( std::vector<sc_event*>::iterator it = m_simc->m_delta_events.begin();  it != m_simc->m_delta_events.end(); it++ )
+		{
+			if((*it)==this) 
+			{
+				if(getenv(_SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR))
+					printf("event %s is already in delta event list, simply update its time stamp\n",this->name());
+				flag_tmp=0; 
+				break;
+			}
+		}
+        if(flag_tmp) {
+			m_delta_event_index = m_simc->add_delta_event( this );
+		}
+		
         m_notify_type = DELTA;
         return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 #   if SC_HAS_PHASE_CALLBACKS_
         if( SC_UNLIKELY_( m_simc->get_status()
@@ -140,22 +320,39 @@ sc_event::notify( const sc_time& t )
             SC_REPORT_WARNING( SC_ID_PHASE_CALLBACK_FORBIDDEN_
                              , msg.str().c_str() );
             return;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
         }
 #   endif
     if( m_notify_type == TIMED ) {
         sc_assert( m_timed != 0 );
-        if( m_timed->m_notify_time <= m_simc->time_stamp() + t ) {
+        //if( m_timed->m_notify_time <= m_simc->time_stamp() + t ) {
+        // 08/13/2015 GL: get the local time stamp of this coroutine instead of
+        //                the global time stamp
+        if( m_timed->m_notify_time <= m_proc->get_timestamp().get_time_count()
+                                      + t ) {
             return;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
         }
         // remove this event from the timed events set
         m_timed->m_event = 0;
         m_timed = 0;
     }
     // add this event to the timed events set
-    sc_event_timed* et = new sc_event_timed( this, m_simc->time_stamp() + t );
+    //sc_event_timed* et = new sc_event_timed( this, m_simc->time_stamp() + t );
+    // 08/13/2015 GL: get the local time stamp of this coroutine instead of 
+    //                the global time stamp
+    sc_event_timed* et = new sc_event_timed( this, m_proc->get_timestamp().
+                                             get_time_count() + t );
+
     m_simc->add_timed_event( et );
     m_timed = et;
     m_notify_type = TIMED;
+
+    // 08/14/2015 GL: also set the time stamp of this event notification
+    // 08/17/2015 GL: delta cycle count starts from 0 in each timed cycle
+    set_notify_timestamp( sc_timestamp( m_proc->get_timestamp().
+                                        get_time_count() + t, 0 ) );
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 static void sc_warn_notify_delayed()
@@ -172,34 +369,72 @@ static void sc_warn_notify_delayed()
 void
 sc_event::notify_delayed()
 {
+    // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+    sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    // 08/13/2015 GL: to get the local time stamp of this coroutine
+    sc_process_b* m_proc = m_simc->get_curr_proc();
+
     sc_warn_notify_delayed();
     if( m_notify_type != NONE ) {
         SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
     }
+
+    // 08/13/2015 GL: set the time stamp of the event notification
+    set_notify_timestamp( m_proc->get_timestamp() );
+
     // add this event to the delta events set
     m_delta_event_index = m_simc->add_delta_event( this );
     m_notify_type = DELTA;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 void
 sc_event::notify_delayed( const sc_time& t )
 {
+    // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+    sc_kernel_lock lock;
+
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    // 08/13/2015 GL: to get the local time stamp of this coroutine
+    sc_process_b* m_proc = m_simc->get_curr_proc();
+
     sc_warn_notify_delayed();
     if( m_notify_type != NONE ) {
         SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
     }
     if( t == SC_ZERO_TIME ) {
+
+        // 08/13/2015 GL: set the time stamp of the event notification
+        set_notify_timestamp( m_proc->get_timestamp() );
+
         // add this event to the delta events set
         m_delta_event_index = m_simc->add_delta_event( this );
         m_notify_type = DELTA;
     } else {
         // add this event to the timed events set
-        sc_event_timed* et = new sc_event_timed( this,
-                                                 m_simc->time_stamp() + t );
+        //sc_event_timed* et = new sc_event_timed( this,
+        //                                         m_simc->time_stamp() + t );
+        // 08/13/2015 GL: get the local time stamp of this coroutine instead 
+        //                of the global time stamp
+        sc_event_timed* et = new sc_event_timed( this, m_proc->get_timestamp().
+                                                 get_time_count() + t );
         m_simc->add_timed_event( et );
         m_timed = et;
         m_notify_type = TIMED;
+
+        // 08/14/2015 GL: also set the time stamp of this event notification
+        set_notify_timestamp( sc_timestamp( m_proc->get_timestamp().
+                                            get_time_count() + t, 0 ) );
     }
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 // +----------------------------------------------------------------------------
@@ -267,17 +502,14 @@ sc_event::reset()
 // | Arguments:
 // |     name = name of the event.
 // +----------------------------------------------------------------------------
-sc_event::sc_event( const char* name ) :
+sc_event::sc_event( const char* name ) :	
     m_name(),
     m_parent_p(NULL),
-    m_simc( sc_get_curr_simcontext() ),
-    m_notify_type( NONE ),
-    m_delta_event_index( -1 ),
+    m_simc( sc_get_curr_simcontext() ),	       
     m_timed( 0 ),
-    m_methods_static(),
-    m_methods_dynamic(),
-    m_threads_static(),
-    m_threads_dynamic()
+    m_notify_timestamp(),
+	m_notify_type( NONE ), 
+	m_delta_event_index( -1 )
 {
     // Skip simulator's internally defined events.
 
@@ -295,13 +527,10 @@ sc_event::sc_event() :
     m_name(),
     m_parent_p(NULL),
     m_simc( sc_get_curr_simcontext() ),
-    m_notify_type( NONE ),
-    m_delta_event_index( -1 ),
     m_timed( 0 ),
-    m_methods_static(),
-    m_methods_dynamic(),
-    m_threads_static(),
-    m_threads_dynamic()
+    m_notify_timestamp(),
+	m_notify_type( NONE ), 
+	m_delta_event_index( -1 )
 {
 
     register_event( NULL );
@@ -331,9 +560,17 @@ sc_event::~sc_event()
 // | for execution all the processes that are schedulable and waiting on this 
 // | event.
 // +----------------------------------------------------------------------------
-void
+bool
 sc_event::trigger()
-{
+{ 
+    // now this function is only used for timed_event
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization 
+    //    phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel
+    //    lock is acquired
+
     int       last_i; // index of last element in vector now accessing.
     int       size;   // size of vector now accessing.
 
@@ -346,11 +583,16 @@ sc_event::trigger()
         int i = size - 1;
         do {
             sc_method_handle method_h = l_methods_static[i];
-            method_h->trigger_static();
+            // 08/14/2015 GL: pass in this event to update the local time stamp
+            //method_h->trigger_static(); 
+			
+            method_h->trigger_static( this );
         } while( -- i >= 0 );
     }
 
     // trigger the dynamic sensitive methods
+    // trigger the dynamic sensitive threads
+    bool any_thread_wakes_up = false;
 
 
     if( ( size = m_methods_dynamic.size() ) != 0 ) 
@@ -360,8 +602,10 @@ sc_event::trigger()
 	for ( int i = 0; i <= last_i; i++ )
 	{
 	    sc_method_handle method_h = l_methods_dynamic[i];
-	    if ( method_h->trigger_dynamic( this ) )
+	    bool tmp = false; //DM 05/24/2019
+	    if ( method_h->trigger_dynamic( this ,tmp) )
 	    {
+		if(tmp) any_thread_wakes_up = true;
 		l_methods_dynamic[i] = l_methods_dynamic[last_i];
 		last_i--;
 		i--;
@@ -379,38 +623,54 @@ sc_event::trigger()
         int i = size - 1;
         do {
             sc_thread_handle thread_h = l_threads_static[i];
-            thread_h->trigger_static();
+            // 08/14/2015 GL: pass in this event to update the local time stamp
+            //thread_h->trigger_static();
+            thread_h->trigger_static( this );
         } while( -- i >= 0 );
     }
 
-    // trigger the dynamic sensitive threads
-
     if( ( size = m_threads_dynamic.size() ) != 0 ) 
     {
-	last_i = size - 1;
-	sc_thread_handle* l_threads_dynamic = &m_threads_dynamic[0];
-	for ( int i = 0; i <= last_i; i++ )
-	{
-	    sc_thread_handle thread_h = l_threads_dynamic[i];
-	    if ( thread_h->trigger_dynamic( this ) )
-	    {
-		l_threads_dynamic[i] = l_threads_dynamic[last_i];
-		i--;
-		last_i--;
-	    }
-	}
-        m_threads_dynamic.resize(last_i+1);
+	//std::cout << "DM found NON ZERO dynamic thread list!\n";
+    	last_i = size - 1;
+    	sc_thread_handle* l_threads_dynamic = &m_threads_dynamic[0];
+    	for ( int i = 0; i <= last_i; i++ )
+    	{
+    	    sc_thread_handle thread_h = l_threads_dynamic[i];
+            //pass any_thread_wakes_up by reference
+            bool tmp = false;
+    	    if ( thread_h->trigger_dynamic( this , tmp) )
+    	    {
+                if(tmp) any_thread_wakes_up = true;
+                //std::cout << "can_wake_up = " << tmp << std::endl;
+        		//l_threads_dynamic[i] = l_threads_dynamic[last_i];
+        		i--;
+        		last_i--;
+    	    }
+    	}
+        //m_threads_dynamic.resize(last_i+1);
     }
 
-    m_notify_type = NONE;
-    m_delta_event_index = -1;
-    m_timed = 0;
+    if(this->m_notify_type==TIMED){
+	    m_notify_type = NONE;
+	    m_delta_event_index = -1;
+	    m_timed = 0;
+	}
+	if(!any_thread_wakes_up) {
+		//std::cout << "Did NOT find any thread that wakes up!\n";
+	}
+    return any_thread_wakes_up;
 }
 
 
 bool
 sc_event::remove_static( sc_method_handle method_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_methods_static.size() ) != 0 ) {
       sc_method_handle* l_methods_static = &m_methods_static[0];
@@ -428,6 +688,11 @@ sc_event::remove_static( sc_method_handle method_h_ ) const
 bool
 sc_event::remove_static( sc_thread_handle thread_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_threads_static.size() ) != 0 ) {
       sc_thread_handle* l_threads_static = &m_threads_static[0];
@@ -445,6 +710,11 @@ sc_event::remove_static( sc_thread_handle thread_h_ ) const
 bool
 sc_event::remove_dynamic( sc_method_handle method_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_methods_dynamic.size() ) != 0 ) {
       sc_method_handle* l_methods_dynamic = &m_methods_dynamic[0];
@@ -462,6 +732,11 @@ sc_event::remove_dynamic( sc_method_handle method_h_ ) const
 bool
 sc_event::remove_dynamic( sc_thread_handle thread_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+//std::cout << "Removing thread for event " << this->name() << "\n";
     int size;
     if ( ( size= m_threads_dynamic.size() ) != 0 ) {
       sc_thread_handle* l_threads_dynamic = &m_threads_dynamic[0];
@@ -476,7 +751,25 @@ sc_event::remove_dynamic( sc_thread_handle thread_h_ ) const
     return false;
 }
 
+// 08/12/2015 GL: set and get the notification time stamp
+const sc_timestamp&
+sc_event::get_notify_timestamp() const
+{
+    return m_notify_timestamp;
+}
 
+void
+sc_event::set_notify_timestamp( const sc_timestamp& ts )
+{
+    m_notify_timestamp = ts;
+}
+
+void
+sc_event::push_notify_timestamp_list( const sc_timestamp& ts )
+{
+//    m_notify_timestamp_list.push_back( ts );
+    m_notify_timestamp_set.insert( ts );
+}
 // ----------------------------------------------------------------------------
 //  CLASS : sc_event_timed
 //
@@ -525,12 +818,35 @@ sc_event_timed::deallocate( void* p )
 }
 
 
+std::string sc_event_list::to_string() const
+{
+    std::string res;
+    if(m_and_list) res += "event_and_list: ";
+    else res += "event_or_list: ";
+
+    bool flag = false;
+    for(std::vector<const sc_event*>::const_iterator
+        it = m_events.begin();
+        it != m_events.end();
+        ++it)
+    {
+        if(flag)
+            res += "  +  " + std::string((*it)->name());
+        else
+        {
+            flag = true;
+            res += std::string((*it)->name());
+        }
+    }
+
+    return res;
+}
 // ----------------------------------------------------------------------------
 //  CLASS : sc_event_list
 //
 //  Base class for lists of events.
 // ----------------------------------------------------------------------------
-
+ 
 void
 sc_event_list::push_back( const sc_event& e )
 {
@@ -593,6 +909,35 @@ sc_event_list::remove_dynamic( sc_method_handle method_h,
           if( e != e_not ) {
               e->remove_dynamic( method_h );
           }
+      }
+  }
+}
+
+
+void
+sc_event_list::remove_all_dynamic( sc_thread_handle thread_h) const
+{
+    if ( m_events.size() != 0 ) {
+      const sc_event* const* l_events = &m_events[0];
+      for( int i = m_events.size() - 1; i >= 0; -- i ) {
+          const sc_event* e = l_events[i];
+          
+              e->remove_dynamic( thread_h );
+          
+      }
+  }
+}
+
+void
+sc_event_list::remove_all_dynamic( sc_method_handle thread_h) const
+{
+    if ( m_events.size() != 0 ) {
+      const sc_event* const* l_events = &m_events[0];
+      for( int i = m_events.size() - 1; i >= 0; -- i ) {
+          const sc_event* e = l_events[i];
+          
+              e->remove_dynamic( thread_h );
+          
       }
   }
 }

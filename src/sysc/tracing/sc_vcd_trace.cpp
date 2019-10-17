@@ -1756,8 +1756,10 @@ vcd_trace_file::do_initialize()
     std::fputs("$enddefinitions  $end\n\n", fp);
 
     // double inittime = sc_simulation_time();
-    double inittime = sc_time_stamp().to_seconds();
-    
+    //DM 4/10/2018
+    //double inittime = sc_time_stamp().to_seconds();
+    double inittime = get_current_trace_time().to_seconds();
+
     std::sprintf(buf,
             "All initial values are dumped below at time "
             "%g sec = %g timescale units.",
@@ -1915,11 +1917,13 @@ vcd_trace_file::cycle(bool this_is_a_delta_cycle)
 
     // Check for initialization
     if( initialize() ) {
-        return;
+	return;
     };
 
+    //DM 4/10/2018
+    //double now_units = sc_time_stamp().to_seconds() / timescale_unit;
+    double now_units = get_current_trace_time().to_seconds() / timescale_unit;
 
-    double now_units = sc_time_stamp().to_seconds() / timescale_unit;
     unsigned now_units_high, now_units_low;
     double_to_special_int64(now_units, &now_units_high, &now_units_low );
 

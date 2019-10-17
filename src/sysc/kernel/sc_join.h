@@ -58,8 +58,20 @@ class sc_join : public sc_process_monitor {
     void add_process( sc_process_handle process_h );
     inline int process_count();
     virtual void signal(sc_thread_handle thread_p, int type);
-    inline void wait();
-    inline void wait_clocked();
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    inline void wait( int seg_id );
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */
+    // 08/19/2015 GL: modified for the OoO simulation
+    inline void wait_clocked( int seg_id );
 
   protected: 
     void add_process( sc_process_b* process_p );
@@ -71,15 +83,18 @@ class sc_join : public sc_process_monitor {
 
 int sc_join::process_count() { return m_threads_n; }
 
+// 08/19/2015 GL: modified for the OoO simulation
+
 // suspend a thread that does not have a sensitivity list:
 
-inline void sc_join::wait() { ::sc_core::wait(m_join_event); }
+inline void sc_join::wait( int seg_id )
+{ ::sc_core::wait(m_join_event, seg_id); }
 
 // suspend a thread that has a sensitivity list:
 
-inline void sc_join::wait_clocked()
+inline void sc_join::wait_clocked( int seg_id )
 {
-    do { ::sc_core::wait(); } while (m_threads_n != 0);
+    do { ::sc_core::wait( seg_id ); } while (m_threads_n != 0);
 }
 
 #define SC_CJOIN \

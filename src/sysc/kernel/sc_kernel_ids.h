@@ -71,8 +71,12 @@ SC_DEFINE_MESSAGE(SC_ID_END_MODULE_NOT_CALLED_       , 509,
 	"your module constructor?" )
 SC_DEFINE_MESSAGE(SC_ID_HIER_NAME_INCORRECT_         , 510,
 	"hierarchical name as shown may be incorrect due to previous errors" )
+// 04/03/2015 GL: the original assumption is obsolete, now we can set the stack size of SC_METHODs
+// 04/03/2015 GL: modify message number 511 as follows
+//SC_DEFINE_MESSAGE(SC_ID_SET_STACK_SIZE_              , 511,
+//	"set_stack_size() is only allowed for SC_THREADs and SC_CTHREADs" )
 SC_DEFINE_MESSAGE(SC_ID_SET_STACK_SIZE_              , 511,
-	"set_stack_size() is only allowed for SC_THREADs and SC_CTHREADs" )
+	"set_stack_size() is only allowed for SC_METHODs, SC_THREADs and SC_CTHREADs" )
 SC_DEFINE_MESSAGE(SC_ID_SC_MODULE_NAME_USE_          , 512,
 	"incorrect use of sc_module_name" )
 SC_DEFINE_MESSAGE(SC_ID_SC_MODULE_NAME_REQUIRED_     , 513,

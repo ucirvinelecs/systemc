@@ -34,13 +34,16 @@
 #include "sysc/kernel/sc_object.h"
 #include "sysc/communication/sc_semaphore_if.h"
 
+// 02/24/2015 GL: to include the struct chnl_scoped_lock
+#include "sysc/communication/sc_prim_channel.h"
+
 namespace sc_core {
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_semaphore
-//
-//  The sc_semaphore primitive channel class.
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_semaphore
+ *
+ *  \brief The sc_semaphore primitive channel class.
+ *****************************************************************************/
 
 class sc_semaphore
 : public sc_semaphore_if,
@@ -57,7 +60,13 @@ public:
     // interface methods
 
     // lock (take) the semaphore, block if not available
-    virtual int wait();
+
+    /**
+     *  \brief A new parameter segment ID is added for the out-of-order 
+     *         simulation.
+     */ 
+    // 08/19/2015 GL: modified for the OoO simulation
+    virtual int wait( int );
 
     // lock (take) the semaphore, return -1 if not available
     virtual int trywait();
@@ -67,7 +76,13 @@ public:
 
     // get the value of the semaphore
     virtual int get_value() const
-	{ return m_value; }
+    {
+        int value;
+        CHNL_MTX_LOCK_( m_mutex ); // 02/11/2015 GL: acquire the channel lock
+        value = m_value;
+        CHNL_MTX_UNLOCK_( m_mutex ); // 02/11/2015 GL: release the channel lock
+        return value;
+    }
 
     virtual const char* kind() const
         { return "sc_semaphore"; }
@@ -87,6 +102,12 @@ protected:
 
     sc_event m_free;        // event to block on when m_value is negative
     int      m_value;       // current value of the semaphore
+
+    /**
+     *  \brief A lock to protect concurrent communication through sc_semaphore
+     */
+    // 02/10/2015 GL.
+    mutable CHNL_MTX_TYPE_ m_mutex;
 
 private:
 

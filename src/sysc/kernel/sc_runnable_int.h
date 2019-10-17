@@ -36,7 +36,10 @@
 #include "sysc/kernel/sc_runnable.h"
 #include "sysc/kernel/sc_method_process.h"
 #include "sysc/kernel/sc_thread_process.h"
-
+// 02/22/2016 ZC: to enable verbose display or not
+#ifndef _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR
+#define _SYSC_PRINT_VERBOSE_MESSAGE_ENV_VAR "SYSC_PRINT_VERBOSE_MESSAGE"
+#endif
 // DEBUGGING MACROS:
 //
 // DEBUG_MSG(NAME,P,MSG)
@@ -191,6 +194,10 @@ inline bool sc_runnable::is_initialized() const
 //------------------------------------------------------------------------------
 inline void sc_runnable::push_back_method( sc_method_handle method_h )
 {
+	//ZC 11:01 2017/3/13
+	method_h->m_process_state=1;
+	sc_get_curr_simcontext()->remove_from_wait_queue((sc_process_b*)method_h);
+
     // assert( method_h->next_runnable() == 0 ); // Can't queue twice.
     DEBUG_MSG(DEBUG_NAME,method_h,"pushing back method");
     method_h->set_next_runnable(SC_NO_METHODS);
@@ -208,6 +215,10 @@ inline void sc_runnable::push_back_method( sc_method_handle method_h )
 //------------------------------------------------------------------------------
 inline void sc_runnable::push_back_thread( sc_thread_handle thread_h )
 {
+	//ZC 11:01 2017/3/13
+	thread_h->m_process_state=1;
+	sc_get_curr_simcontext()->remove_from_wait_queue((sc_process_b*)thread_h);
+
     // assert( thread_h->next_runnable() == 0 ); // Can't queue twice.
     DEBUG_MSG(DEBUG_NAME,thread_h,"pushing back thread");
     thread_h->set_next_runnable(SC_NO_THREADS);
@@ -226,6 +237,10 @@ inline void sc_runnable::push_back_thread( sc_thread_handle thread_h )
 //------------------------------------------------------------------------------
 inline void sc_runnable::push_front_method( sc_method_handle method_h )
 {
+	//ZC 11:01 2017/3/13
+	method_h->m_process_state=1;
+	sc_get_curr_simcontext()->remove_from_wait_queue((sc_process_b*)method_h);
+
     // assert( method_h->next_runnable() == 0 ); // Can't queue twice.
     DEBUG_MSG(DEBUG_NAME,method_h,"pushing front method");
     method_h->set_next_runnable(m_methods_push_head->next_runnable());
@@ -251,6 +266,10 @@ inline void sc_runnable::push_front_method( sc_method_handle method_h )
 //------------------------------------------------------------------------------
 inline void sc_runnable::push_front_thread( sc_thread_handle thread_h )
 {
+	//ZC 11:01 2017/3/13
+	thread_h->m_process_state=1;
+	sc_get_curr_simcontext()->remove_from_wait_queue((sc_process_b*)thread_h);
+
     // assert( thread_h->next_runnable() == 0 ); // Can't queue twice.
     DEBUG_MSG(DEBUG_NAME,thread_h,"pushing front thread");
     thread_h->set_next_runnable(m_threads_push_head->next_runnable());
@@ -481,6 +500,98 @@ inline void sc_runnable::toggle_threads()
 	m_threads_push_head->set_next_runnable(SC_NO_THREADS);
 	m_threads_push_tail = m_threads_push_head;
     }
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::get_methods_push_first"
+//
+// This method returns the first method of methods push queue.
+//------------------------------------------------------------------------------
+inline sc_method_handle sc_runnable::get_methods_push_first()
+{
+    return m_methods_push_head->next_runnable();
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::is_methods_push_end"
+//
+// This method checks whether method_h is the end of methods push queue. Return 
+// true if method_h equals SC_NO_METHODS, which is right after the last method.
+//------------------------------------------------------------------------------
+inline bool sc_runnable::is_methods_push_end( sc_method_handle method_h )
+{
+    return ( method_h == SC_NO_METHODS );
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::get_methods_pop_first"
+//
+// This method returns the first method of methods pop queue.
+//------------------------------------------------------------------------------
+inline sc_method_handle sc_runnable::get_methods_pop_first()
+{
+    return m_methods_pop;
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::is_methods_pop_end"
+//
+// This method checks whether method_h is the end of methods pop queue. Return 
+// true if method_h equals SC_NO_METHODS, which is right after the last method.
+//------------------------------------------------------------------------------
+inline bool sc_runnable::is_methods_pop_end( sc_method_handle method_h )
+{
+    return ( method_h == SC_NO_METHODS );
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::get_threads_push_first"
+//
+// This method returns the first thread of threads push queue.
+//------------------------------------------------------------------------------
+inline sc_thread_handle sc_runnable::get_threads_push_first()
+{
+    return m_threads_push_head->next_runnable();
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::is_threads_push_end"
+//
+// This method checks whether thread_h is the end of threads push queue. Return 
+// true if thread_h equals SC_NO_THREADS, which is right after the last thread.
+//------------------------------------------------------------------------------
+inline bool sc_runnable::is_threads_push_end( sc_thread_handle thread_h )
+{
+    return ( thread_h == SC_NO_THREADS );
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::get_threads_pop_first"
+//
+// This method returns the first thread of threads pop queue.
+//------------------------------------------------------------------------------
+inline sc_thread_handle sc_runnable::get_threads_pop_first()
+{
+    return m_threads_pop;
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_runnable::is_threads_pop_end"
+//
+// This method checks whether thread_h is the end of threads pop queue. Return 
+// true if thread_h equals SC_NO_THREADS, which is right after the last thread.
+//------------------------------------------------------------------------------
+inline bool sc_runnable::is_threads_pop_end( sc_thread_handle thread_h )
+{
+    return ( thread_h == SC_NO_THREADS );
 }
 
 #undef SC_NO_METHODS

@@ -52,6 +52,20 @@
 namespace sc_dt
 {
 
+// 08/03/2015 GL: initialize scfx_mant_free_words_lock::m_mutex
+pthread_mutex_t scfx_mant_free_words_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_mant_free_words_lock
+scfx_mant_free_words_lock::scfx_mant_free_words_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_mant_free_words_lock::~scfx_mant_free_words_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
 // ----------------------------------------------------------------------------
 //  word memory management
 // ----------------------------------------------------------------------------
@@ -82,6 +96,10 @@ static word_list* free_words[32] = { 0 };
 word*
 scfx_mant::alloc_word( std::size_t size )
 {
+    // 08/03/2015 GL: to protect global array free_words
+    // 08/03/2015 GL: scfx_mant_free_words_lock constructor acquires the mutex
+    scfx_mant_free_words_lock m_scfx_mant_free_words_lock; 
+
     const int ALLOC_SIZE = 128;
 
     int slot_index = next_pow2_index( size );
@@ -104,11 +122,16 @@ scfx_mant::alloc_word( std::size_t size )
     word* result = (word*)slot;
     free_words[slot_index] = slot[0].m_next_p;
     return result;
+    // 08/03/2015 GL: scfx_mant_free_words_lock destructor releases the mutex
 }
 
 void
 scfx_mant::free_word( word* array, std::size_t size )
 {
+    // 08/03/2015 GL: to protect global array free_words
+    // 08/03/2015 GL: scfx_mant_free_words_lock constructor acquires the mutex
+    scfx_mant_free_words_lock m_scfx_mant_free_words_lock; 
+
     if( array && size )
     {
         int slot_index = next_pow2_index( size );
@@ -117,6 +140,7 @@ scfx_mant::free_word( word* array, std::size_t size )
 	wl_p->m_next_p = free_words[slot_index];
 	free_words[slot_index] = wl_p;
     }
+    // 08/03/2015 GL: scfx_mant_free_words_lock destructor releases the mutex
 }
 
 } // namespace sc_dt

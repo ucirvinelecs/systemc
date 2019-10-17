@@ -44,33 +44,35 @@ class sc_interface;
 class sc_event_finder;
 class sc_process_b;
 
-//=============================================================================
-// CLASS sc_spawn_object<T>
-//
-// This templated helper class allows an object to provide the execution 
-// semantics for a process via its () operator. An instance of the supplied 
-// execution object will be kept to provide the semantics when the process is 
-// scheduled for execution. The () operator does not return a value. An example 
-// of an object that might be used for this helper function would be void 
-// SC_BOOST bound function or method. 
-//
-// This class is derived from sc_process_host and overloads 
-// sc_process_host::semantics to provide the actual semantic content. 
-//
-//   sc_spawn_object(T object, const char* name, const sc_spawn_options* opt_p)
-//     This is the object instance constructor for this class. It makes a
-//     copy of the supplied object. The tp_call constructor is called
-//     with an indication that this object instance should be reclaimed when
-//     execution completes.
-//         object   =  object whose () operator will be called to provide
-//                     the process semantics.
-//         name_p   =  optional name for object instance, or zero.
-//         opt_p    -> spawn options or zero.
-//
-//   virtual void semantics()
-//     This virtual method provides the execution semantics for its process.
-//     It performs a () operation on m_object.
-//=============================================================================
+/**************************************************************************//**
+ *  \class sc_spawn_object<T>
+ *
+ *  This templated helper class allows an object to provide the execution 
+ *  semantics for a process via its () operator. An instance of the supplied 
+ *  execution object will be kept to provide the semantics when the process is 
+ *  scheduled for execution. The () operator does not return a value. An example 
+ *  of an object that might be used for this helper function would be void 
+ *  SC_BOOST bound function or method. 
+ *
+ *  <pre>
+ *  This class is derived from sc_process_host and overloads 
+ *  sc_process_host::semantics to provide the actual semantic content. 
+ *
+ *   sc_spawn_object(T object, const char* name, const sc_spawn_options* opt_p)
+ *     This is the object instance constructor for this class. It makes a
+ *     copy of the supplied object. The tp_call constructor is called
+ *     with an indication that this object instance should be reclaimed when
+ *     execution completes.
+ *         object   =  object whose () operator will be called to provide
+ *                     the process semantics.
+ *         name_p   =  optional name for object instance, or zero.
+ *         opt_p    -> spawn options or zero.
+ *
+ *   virtual void semantics()
+ *     This virtual method provides the execution semantics for its process.
+ *     It performs a () operation on m_object.
+ *  </pre>
+ *****************************************************************************/
 template<typename T>
 class sc_spawn_object : public sc_process_host {
   public:
@@ -88,18 +90,27 @@ class sc_spawn_object : public sc_process_host {
 };
 
 
-//------------------------------------------------------------------------------
-//"sc_spawn - semantic object with no return value"
-//
-// This inline function spawns a process for execution. The execution semantics 
-// for the process being spawned will be provided by the supplied object 
-// instance via its () operator. (E.g., a SC_BOOST bound function) 
-// After creating the process it is registered with the simulator.
-//     object   =   object instance providing the execution semantics via its 
-//                  () operator.
-//     name_p   =   optional name for object instance, or zero.
-//     opt_p    ->  optional spawn options for process, or zero for the default.
-//------------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \fn sc_spawn(T object, const char *name_p=0, 
+ *      const sc_spawn_options *opt_p=0)
+ *
+ *  \brief Semantic object with no return value.
+ *
+ *  Note: This function is not supported by the out-of-order simulation in the
+ *  current release.
+ * 
+ *  This inline function spawns a process for execution. The execution 
+ *  semantics for the process being spawned will be provided by the supplied 
+ *  object instance via its () operator. (E.g., a SC_BOOST bound function) 
+ * 
+ *  <pre>
+ *  After creating the process it is registered with the simulator.
+ *     object   =   object instance providing the execution semantics via its 
+ *                  () operator.
+ *     name_p   =   optional name for object instance, or zero.
+ *     opt_p    ->  optional spawn options for process, or zero for the default.
+ *  </pre>
+ *****************************************************************************/
 template <typename T>
 inline sc_process_handle sc_spawn( 
     T object, 
@@ -108,26 +119,46 @@ inline sc_process_handle sc_spawn(
 {
     sc_simcontext*      context_p;
     sc_spawn_object<T>* spawn_p;
+
+    //assert( 0 ); // 08/20/2015 GL: to support sc_spawn in the future
     
     context_p = sc_get_curr_simcontext();
     spawn_p = new sc_spawn_object<T>(object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object<T>,semantics), 
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID 
+            -2  // 09/02/2015 GL: fake instance ID
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object<T>,semantics), 
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID
+            -2  // 09/02/2015 GL: fake instance ID
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 
@@ -165,21 +196,26 @@ inline sc_process_handle sc_spawn(
 //     It performs a () operation on m_object, placing the result at m_result_p.
 //=============================================================================
 
-//------------------------------------------------------------------------------
-//"sc_spawn_object_v - semantic object with return value"
-//
-// This inline function spawns a process for execution. The execution semantics 
-// for the process being spawned will be provided by the supplied object 
-// instance via its () operator. (E.g., a SC_BOOST bound function) That 
-// operator returns a value, which will be placed in the supplied return 
-// location. 
-// After creating the process it is registered with the simulator.
-//     object   =  object instance providing the execution semantics via its () 
-//                 operator.
-//     r_p      -> where to place the value of the () operator.
-//     name_p   =  optional name for object instance, or zero.
-//     opt_p    -> optional spawn options for process, or zero for the default.
-//------------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_spawn_object_v
+ * 
+ *  \brief Semantic object with return value.
+ *
+ *  This inline function spawns a process for execution. The execution 
+ *  semantics for the process being spawned will be provided by the supplied 
+ *  object instance via its () operator. (E.g., a SC_BOOST bound function) That
+ *  operator returns a value, which will be placed in the supplied return 
+ *  location. 
+ *
+ *  <pre>
+ *  After creating the process it is registered with the simulator.
+ *     object   =  object instance providing the execution semantics via its () 
+ *                 operator.
+ *     r_p      -> where to place the value of the () operator.
+ *     name_p   =  optional name for object instance, or zero.
+ *     opt_p    -> optional spawn options for process, or zero for the default.
+ *  </pre>
+ *****************************************************************************/
 
 #if !defined (__HP_aCC)
 
@@ -201,6 +237,11 @@ class sc_spawn_object_v : public sc_process_host {
     typename T::result_type* m_result_p;
 };
 
+/**
+ *  \brief This function is not supported by the out-of-order simulation in the
+ *         current release.
+ */
+// 08/20/2015 GL.
 template <typename T>
 inline sc_process_handle sc_spawn( 
     typename T::result_type* r_p, 
@@ -210,27 +251,47 @@ inline sc_process_handle sc_spawn(
 {
     sc_simcontext*      context_p;
     sc_spawn_object_v<T>* spawn_p;
+
+    assert( 0 ); // 08/20/2015 GL: to support sc_spawn in the future
     
     context_p = sc_get_curr_simcontext();
     
     spawn_p = new sc_spawn_object_v<T>(r_p, object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object_v<T>,semantics), 
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID 
+            -2  // 09/02/2015 GL: fake instance ID
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object_v<T>,semantics), 
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID 
+            -2  // 09/02/2015 GL: fake instance ID
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 
@@ -254,6 +315,11 @@ class sc_spawn_object_v : public sc_process_host {
     R* m_result_p;
 };
 
+/**
+ *  \brief This function is not supported by the out-of-order simulation in the
+ *         current release.
+ */
+// 08/20/2015 GL.
 template <typename T, typename R>
 inline sc_process_handle sc_spawn( 
     R* r_p, 
@@ -263,29 +329,49 @@ inline sc_process_handle sc_spawn(
 {
     sc_simcontext*      context_p;
     sc_spawn_object_v<T,R>* spawn_p;
+
+    assert( 0 ); // 08/20/2015 GL: to support sc_spawn in the future
     
     context_p = sc_get_curr_simcontext();
     
     spawn_p = new sc_spawn_object_v<T,R>(r_p, object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock; 
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             static_cast<sc_core::SC_ENTRY_FUNC>(
                 &sc_spawn_object_v<T,R>::semantics),
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID 
+            -2  // 09/02/2015 GL: fake instance ID 
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        sc_kernel_lock lock;
+
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock 
+        //                (static vs. dynamic spawn)
+
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             static_cast<sc_core::SC_ENTRY_FUNC>(
                 &sc_spawn_object_v<T,R>::semantics), 
-            spawn_p, opt_p 
+            spawn_p, opt_p,
+            -2, // 08/20/2015 GL: fake segment ID 
+            -2  // 09/02/2015 GL: fake instance ID
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 

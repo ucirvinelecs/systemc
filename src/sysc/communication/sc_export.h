@@ -43,11 +43,11 @@
 
 namespace sc_core {
 
-//=============================================================================
-//  CLASS : sc_export_base
-//
-//  Abstract base class for class sc_export<IF>.
-//=============================================================================
+/**************************************************************************//**
+ *  \class sc_export_base
+ *
+ *  \brief Abstract base class for class sc_export<IF>.
+ *****************************************************************************/
 
 class sc_export_base : public sc_object
 {
@@ -106,12 +106,13 @@ private:
 
 };
 
-//=============================================================================
-//  CLASS : sc_export
-//
-//  Generic export class for other export classes. This
-//  class provides a binding point for access to an interface.
-//=============================================================================
+/**************************************************************************//**
+ *  \class sc_export
+ *
+ *  \brief Generic export class for other export classes.
+ *
+ *  This class provides a binding point for access to an interface.
+ *****************************************************************************/
 template<class IF>
 class sc_export : public sc_export_base
 {
@@ -207,12 +208,13 @@ protected: // data fields:
     IF* m_interface_p;		// Interface this port provides.
 };
 
-// ----------------------------------------------------------------------------
-//  CLASS : sc_export_registry
-//
-//  Registry for all exports.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
+/**************************************************************************//**
+ *  \class sc_export_registry
+ *
+ *  \brief Registry for all exports.
+ *
+ *  FOR INTERNAL USE ONLY!
+ *****************************************************************************/
 
 class sc_export_registry
 {
