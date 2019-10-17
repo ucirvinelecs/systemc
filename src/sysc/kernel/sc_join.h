@@ -56,10 +56,10 @@ class sc_join : public sc_process_monitor {
   public:
     sc_join();
     void add_process( sc_process_handle process_h );
-    inline int process_count();
+    int process_count();
     virtual void signal(sc_thread_handle thread_p, int type);
-    inline void wait();
-    inline void wait_clocked();
+    void wait();
+    void wait_clocked();
 
   protected: 
     void add_process( sc_process_b* process_p );
@@ -69,18 +69,10 @@ class sc_join : public sc_process_monitor {
     int      m_threads_n;   // # of threads still need to wait for.
 };
 
-int sc_join::process_count() { return m_threads_n; }
 
 // suspend a thread that does not have a sensitivity list:
 
-inline void sc_join::wait() { ::sc_core::wait(m_join_event); }
-
 // suspend a thread that has a sensitivity list:
-
-inline void sc_join::wait_clocked()
-{
-    do { ::sc_core::wait(); } while (m_threads_n != 0);
-}
 
 #define SC_CJOIN \
     }; \

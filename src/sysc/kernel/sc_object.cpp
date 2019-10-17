@@ -48,7 +48,39 @@
 #include "sysc/utils/sc_list.h"
 #include "sysc/utils/sc_utils_ids.h"
 #include "sysc/utils/sc_mempool.h"
+//----------------------------------------------------Farah is working here 
 
+const char* sc_core::sc_object::name() const
+  { return m_name.c_str(); }
+
+const char* sc_core::sc_object::kind() const
+  { return "sc_object"; }
+
+sc_core::sc_simcontext* sc_core::sc_object::simcontext() const
+  { return m_simc; }
+
+
+const std::vector<sc_core::sc_event*>& sc_core::sc_object::get_child_events() const
+  { return m_child_events; }
+
+const std::vector<sc_core::sc_object*>& sc_core::sc_object::get_child_objects() const
+  { return m_child_objects; }
+
+sc_core::sc_object* sc_core::sc_object::get_parent_object() const
+  { return m_parent; }
+
+
+sc_core::sc_object& sc_core::sc_object::operator=( sc_object const & )
+{
+  // deliberately do nothing
+  return *this;
+}
+
+sc_core::sc_object* sc_core::sc_get_parent( const sc_object* obj_p ) 
+{ 
+	return obj_p->get_parent_object(); 
+}
+//----------------------------------------------------Farah is done working here
 namespace sc_core {
 
 typedef int (*STRCMP)(const void*, const void*);

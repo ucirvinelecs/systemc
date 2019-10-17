@@ -22,7 +22,6 @@
   sc_cthread_process.h -- Clocked thread declarations
 
   Original Author: Andy Goodrich, Forte Design Systems, 4 August 2005
-               
 
   CHANGE LOG AT THE END OF THE FILE
  *****************************************************************************/
@@ -48,6 +47,7 @@ void wait( int, sc_simcontext* );
 class sc_cthread_process : public sc_thread_process {
 
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_process_handle;
     friend class sc_process_table;
     friend class sc_thread_process;
@@ -64,8 +64,7 @@ class sc_cthread_process : public sc_thread_process {
         const sc_spawn_options* opt_p );
 
     virtual void dont_initialize( bool dont );
-    virtual const char* kind() const
-        { return "sc_cthread_process"; }
+    virtual const char* kind() const;
 
 private:
 
@@ -89,9 +88,16 @@ private:
 //------------------------------------------------------------------------------
 inline void sc_cthread_process::wait_halt()
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+    unlock_all_channels(); // 04/28/2015 GL: release all the channel locks (not sure sc_cthread can be used in sc_channel)
     m_wait_cycle_n = 0;
     suspend_me();
+    // 04/28/2015 GL: as we are going to throw an exception, we do not need to acquire the channel locks
     throw sc_halt();
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 } // namespace sc_core 

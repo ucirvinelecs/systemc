@@ -36,6 +36,83 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/utils/sc_utils_ids.h"
 
+//----------------------------------------------Farah is working here 
+
+void sc_core::wait( double v, sc_time_unit tu,
+      sc_simcontext* simc )
+{
+    wait( sc_time( v, tu, simc ), simc );
+}
+
+
+void sc_core::wait( double v, sc_time_unit tu,
+      const sc_event& e,
+      sc_simcontext* simc )
+{
+    wait( sc_time( v, tu, simc ), e, simc );
+}
+
+
+void sc_core::wait( double v, sc_time_unit tu,
+      const sc_event_or_list& el,
+      sc_simcontext* simc)
+{
+    wait( sc_time( v, tu, simc ), el, simc );
+}
+
+void sc_core::wait( double v, sc_time_unit tu,
+      const sc_event_and_list& el,
+      sc_simcontext* simc )
+{
+    wait( sc_time( v, tu, simc ), el, simc );
+}
+
+
+void sc_core::next_trigger( double v, sc_time_unit tu,
+	      sc_simcontext* simc)
+{
+    next_trigger( sc_time( v, tu, simc ), simc );
+}
+
+
+void sc_core::next_trigger( double v, sc_time_unit tu,
+	      const sc_event& e,
+	      sc_simcontext* simc)
+{
+    next_trigger( sc_time( v, tu, simc ), e, simc );
+}
+
+
+void sc_core::next_trigger( double v, sc_time_unit tu,
+	      const sc_event_or_list& el,
+	      sc_simcontext* simc)
+{
+    next_trigger( sc_time( v, tu, simc ), el, simc );
+}
+
+
+void sc_core::next_trigger( double v, sc_time_unit tu,
+	      const sc_event_and_list& el,
+	      sc_simcontext* simc)
+{
+    next_trigger( sc_time( v, tu, simc ), el, simc );
+}
+
+
+
+
+
+
+
+//---------------------------------------------Farah is done working here
+
+
+
+
+
+
+
+
 namespace sc_core {
 
 // static sensitivity for SC_THREADs and SC_CTHREADs
@@ -56,11 +133,11 @@ void warn_cthread_wait()
 void
 wait( sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: 
     case SC_CTHREAD_PROC_: {
-	RCAST<sc_cthread_handle>( cpi->process_handle )->wait_cycles();
+	RCAST<sc_cthread_handle>( cp )->wait_cycles();
         break;
     }
     default:
@@ -75,16 +152,16 @@ wait( sc_simcontext* simc )
 void
 wait( const sc_event& e, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( e );
+	RCAST<sc_thread_handle>( cp )->wait( e );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( e );
 	cthread_h->wait_cycles();
 	break;
@@ -99,10 +176,10 @@ wait( const sc_event& e, sc_simcontext* simc )
 void
 wait( const sc_event_or_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( el );
+	RCAST<sc_thread_handle>( cp )->wait( el );
 	break;
     }
     case SC_CTHREAD_PROC_: {
@@ -110,7 +187,7 @@ wait( const sc_event_or_list& el, sc_simcontext* simc )
         SC_REPORT_INFO(SC_ID_IEEE_1666_DEPRECATION_,
 	    "wait(event_list) is deprecated for SC_CTHREAD, use SC_THREAD");
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( el );
 	cthread_h->wait_cycles();
 	break;
@@ -125,16 +202,16 @@ wait( const sc_event_or_list& el, sc_simcontext* simc )
 void
 wait( const sc_event_and_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( el );
+	RCAST<sc_thread_handle>( cp )->wait( el );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( el );
 	cthread_h->wait_cycles();
 	break;
@@ -149,16 +226,16 @@ wait( const sc_event_and_list& el, sc_simcontext* simc )
 void
 wait( const sc_time& t, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t );
+	RCAST<sc_thread_handle>( cp )->wait( t );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( t );
 	cthread_h->wait_cycles();
 	break;
@@ -173,16 +250,16 @@ wait( const sc_time& t, sc_simcontext* simc )
 void
 wait( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, e );
+	RCAST<sc_thread_handle>( cp )->wait( t, e );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( t, e );
 	cthread_h->wait_cycles();
 	break;
@@ -197,16 +274,16 @@ wait( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 void
 wait( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, el );
+	RCAST<sc_thread_handle>( cp )->wait( t, el );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( t, el );
 	cthread_h->wait_cycles();
 	break;
@@ -221,16 +298,16 @@ wait( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc )
 void
 wait( const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_THREAD_PROC_: {
-	RCAST<sc_thread_handle>( cpi->process_handle )->wait( t, el );
+	RCAST<sc_thread_handle>( cp )->wait( t, el );
 	break;
     }
     case SC_CTHREAD_PROC_: {
         warn_cthread_wait();
 	sc_cthread_handle cthread_h =
-            RCAST<sc_cthread_handle>( cpi->process_handle );
+            RCAST<sc_cthread_handle>( cp );
 	cthread_h->wait( t, el );
 	cthread_h->wait_cycles();
 	break;
@@ -248,9 +325,9 @@ wait( const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc )
 void
 next_trigger( sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->clear_trigger();
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->clear_trigger();
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -263,9 +340,9 @@ next_trigger( sc_simcontext* simc )
 void
 next_trigger( const sc_event& e, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( e );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( e );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -275,9 +352,9 @@ next_trigger( const sc_event& e, sc_simcontext* simc )
 void
 next_trigger( const sc_event_or_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -287,9 +364,9 @@ next_trigger( const sc_event_or_list& el, sc_simcontext* simc )
 void
 next_trigger( const sc_event_and_list& el, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -299,9 +376,9 @@ next_trigger( const sc_event_and_list& el, sc_simcontext* simc )
 void
 next_trigger( const sc_time& t, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( t );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -311,9 +388,9 @@ next_trigger( const sc_time& t, sc_simcontext* simc )
 void
 next_trigger( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, e );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( t, e );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -323,9 +400,9 @@ next_trigger( const sc_time& t, const sc_event& e, sc_simcontext* simc )
 void
 next_trigger( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc)
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( t, el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -335,9 +412,9 @@ next_trigger( const sc_time& t, const sc_event_or_list& el, sc_simcontext* simc)
 void
 next_trigger(const sc_time& t, const sc_event_and_list& el, sc_simcontext* simc)
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    if( cpi->kind == SC_METHOD_PROC_ ) {
-	RCAST<sc_method_handle>( cpi->process_handle )->next_trigger( t, el );
+    sc_process_b* cp = simc->get_curr_proc();
+    if( cp->proc_kind() == SC_METHOD_PROC_ ) {
+	RCAST<sc_method_handle>( cp )->next_trigger( t, el );
     } else {
 	SC_REPORT_ERROR( SC_ID_NEXT_TRIGGER_NOT_ALLOWED_, "\n        "
 			 "in SC_THREADs and SC_CTHREADs use wait() instead" );
@@ -358,8 +435,8 @@ timed_out( sc_simcontext* simc )
 	    "timed_out() function is deprecated" );
     }
 
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    return cpi->process_handle->timed_out();
+    sc_process_b* cp = simc->get_curr_proc();
+    return cp->timed_out();
 }
 
 
@@ -369,8 +446,7 @@ timed_out( sc_simcontext* simc )
 void
 sc_set_location( const char* file, int lineno, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    sc_process_b* handle = cpi->process_handle;
+    sc_process_b* handle = simc->get_curr_proc();
     handle->file = file;
     handle->lineno = lineno;
 }

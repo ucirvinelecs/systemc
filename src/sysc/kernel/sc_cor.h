@@ -34,6 +34,8 @@
 #include <cassert>
 #include <cstdlib>
 
+//#define SC_LOCK_CHECK // 05/27/2015 GL: check the state of the kernel lock
+
 namespace sc_core {
 
 class sc_simcontext;
@@ -69,6 +71,13 @@ public:
     // switch stack protection on/off
     virtual void stack_protect( bool /* enable */ ) {}
 
+    // increment, decrement and return the lock counter
+    virtual void increment_counter() = 0;
+
+    virtual void decrement_counter() = 0;
+
+    virtual unsigned int get_counter() = 0;
+
 private:
 
     // disabled
@@ -101,11 +110,43 @@ public:
     // yield to the next coroutine
     virtual void yield( sc_cor* next_cor ) = 0;
 
+    // suspend the current coroutine
+    virtual void wait( sc_cor* cur_cor ) = 0;
+
+    // resume the next coroutine
+    virtual void go( sc_cor* next_cor ) = 0;
+
     // abort the current coroutine (and resume the next coroutine)
     virtual void abort( sc_cor* next_cor ) = 0;
 
+    // join another coroutine
+    virtual void join( sc_cor* join_cor ) = 0;
+
     // get the main coroutine
     virtual sc_cor* get_main() = 0;
+
+    // acquire the scheduling mutex
+    virtual void acquire_sched_mutex() = 0;
+
+    // release the scheduling mutex
+    virtual void release_sched_mutex() = 0;
+
+    // set the thread specific data value
+    virtual void set_thread_specific( void* process_b ) = 0;
+
+    // get the thread specific data vale
+    virtual void* get_thread_specific() = 0;
+
+    // get the state of the kernel lock
+    virtual bool is_locked() = 0;
+
+    virtual bool is_unlocked() = 0;
+
+    virtual bool is_lock_owner() = 0;
+
+    virtual bool is_not_owner() = 0;
+
+    virtual bool is_locked_and_owner() = 0;
 
     // get the simulation context
     sc_simcontext* simcontext()

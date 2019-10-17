@@ -48,7 +48,155 @@
 #else
 #  define SC_MAXTIME_ALLOWED_ 0
 #endif
+//----------------------------------------Farah is working here  
 
+// constructors
+
+sc_core::sc_time::sc_time()
+: m_value( 0 )
+{}
+
+sc_core::sc_time::sc_time( const sc_time& t )
+: m_value( t.m_value )
+{}
+
+// assignment operator
+sc_core::sc_time& sc_core::sc_time::operator = ( const sc_time& t )
+{
+    m_value = t.m_value;
+    return *this;
+}
+
+// conversion functions
+
+sc_core::sc_time::value_type sc_core::sc_time::value() const  // relative to the time resolution
+{
+    return m_value;
+}
+
+double sc_core::sc_time::to_double() const  // relative to the time resolution
+{
+    return sc_dt::uint64_to_double( m_value );
+}
+
+// relational operators
+bool sc_core::sc_time::operator == ( const sc_time& t ) const
+{
+    return ( m_value == t.m_value );
+}
+
+bool sc_core::sc_time::operator != ( const sc_time& t ) const
+{
+    return ( m_value != t.m_value );
+}
+
+bool sc_core::sc_time::operator < ( const sc_time& t ) const
+{
+    return ( m_value < t.m_value );
+}
+
+bool sc_core::sc_time::operator <= ( const sc_time& t ) const
+{
+    return ( m_value <= t.m_value );
+}
+
+bool sc_core::sc_time::operator > ( const sc_time& t ) const
+{
+    return ( m_value > t.m_value );
+}
+
+bool sc_core::sc_time::operator >= ( const sc_time& t ) const
+{
+    return ( m_value >= t.m_value );
+}
+
+// arithmetic operators
+sc_core::sc_time& sc_core::sc_time::operator += ( const sc_time& t )
+{
+    m_value += t.m_value;
+    return *this;
+}
+
+sc_core::sc_time& sc_core::sc_time::operator -= ( const sc_time& t )
+{
+    m_value -= t.m_value;
+    return *this;
+}
+
+
+const sc_core::sc_time sc_core::operator + ( const sc_time& t1, const sc_time& t2 )
+{
+    return sc_time( t1 ) += t2;
+}
+
+const sc_core::sc_time sc_core::operator - ( const sc_time& t1, const sc_time& t2 )
+{
+    return sc_time( t1 ) -= t2;
+}
+
+sc_core::sc_time& sc_core::sc_time::operator *= ( double d )
+{
+    // linux bug workaround; don't change next two lines
+    volatile double tmp = sc_dt::uint64_to_double( m_value ) * d + 0.5;
+    m_value = SCAST<sc_dt::int64>( tmp );
+    return *this;
+}
+
+
+sc_core::sc_time& sc_core::sc_time::operator /= ( double d )
+{
+    // linux bug workaround; don't change next two lines
+    volatile double tmp = sc_dt::uint64_to_double( m_value ) / d + 0.5;
+    m_value = SCAST<sc_dt::int64>( tmp );
+    return *this;
+}
+
+
+sc_core::sc_time& sc_core::sc_time::operator %= ( const sc_time& t )
+{
+    m_value %= t.m_value;
+    return *this;
+}
+
+const sc_core::sc_time sc_core::operator * ( const sc_time& t, double d )
+{
+    sc_time tmp( t );
+    return tmp *= d;
+}
+
+const sc_core::sc_time sc_core::operator * ( double d, const sc_time& t )
+{
+    sc_time tmp( t );
+    return tmp *= d;
+}
+
+
+const sc_core::sc_time sc_core::operator / ( const sc_time& t, double d )
+{
+    sc_time tmp( t );
+    return tmp /= d;
+}
+
+
+double sc_core::operator / ( const sc_time& t1, const sc_time& t2 )
+{
+    return ( t1.to_double() / t2.to_double() );
+}
+
+
+const sc_core::sc_time sc_core::operator % ( const sc_time& t1, const sc_time& t2 )
+{
+    sc_time tmp(t1);
+    return tmp %= t2;
+}
+
+// print operator
+::std::ostream& sc_core::operator << ( ::std::ostream& os, const sc_time& t )
+{
+    t.print( os );
+    return os;
+}
+//----------------------------------------Frah is done working here
 namespace sc_core {
 
 static

@@ -58,8 +58,131 @@
 #include "sysc/datatypes/bit/sc_bv_base.h"
 #include "sysc/datatypes/fx/sc_fix.h"
 #include "sysc/datatypes/fx/sc_ufix.h"
+//-------------------------------------------------Farah is working here
+
+  sc_dt::sc_bv_base::sc_bv_base( int length_ )
+	: m_len( 0 ), m_size( 0 ), m_data( 0 )
+	{ init( length_ ); }
+
+    sc_dt::sc_bv_base::sc_bv_base( bool a,
+			 int length_  )
+	: m_len( 0 ), m_size( 0 ), m_data( 0 )
+	{ init( length_, a ); }
 
 
+    sc_dt::sc_bv_base::~sc_bv_base()
+	{ delete [] m_data; }
+
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_bv_base& a )
+	{ assign_p_( *this, a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const bool* a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_logic* a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_unsigned& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_signed& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_uint_base& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( const sc_int_base& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( unsigned long a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( long a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( unsigned int a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( int a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( uint64 a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_bv_base& sc_dt::sc_bv_base::operator = ( int64 a )
+	{ base_type::assign_( a ); return *this; }
+
+    int sc_dt::sc_bv_base::length() const
+	{ return m_len; }
+
+    int sc_dt::sc_bv_base::size() const
+	{ return m_size; }
+
+    sc_dt::sc_digit sc_dt::sc_bv_base::get_word( int i ) const
+	{ return m_data[i]; }
+
+    void sc_dt::sc_bv_base::set_word( int i, sc_digit w )
+	{ m_data[i] = w; }
+
+    sc_dt::sc_digit sc_dt::sc_bv_base::get_cword( int /*i*/ ) const
+	{ return SC_DIGIT_ZERO; }
+
+    bool sc_dt::sc_bv_base::is_01() const
+	{ return true; }
+
+//Inline functions
+
+sc_dt::sc_logic_value_t
+sc_dt::sc_bv_base::get_bit( int i ) const
+{
+    int wi = i / SC_DIGIT_SIZE;
+    int bi = i % SC_DIGIT_SIZE;
+    return sc_logic_value_t( (m_data[wi] >> bi) & SC_DIGIT_ONE );
+}
+
+
+void
+sc_dt::sc_bv_base::set_bit( int i, sc_logic_value_t value )
+{
+    int wi = i / SC_DIGIT_SIZE;
+    int bi = i % SC_DIGIT_SIZE;
+    sc_digit mask = SC_DIGIT_ONE << bi;
+    m_data[wi] |= mask; // set bit to 1
+    m_data[wi] &= value << bi | ~mask;
+}
+
+
+void
+sc_dt::sc_bv_base::set_cword( int /*i*/, sc_digit w )
+{
+    if( w ) {
+	SC_REPORT_WARNING( sc_core::SC_ID_SC_BV_CANNOT_CONTAIN_X_AND_Z_, 0 );
+    }
+}
+
+void
+sc_dt::sc_bv_base::clean_tail()
+{
+    int wi = m_size - 1;
+    int bi = m_len % SC_DIGIT_SIZE;
+	if ( bi != 0 ) m_data[wi] &= ~SC_DIGIT_ZERO >> (SC_DIGIT_SIZE - bi);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//-----------------------------------------Farah is done working here
 namespace sc_dt
 {
 

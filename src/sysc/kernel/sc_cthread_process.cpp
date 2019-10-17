@@ -29,7 +29,20 @@
 
 #include "sysc/kernel/sc_cthread_process.h"
 #include "sysc/kernel/sc_simcontext_int.h"
+//---------------------------------------------------Farah is working here 
 
+const char* sc_core::sc_cthread_process::kind() const
+{ return "sc_cthread_process"; }
+
+/* Might have to remove later
+void sc_core::sc_cthread_process::wait_halt()
+{
+    m_wait_cycle_n = 0;
+    suspend_me();
+    throw sc_halt();
+}
+*/
+//---------------------------------------------------Farah is done working here
 namespace sc_core {
 
 //------------------------------------------------------------------------------

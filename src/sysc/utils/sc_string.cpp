@@ -35,7 +35,15 @@
 #include "sysc/utils/sc_iostream.h"
 #include "sysc/utils/sc_string.h"
 #include "sysc/utils/sc_utils_ids.h"
+//--------------------------Farah is working here 
+sc_dt::systemc_ostream&
+sc_dt::operator << ( systemc_ostream& os, const sc_string_old& a )
+{
+    a.print( os );
+    return os;
+}
 
+//-------------------------Farah is done working hre
 namespace sc_dt {
 
 inline static int

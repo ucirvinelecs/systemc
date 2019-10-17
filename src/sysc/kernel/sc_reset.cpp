@@ -60,7 +60,20 @@
 //     initially start up. So the reset check  is duplicated in the suspend_me()
 //     method, the tail of which will execute each time the thread is 
 //     dispatched.
+//---------------------------------------------------------Farah is working here 
+sc_core::sc_reset:: sc_reset( const sc_signal_in_if<bool>* iface_p ) :
+        m_iface_p(iface_p), m_targets() {}
 
+std::ostream& sc_core::operator << ( std::ostream& os, 
+                                   const sc_reset_target& target )
+{
+    os << "[";
+    os << target.m_async << ",";
+    os << target.m_level << ",";
+    os << target.m_process_p << ",";
+    return os;
+}
+//---------------------------------------------------------Farah is done working here
 namespace sc_core {
 
 class sc_reset_finder;

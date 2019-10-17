@@ -118,34 +118,23 @@ public:
 
     const char * get_msg_type() const;
 
-    const char * get_msg() const
-	{ return msg; }
+    const char * get_msg() const;
 
-    sc_severity get_severity() const
-	{ return severity; }
+    sc_severity get_severity() const;
 
-    const char * get_file_name() const
-	{ return file; }
+    const char * get_file_name() const;
 
-    int get_line_number() const
-	{ return line; }
+    int get_line_number() const;
 
-    const sc_time & get_time() const
-	{ return *timestamp; }
+    const sc_time & get_time() const;
 
     const char* get_process_name() const;
 
-    int get_verbosity() const { return m_verbosity_level; }
+    int get_verbosity() const;
 
-    bool valid () const
-        {
-	    return process != 0;
-	}
+    bool valid () const;
 
-    virtual const char* what() const throw()
-        { 
-	    return m_what;
-	}
+    virtual const char* what() const throw();
 
     void swap( sc_report& );
 

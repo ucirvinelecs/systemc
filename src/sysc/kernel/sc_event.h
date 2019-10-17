@@ -63,46 +63,21 @@ class sc_event_expr
 
     typedef T type;
 
-    inline sc_event_expr()
-       : m_expr( new T(true) )
-    {}
+    sc_event_expr();
 
 public:
 
-    inline sc_event_expr( sc_event_expr const & e) // move semantics
-      : m_expr(e.m_expr)
-    {
-        e.m_expr = 0;
-    }
+    sc_event_expr( sc_event_expr const & e); // move semantics
 
-    T const & release() const
-    {
-        sc_assert( m_expr );
-        T* expr = m_expr;
-        m_expr=0;
-        return *expr;
-    }
+    T const & release() const;
 
-    void push_back( sc_event const & e) const
-    {
-        sc_assert( m_expr );
-        m_expr->push_back(e);
-    }
+    void push_back( sc_event const & e) const;
 
-    void push_back( type const & el) const
-    {
-        sc_assert( m_expr );
-        m_expr->push_back(el);
-    }
-    operator T const &() const
-    {
-        return release();
-    }
+    void push_back( type const & el) const;
 
-    ~sc_event_expr()
-    {
-        delete m_expr;
-    }
+    operator T const &() const;
+
+    ~sc_event_expr();
 
 private:
     mutable type * m_expr;
@@ -161,9 +136,9 @@ protected:
     void report_premature_destruction() const;
     void report_invalid_modification()  const;
 
-private:
-
+public:
     std::vector<const sc_event*> m_events;
+
     bool                         m_and_list;
     bool                         m_auto_delete;
     mutable unsigned             m_busy;
@@ -264,10 +239,11 @@ public:
 
     void cancel();
 
-    const char* name() const             { return m_name.c_str(); }
+    const char* name() const;
     const char* basename() const;
-    sc_object* get_parent_object() const { return m_parent_p; }
-    bool in_hierarchy() const            { return m_name.length() != 0; }
+    sc_object* get_parent_object() const;
+ 
+    bool in_hierarchy() const;
 
     void notify();
     void notify( const sc_time& );
@@ -345,24 +321,17 @@ class sc_event_timed
 
 private:
 
-    sc_event_timed( sc_event* e, const sc_time& t )
-        : m_event( e ), m_notify_time( t )
-        {}
+    sc_event_timed( sc_event* e, const sc_time& t );
 
-    ~sc_event_timed()
-        { if( m_event != 0 ) { m_event->m_timed = 0; } }
+    ~sc_event_timed();
 
-    sc_event* event() const
-        { return m_event; }
+    sc_event* event() const;
 
-    const sc_time& notify_time() const
-        { return m_notify_time; }
+    const sc_time& notify_time() const;
 
-    static void* operator new( std::size_t )
-        { return allocate(); }
+    static void* operator new( std::size_t );
 
-    static void operator delete( void* p, std::size_t )
-        { deallocate( p ); }
+    static void operator delete( void* p, std::size_t );
 
 private:
 
@@ -384,82 +353,6 @@ private:
 };
 
 
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-inline
-void
-sc_event::notify( double v, sc_time_unit tu )
-{
-    notify( sc_time( v, tu, m_simc ) );
-}
-
-
-inline
-void
-sc_event::notify_internal( const sc_time& t )
-{
-    if( t == SC_ZERO_TIME ) {
-        // add this event to the delta events set
-        m_delta_event_index = m_simc->add_delta_event( this );
-        m_notify_type = DELTA;
-    } else {
-        sc_event_timed* et =
-		new sc_event_timed( this, m_simc->time_stamp() + t );
-        m_simc->add_timed_event( et );
-        m_timed = et;
-        m_notify_type = TIMED;
-    }
-}
-
-inline
-void
-sc_event::notify_next_delta()
-{
-    if( m_notify_type != NONE ) {
-        SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
-    }
-    // add this event to the delta events set
-    m_delta_event_index = m_simc->add_delta_event( this );
-    m_notify_type = DELTA;
-}
-
-inline
-void
-sc_event::notify_delayed( double v, sc_time_unit tu )
-{
-    notify_delayed( sc_time( v, tu, m_simc ) );
-}
-
-
-inline
-void
-sc_event::add_static( sc_method_handle method_h ) const
-{
-    m_methods_static.push_back( method_h );
-}
-
-inline
-void
-sc_event::add_static( sc_thread_handle thread_h ) const
-{
-    m_threads_static.push_back( thread_h );
-}
-
-inline
-void
-sc_event::add_dynamic( sc_method_handle method_h ) const
-{
-    m_methods_dynamic.push_back( method_h );
-}
-
-inline
-void
-sc_event::add_dynamic( sc_thread_handle thread_h ) const
-{
-    m_threads_dynamic.push_back( thread_h );
-}
-
-
 // ----------------------------------------------------------------------------
 //  Deprecated functional notation for notifying events.
 // ----------------------------------------------------------------------------
@@ -468,344 +361,28 @@ extern void notify( sc_event& e );
 extern void notify( const sc_time& t, sc_event& e );
 extern void notify( double v, sc_time_unit tu, sc_event& e );
 
-
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
-sc_event_list::sc_event_list( bool and_list_, bool auto_delete_ ) 
-  : m_events() 
-  , m_and_list( and_list_ ) 
-  , m_auto_delete( auto_delete_ ) 
-  , m_busy( 0 )
-{
-}
-
-inline
-sc_event_list::sc_event_list( const sc_event& e,
-                              bool and_list_,
-                              bool auto_delete_ )
-  : m_events()
-  , m_and_list( and_list_ )
-  , m_auto_delete( auto_delete_ )
-  , m_busy(0)
-{
-    m_events.push_back( &e );
-}
-
-inline
-sc_event_list::sc_event_list( sc_event_list const & that )
-  : m_events()
-  , m_and_list( that.m_and_list )
-  , m_auto_delete( false )
-  , m_busy( 0 )
-{
-    move_from( that );
-    that.auto_delete(); // free automatic lists
-}
-
-inline
-sc_event_list&
-sc_event_list::operator=( sc_event_list const & that )
-{
-    if( m_busy )
-        report_invalid_modification();
-
-    move_from( that );
-    that.auto_delete(); // free automatic lists
-
-    return *this;
-}
-
-inline
-sc_event_list::~sc_event_list()
-{
-    if( m_busy )
-        report_premature_destruction();
-}
-
-inline
-void
-sc_event_list::swap( sc_event_list& that )
-{
-    if( busy() || that.busy() )
-        report_invalid_modification();
-    m_events.swap( that.m_events );
-}
-
-inline
-void
-sc_event_list::move_from( sc_event_list const&  that )
-{
-    if( that.temporary() ) {
-        swap( const_cast<sc_event_list&>(that) ); // move from source
-    } else {
-        m_events = that.m_events;                 // copy from source
-    }
-}
-
-inline
-int
-sc_event_list::size() const
-{
-    return m_events.size();
-}
-
-inline
-bool
-sc_event_list::and_list() const
-{
-    return m_and_list;
-}
-
-
-inline
-bool
-sc_event_list::busy() const
-{
-    return m_busy != 0;
-}
-
-
-inline
-bool
-sc_event_list::temporary() const
-{
-    return m_auto_delete && ! m_busy;
-}
-
-inline
-void
-sc_event_list::auto_delete() const
-{
-    if( m_busy ) {
-        --m_busy;
-    }
-    if( ! m_busy && m_auto_delete ) {
-        delete this;
-    }
-}
-
-
-
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-inline
-sc_event_or_list::sc_event_or_list()
-  : sc_event_list( false )
-{}
-
-inline
-sc_event_or_list::sc_event_or_list( const sc_event& e )
-: sc_event_list( false )
-{
-  push_back( e );
-}
-
-inline
-sc_event_or_list::sc_event_or_list( bool auto_delete_ )
-: sc_event_list( false, auto_delete_ )
-{}
-
-inline
-sc_event_or_list&
-sc_event_or_list::operator |= ( const sc_event& e )
-{
-    if( busy() )
-        report_invalid_modification();
-
-    push_back( e );
-    return *this;
-}
-
-inline
-sc_event_or_list&
-sc_event_or_list::operator |= ( const sc_event_or_list& el )
-{
-    if( busy() )
-        report_invalid_modification();
-
-    push_back( el );
-    return *this;
-}
-
-inline
-sc_event_or_expr
-sc_event_or_list::operator | ( const sc_event& e2 ) const
-{
-    sc_event_or_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
-
-inline
-sc_event_or_expr
-sc_event_or_list::operator | ( const sc_event_or_list& e2 ) const
-{
-    sc_event_or_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
-
-
-// sc_event
-
-inline
-sc_event_or_expr
-sc_event::operator | ( const sc_event& e2 ) const
-{
-    sc_event_or_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
-
-inline
-sc_event_or_expr
-sc_event::operator | ( const sc_event_or_list& e2 ) const
-{
-    sc_event_or_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
 
 // sc_event_expr
 
-inline
 sc_event_or_expr
-operator | ( sc_event_or_expr expr, sc_event const & e )
-{
-    expr.push_back( e );
-    return expr;
-}
+operator | ( sc_event_or_expr expr, sc_event const & e );
 
-inline
 sc_event_or_expr
-operator | ( sc_event_or_expr expr, sc_event_or_list const & el )
-{
-    expr.push_back( el );
-    return expr;
-}
-
-inline
-void
-sc_event_or_list::swap( sc_event_or_list & that )
-{
-  sc_event_list::swap( that );
-}
-
+operator | ( sc_event_or_expr expr, sc_event_or_list const & el );
 
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
-sc_event_and_list::sc_event_and_list()
-  : sc_event_list( true )
-{}
-
-inline
-sc_event_and_list::sc_event_and_list( const sc_event& e )
-: sc_event_list( true )
-{
-  push_back( e );
-}
-
-inline
-sc_event_and_list::sc_event_and_list( bool auto_delete_ )
-: sc_event_list( true, auto_delete_ )
-{}
-
-inline
-void
-sc_event_and_list::swap( sc_event_and_list & that )
-{
-  sc_event_list::swap( that );
-}
-
-
-inline
-sc_event_and_list&
-sc_event_and_list::operator &= ( const sc_event& e )
-{
-    if( busy() )
-        report_invalid_modification();
-
-    push_back( e );
-    return *this;
-}
-
-inline
-sc_event_and_list&
-sc_event_and_list::operator &= ( const sc_event_and_list& el )
-{
-    if( busy() )
-        report_invalid_modification();
-
-    push_back( el );
-    return *this;
-}
-
-inline
-sc_event_and_expr
-sc_event_and_list::operator & ( const sc_event& e )
-{
-    sc_event_and_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e );
-    return expr;
-}
-
-inline
-sc_event_and_expr
-sc_event_and_list::operator & ( const sc_event_and_list& el )
-{
-    sc_event_and_expr expr;
-    expr.push_back( *this );
-    expr.push_back( el );
-    return expr;
-}
-
-// sc_event
-
-inline
-sc_event_and_expr
-sc_event::operator & ( const sc_event& e2 ) const
-{
-    sc_event_and_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
-
-inline
-sc_event_and_expr
-sc_event::operator & ( const sc_event_and_list& e2 ) const
-{
-    sc_event_and_expr expr;
-    expr.push_back( *this );
-    expr.push_back( e2 );
-    return expr;
-}
 
 // sc_event_expr
 
-inline
 sc_event_and_expr
-operator & ( sc_event_and_expr expr, sc_event const & e )
-{
-    expr.push_back( e );
-    return expr;
-}
+operator & ( sc_event_and_expr expr, sc_event const & e );
 
-inline
 sc_event_and_expr
-operator & ( sc_event_and_expr expr, sc_event_and_list const & el )
-{
-    expr.push_back( el );
-    return expr;
-}
+operator & ( sc_event_and_expr expr, sc_event_and_list const & el );
 
 } // namespace sc_core
 

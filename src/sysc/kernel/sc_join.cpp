@@ -37,7 +37,20 @@
 #include "sysc/kernel/sc_kernel_ids.h"
 #include "sysc/kernel/sc_thread_process.h"
 #include "sysc/kernel/sc_join.h"
+//---------------------------------------------Farah is working here 
 
+int sc_core::sc_join::process_count() { return m_threads_n; }
+
+
+void sc_core::sc_join::wait() { ::sc_core::wait(m_join_event); }
+
+
+void sc_core::sc_join::wait_clocked()
+{
+    do { ::sc_core::wait(); } while (m_threads_n != 0);
+}
+
+//--------------------------------------------Farah is done working here
 namespace sc_core {
 
 //------------------------------------------------------------------------------

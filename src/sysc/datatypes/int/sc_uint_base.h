@@ -112,12 +112,12 @@ class sc_fxnum_fast;
 extern const uint_type mask_int[SC_INTWIDTH][SC_INTWIDTH];
 
 // friend operator declarations
-    inline bool operator == ( const sc_uint_base& a, const sc_uint_base& b );
-    inline bool operator != ( const sc_uint_base& a, const sc_uint_base& b );
-    inline bool operator <  ( const sc_uint_base& a, const sc_uint_base& b );
-    inline bool operator <= ( const sc_uint_base& a, const sc_uint_base& b );
-    inline bool operator >  ( const sc_uint_base& a, const sc_uint_base& b );
-    inline bool operator >= ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator == ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator != ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator <  ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator <= ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator >  ( const sc_uint_base& a, const sc_uint_base& b );
+    bool operator >= ( const sc_uint_base& a, const sc_uint_base& b );
 
 
 
@@ -136,66 +136,30 @@ class sc_uint_bitref_r : public sc_value_base
     // constructors
 
 public:
-    sc_uint_bitref_r( const sc_uint_bitref_r& init ) :
-	 sc_value_base(init), m_index(init.m_index), m_obj_p(init.m_obj_p)
-	 {}
+    sc_uint_bitref_r( const sc_uint_bitref_r& init );
 
 protected:
-    sc_uint_bitref_r() : sc_value_base(), m_index(0), m_obj_p(0)
-        {}
+    sc_uint_bitref_r();
 
     // initializer for sc_core::sc_vpool:
 
-    void initialize( const sc_uint_base* obj_p, int index_ )
-    {
-        m_obj_p = (sc_uint_base*)obj_p;
-        m_index = index_;
-    }
+    void initialize( const sc_uint_base* obj_p, int index_ );
 
 public:
 
     // destructor
 
-    virtual ~sc_uint_bitref_r()
-	{}
+    virtual ~sc_uint_bitref_r();
 
     // concatenation support
 
-    virtual int concat_length(bool* xz_present_p) const
-	{ if ( xz_present_p ) *xz_present_p = false; return 1; }
-    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const
-        {
-            int  bit_mask = 1 << (low_i % BITS_PER_DIGIT);
-            int  word_i = low_i / BITS_PER_DIGIT;
-
-	    dst_p[word_i] &= ~bit_mask;
-	    return false;
-        }
-    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const
-        {
-            int  bit_mask = 1 << (low_i % BITS_PER_DIGIT);
-	    bool result;             // True is non-zero.
-            int  word_i = low_i / BITS_PER_DIGIT;
-
-            if ( operator uint64() )
-	    {
-                dst_p[word_i] |= bit_mask;
-		result = true;
-	    }
-            else
-	    {
-                dst_p[word_i] &= ~bit_mask;
-		result = false;
-	    }
-	    return result;
-        }
-    virtual uint64 concat_get_uint64() const
-	{ return operator uint64(); }
+    virtual int concat_length(bool* xz_present_p) const;
+    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const;
+    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const;
+    virtual uint64 concat_get_uint64() const;
 
     // capacity
-
-    int length() const
-	{ return 1; }
+    int length() const;
 
 #ifdef SC_DT_DEPRECATED
     int bitwidth() const
@@ -212,17 +176,13 @@ public:
 
     // explicit conversions
 
-    uint64 value() const
-	{ return operator uint64 (); }
+    uint64 value() const;
 
-    bool to_bool() const
-	{ return operator uint64 (); }
-
+    bool to_bool() const;
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-	{ os << to_bool(); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
 protected:
 
@@ -254,15 +214,12 @@ class sc_uint_bitref
     friend class sc_uint_base;
     friend class sc_core::sc_vpool<sc_uint_bitref>;
 
-
     // constructors
 
 protected:
-    sc_uint_bitref() : sc_uint_bitref_r()
-        {}
+    sc_uint_bitref();
 public:
-    sc_uint_bitref( const sc_uint_bitref& init ) : sc_uint_bitref_r(init)
-        {}
+    sc_uint_bitref( const sc_uint_bitref& init );
 
 public:
 
@@ -314,35 +271,24 @@ class sc_uint_subref_r : public sc_value_base
     // constructors
 
 public:
-    sc_uint_subref_r( const sc_uint_subref_r& init ) :
-        sc_value_base(init), m_left(init.m_left), m_obj_p(init.m_obj_p), 
-	m_right(init.m_right)
-	{}
+    sc_uint_subref_r( const sc_uint_subref_r& init );
 
 protected:
-    sc_uint_subref_r() : sc_value_base(), m_left(0), m_obj_p(0), m_right(0)
-	{}
+    sc_uint_subref_r();
 
     // initializer for sc_core::sc_vpool:
 
-    void initialize( const sc_uint_base* obj_p, int left_i, int right_i )
-    {
-        m_obj_p = (sc_uint_base*)obj_p;
-        m_left = left_i;
-        m_right = right_i;
-    }
+    void initialize( const sc_uint_base* obj_p, int left_i, int right_i );
 
 public:
 
     // destructor
 
-    virtual ~sc_uint_subref_r()
-	{}
+    virtual ~sc_uint_subref_r();
 
     // capacity
 
-    int length() const
-	{ return ( m_left - m_right + 1 ); }
+    int length() const;
 
 #ifdef SC_DT_DEPRECATED
     int bitwidth() const
@@ -351,30 +297,25 @@ public:
 
     // concatenation support
 
-    virtual int concat_length(bool* xz_present_p) const
-	{ if ( xz_present_p ) *xz_present_p = false; return length(); }
+    virtual int concat_length(bool* xz_present_p) const;
     virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const;
     virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const;
-    virtual uint64 concat_get_uint64() const
-	{ return (uint64)operator uint_type(); }
+    virtual uint64 concat_get_uint64() const;
 
 
     // reduce methods
 
     bool and_reduce() const;
 
-    bool nand_reduce() const
-	{ return ( ! and_reduce() ); }
+    bool nand_reduce() const;
 
     bool or_reduce() const;
 
-    bool nor_reduce() const
-	{ return ( ! or_reduce() ); }
+    bool nor_reduce() const;
 
     bool xor_reduce() const;
 
-    bool xnor_reduce() const
-	{ return ( ! xor_reduce() ); }
+    bool xnor_reduce() const;
 
 
     // implicit conversion to uint_type
@@ -384,9 +325,7 @@ public:
 
     // explicit conversions
 
-    uint_type value() const
-	{ return operator uint_type(); }
-
+    uint_type value() const;
 
     int           to_int() const;
     unsigned int  to_uint() const;
@@ -405,8 +344,7 @@ public:
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-	{ os << to_string(sc_io_base(os,SC_DEC),sc_io_show_base(os)); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
 protected:
 
@@ -443,12 +381,10 @@ class sc_uint_subref
     // constructors
 
 protected:
-    sc_uint_subref() : sc_uint_subref_r()
-        {}
+    sc_uint_subref();
 
 public:
-    sc_uint_subref( const sc_uint_subref& init ) : sc_uint_subref_r(init)
-        {}
+    sc_uint_subref( const sc_uint_subref& init );
 
 public:
 
@@ -458,11 +394,9 @@ public:
 
     sc_uint_subref& operator = ( const sc_uint_base& a );
 
-    sc_uint_subref& operator = ( const sc_uint_subref_r& a )
-	{ return operator = ( a.operator uint_type() ); }
+    sc_uint_subref& operator = ( const sc_uint_subref_r& a );
 
-    sc_uint_subref& operator = ( const sc_uint_subref& a )
-	{ return operator = ( a.operator uint_type() ); }
+    sc_uint_subref& operator = ( const sc_uint_subref& a );
 
     template<class T>
     sc_uint_subref& operator = ( const sc_generic_base<T>& a )
@@ -470,23 +404,17 @@ public:
 
     sc_uint_subref& operator = ( const char* a );
 
-    sc_uint_subref& operator = ( unsigned long a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( unsigned long a );
 
-    sc_uint_subref& operator = ( long a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( long a );
 
-    sc_uint_subref& operator = ( unsigned int a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( unsigned int a );
 
-    sc_uint_subref& operator = ( int a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( int a );
 
-    sc_uint_subref& operator = ( int64 a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( int64 a );
 
-    sc_uint_subref& operator = ( double a )
-	{ return operator = ( (uint_type) a ); }
+    sc_uint_subref& operator = ( double a );
 
     sc_uint_subref& operator = ( const sc_signed& );
     sc_uint_subref& operator = ( const sc_unsigned& );
@@ -536,14 +464,11 @@ class sc_uint_base : public sc_value_base
     void invalid_index( int i ) const;
     void invalid_range( int l, int r ) const;
 
-    void check_length() const
-	{ if( m_len <= 0 || m_len > SC_INTWIDTH ) { invalid_length(); } }
+    void check_length() const;
 
-    void check_index( int i ) const
-	{ if( i < 0 || i >= m_len ) { invalid_index( i ); } }
+    void check_index( int i ) const;
 
-    void check_range( int l, int r ) const
-	{ if( r < 0 || l >= m_len || l < r ) { invalid_range( l, r ); } }
+    void check_range( int l, int r ) const;
 
     void check_value() const;
 
@@ -559,21 +484,13 @@ public:
 
     // constructors
 
-    explicit sc_uint_base( int w = sc_length_param().len() )
-	: m_val( 0 ), m_len( w ), m_ulen( SC_INTWIDTH - m_len )
-	{ check_length(); }
+    explicit sc_uint_base( int w = sc_length_param().len() );
 
-    sc_uint_base( uint_type v, int w )
-	: m_val( v ), m_len( w ), m_ulen( SC_INTWIDTH - m_len )
-	{ check_length(); extend_sign(); }
+    sc_uint_base( uint_type v, int w );
 
-    sc_uint_base( const sc_uint_base& a )
-        : sc_value_base(a), m_val(a.m_val), m_len(a.m_len), m_ulen(a.m_ulen)
-	{}
+    sc_uint_base( const sc_uint_base& a );
 
-    explicit sc_uint_base( const sc_uint_subref_r& a )
-        : m_val( a ), m_len( a.length() ), m_ulen( SC_INTWIDTH - m_len )
-        { extend_sign(); }
+    explicit sc_uint_base( const sc_uint_subref_r& a );
 
     template<class T>
     explicit sc_uint_base( const sc_generic_base<T>& a )
@@ -592,20 +509,15 @@ public:
 
     // destructor
 
-    virtual ~sc_uint_base()
-	{}
-
+    virtual ~sc_uint_base();
 
     // assignment operators
 
-    sc_uint_base& operator = ( uint_type v )
-	{ m_val = v; extend_sign(); return *this; }
+    sc_uint_base& operator = ( uint_type v );
 
-    sc_uint_base& operator = ( const sc_uint_base& a )
-	{ m_val = a.m_val; extend_sign(); return *this; }
+    sc_uint_base& operator = ( const sc_uint_base& a );
 
-    sc_uint_base& operator = ( const sc_uint_subref_r& a )
-        { m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( const sc_uint_subref_r& a );
 
     template<class T>
     sc_uint_base& operator = ( const sc_generic_base<T>& a )
@@ -626,97 +538,65 @@ public:
 
     sc_uint_base& operator = ( const char* a );
 
-    sc_uint_base& operator = ( unsigned long a )
-	{ m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( unsigned long a );
 
-    sc_uint_base& operator = ( long a )
-	{ m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( long a );
 
-    sc_uint_base& operator = ( unsigned int a )
-	{ m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( unsigned int a );
 
-    sc_uint_base& operator = ( int a )
-	{ m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( int a );
 
-    sc_uint_base& operator = ( int64 a )
-	{ m_val = a; extend_sign(); return *this; }
+    sc_uint_base& operator = ( int64 a );
 
-    sc_uint_base& operator = ( double a )
-	{ m_val = (uint_type) a; extend_sign(); return *this; }
-
+    sc_uint_base& operator = ( double a );
 
     // arithmetic assignment operators
 
-    sc_uint_base& operator += ( uint_type v )
-	{ m_val += v; extend_sign(); return *this; }
+    sc_uint_base& operator += ( uint_type v );
 
-    sc_uint_base& operator -= ( uint_type v )
-	{ m_val -= v; extend_sign(); return *this; }
+    sc_uint_base& operator -= ( uint_type v );
 
-    sc_uint_base& operator *= ( uint_type v )
-	{ m_val *= v; extend_sign(); return *this; }
+    sc_uint_base& operator *= ( uint_type v );
 
-    sc_uint_base& operator /= ( uint_type v )
-	{ m_val /= v; extend_sign(); return *this; }
+    sc_uint_base& operator /= ( uint_type v );
 
-    sc_uint_base& operator %= ( uint_type v )
-	{ m_val %= v; extend_sign(); return *this; }
-
+    sc_uint_base& operator %= ( uint_type v );
 
     // bitwise assignment operators
 
-    sc_uint_base& operator &= ( uint_type v )
-	{ m_val &= v; extend_sign(); return *this; }
+    sc_uint_base& operator &= ( uint_type v );
 
-    sc_uint_base& operator |= ( uint_type v )
-	{ m_val |= v; extend_sign(); return *this; }
+    sc_uint_base& operator |= ( uint_type v );
 
-    sc_uint_base& operator ^= ( uint_type v )
-	{ m_val ^= v; extend_sign(); return *this; }
+    sc_uint_base& operator ^= ( uint_type v );
 
+    sc_uint_base& operator <<= ( uint_type v );
 
-    sc_uint_base& operator <<= ( uint_type v )
-	{ m_val <<= v; extend_sign(); return *this; }
-
-    sc_uint_base& operator >>= ( uint_type v )
-	{ m_val >>= v; /* no sign extension needed */ return *this; }
-
+    sc_uint_base& operator >>= ( uint_type v );
 
     // prefix and postfix increment and decrement operators
 
-    sc_uint_base& operator ++ () // prefix
-	{ ++ m_val; extend_sign(); return *this; }
+    sc_uint_base& operator ++ (); // prefix
 
-    const sc_uint_base operator ++ ( int ) // postfix
-	{ sc_uint_base tmp( *this ); ++ m_val; extend_sign(); return tmp; }
+    const sc_uint_base operator ++ ( int ); // postfix
 
-    sc_uint_base& operator -- () // prefix
-	{ -- m_val; extend_sign(); return *this; }
+    sc_uint_base& operator -- (); // prefix
 
-    const sc_uint_base operator -- ( int ) // postfix
-	{ sc_uint_base tmp( *this ); -- m_val; extend_sign(); return tmp; }
-
+    const sc_uint_base operator -- ( int ); // postfix
 
     // relational operators
 
-    friend bool operator == ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val == b.m_val; }
+    friend bool operator == ( const sc_uint_base& a, const sc_uint_base& b );
 
-    friend bool operator != ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val != b.m_val; }
+    friend bool operator != ( const sc_uint_base& a, const sc_uint_base& b );
 
-    friend bool operator <  ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val < b.m_val; }
+    friend bool operator <  ( const sc_uint_base& a, const sc_uint_base& b );
 
-    friend bool operator <= ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val <= b.m_val; }
+    friend bool operator <= ( const sc_uint_base& a, const sc_uint_base& b );
 
-    friend bool operator >  ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val > b.m_val; }
+    friend bool operator >  ( const sc_uint_base& a, const sc_uint_base& b );
 
-    friend bool operator >= ( const sc_uint_base& a, const sc_uint_base& b )
-	{ return a.m_val >= b.m_val; }
-
+    friend bool operator >= ( const sc_uint_base& a, const sc_uint_base& b );
 
     // bit selection
 
@@ -738,20 +618,15 @@ public:
 
     // bit access, without bounds checking or sign extension
 
-    bool test( int i ) const
-	{ return ( 0 != (m_val & (UINT_ONE << i)) ); }
+    bool test( int i ) const;
 
-    void set( int i )
-	{ m_val |= (UINT_ONE << i); }
+    void set( int i );
 
-    void set( int i, bool v )
-	{ v ? m_val |= (UINT_ONE << i) : m_val &= ~(UINT_ONE << i); }
-
+    void set( int i, bool v );
 
     // capacity
 
-    int length() const
-	{ return m_len; }
+    int length() const;
 
 #ifdef SC_DT_DEPRECATED
     int bitwidth() const
@@ -760,12 +635,10 @@ public:
 
     // concatenation support
 
-    virtual int concat_length(bool* xz_present_p) const
-	{ if ( xz_present_p ) *xz_present_p = false; return length(); }
+    virtual int concat_length(bool* xz_present_p) const;
     virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const;
     virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const;
-    virtual uint64 concat_get_uint64() const
-        { return m_val; }
+    virtual uint64 concat_get_uint64() const;
     virtual void concat_set(int64 src, int low_i);
     virtual void concat_set(const sc_signed& src, int low_i);
     virtual void concat_set(const sc_unsigned& src, int low_i);
@@ -776,52 +649,37 @@ public:
 
     bool and_reduce() const;
 
-    bool nand_reduce() const
-	{ return ( ! and_reduce() ); }
+    bool nand_reduce() const;
 
     bool or_reduce() const;
 
-    bool nor_reduce() const
-	{ return ( ! or_reduce() ); }
+    bool nor_reduce() const;
 
     bool xor_reduce() const;
 
-    bool xnor_reduce() const
-	{ return ( ! xor_reduce() ); }
-
+    bool xnor_reduce() const;
 
     // implicit conversion to uint_type
 
-    operator uint_type() const
-	{ return m_val; }
-
+    operator uint_type() const;
 
     // explicit conversions
 
-    uint_type value() const
-	{ return operator uint_type(); }
+    uint_type value() const;
 
+    int to_int() const;
 
-    int to_int() const
-	{ return (int) m_val; }
+    unsigned int to_uint() const;
 
-    unsigned int to_uint() const
-	{ return (unsigned int) m_val; }
+    long to_long() const;
 
-    long to_long() const
-	{ return (long) m_val; }
+    unsigned long to_ulong() const;
 
-    unsigned long to_ulong() const
-	{ return (unsigned long) m_val; }
+    int64 to_int64() const;
 
-    int64 to_int64() const
-	{ return (int64) m_val; }
+    uint64 to_uint64() const;
 
-    uint64 to_uint64() const
-	{ return (uint64) m_val; }
-
-    double to_double() const
-        { return uint64_to_double( m_val ); }
+    double to_double() const;
 
 
 #ifndef _32BIT_
@@ -840,8 +698,7 @@ public:
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-	{ os << to_string(sc_io_base(os,SC_DEC),sc_io_show_base(os)); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
     void scan( ::std::istream& is = ::std::cin );
 
@@ -870,38 +727,8 @@ operator >> ( ::std::istream&, sc_uint_base& );
 //  Proxy class for sc_uint bit selection (r-value only).
 // ----------------------------------------------------------------------------
 
-// implicit conversion to bool
-
-inline
-sc_uint_bitref_r::operator uint64 () const
-{
-    return m_obj_p->test( m_index );
-}
-
-inline
-bool
-sc_uint_bitref_r::operator ! () const
-{
-    return ! m_obj_p->test( m_index );
-}
-
-inline
-bool
-sc_uint_bitref_r::operator ~ () const
-{
-    return ! m_obj_p->test( m_index );
-}
-
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_uint_bitref_r& a )
-{
-    a.print( os );
-    return os;
-}
-
+operator << ( ::std::ostream& os, const sc_uint_bitref_r& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_uint_bitref
@@ -909,73 +736,8 @@ operator << ( ::std::ostream& os, const sc_uint_bitref_r& a )
 //  Proxy class for sc_uint bit selection (r-value and l-value).
 // ----------------------------------------------------------------------------
 
-// assignment operators
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator = ( const sc_uint_bitref_r& b )
-{
-    m_obj_p->set( m_index, b.to_bool() );
-    return *this;
-}
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator = ( const sc_uint_bitref& b )
-{
-    m_obj_p->set( m_index, b.to_bool() );
-    return *this;
-}
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator = ( bool b )
-{
-    m_obj_p->set( m_index, b );
-    return *this;
-}
-
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator &= ( bool b )
-{
-    if( ! b ) {
-	m_obj_p->set( m_index, b );
-    }
-    return *this;
-}
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator |= ( bool b )
-{
-    if( b ) {
-	m_obj_p->set( m_index, b );
-    }
-    return *this;
-}
-
-inline
-sc_uint_bitref&
-sc_uint_bitref::operator ^= ( bool b )
-{
-    if( b ) {
-	m_obj_p->m_val ^= (UINT_ONE << m_index);
-    }
-    return *this;
-}
-
-
-
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_uint_bitref& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_uint_bitref& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_uint_subref_r
@@ -983,175 +745,29 @@ operator >> ( ::std::istream& is, sc_uint_bitref& a )
 //  Proxy class for sc_uint part selection (r-value only).
 // ----------------------------------------------------------------------------
 
-// implicit conversion to uint_type
-
-inline
-sc_uint_subref_r::operator uint_type() const
-{
-    uint_type val = m_obj_p->m_val;
-    int uleft = SC_INTWIDTH - (m_left + 1);
-    return ( (val & (~UINT_ZERO >> uleft)) >> m_right );
-}
-
-
-// reduce methods
-
-inline
-bool
-sc_uint_subref_r::and_reduce() const
-{
-    sc_uint_base a( *this );
-    return a.and_reduce();
-}
-
-inline
-bool
-sc_uint_subref_r::or_reduce() const
-{
-    sc_uint_base a( *this );
-    return a.or_reduce();
-}
-
-inline
-bool
-sc_uint_subref_r::xor_reduce() const
-{
-    sc_uint_base a( *this );
-    return a.xor_reduce();
-}
-
-
-// explicit conversions
-
-inline
-int
-sc_uint_subref_r::to_int() const
-{
-    sc_uint_base a( *this );
-    return a.to_int();
-}
-
-inline
-unsigned int
-sc_uint_subref_r::to_uint() const
-{
-    sc_uint_base a( *this );
-    return a.to_uint();
-}
-
-inline
-long
-sc_uint_subref_r::to_long() const
-{
-    sc_uint_base a( *this );
-    return a.to_long();
-}
-
-inline
-unsigned long
-sc_uint_subref_r::to_ulong() const
-{
-    sc_uint_base a( *this );
-    return a.to_ulong();
-}
-
-inline
-int64
-sc_uint_subref_r::to_int64() const
-{
-    sc_uint_base a( *this );
-    return a.to_int64();
-}
-
-inline
-uint64
-sc_uint_subref_r::to_uint64() const
-{
-    sc_uint_base a( *this );
-    return a.to_uint64();
-}
-
-inline
-double
-sc_uint_subref_r::to_double() const
-{
-    sc_uint_base a( *this );
-    return a.to_double();
-}
-
-
-// explicit conversion to character string
-
-inline
-const std::string
-sc_uint_subref_r::to_string( sc_numrep numrep ) const
-{
-    sc_uint_base a( *this );
-    return a.to_string( numrep );
-}
-
-inline
-const std::string
-sc_uint_subref_r::to_string( sc_numrep numrep, bool w_prefix ) const
-{
-    sc_uint_base a( *this );
-    return a.to_string( numrep, w_prefix );
-}
-
-
 // functional notation for the reduce methods
 
-inline
 bool
-and_reduce( const sc_uint_subref_r& a )
-{
-    return a.and_reduce();
-}
+and_reduce( const sc_uint_subref_r& a );
 
-inline
 bool
-nand_reduce( const sc_uint_subref_r& a )
-{
-    return a.nand_reduce();
-}
+nand_reduce( const sc_uint_subref_r& a );
 
-inline
 bool
-or_reduce( const sc_uint_subref_r& a )
-{
-    return a.or_reduce();
-}
+or_reduce( const sc_uint_subref_r& a );
 
-inline
 bool
-nor_reduce( const sc_uint_subref_r& a )
-{
-    return a.nor_reduce();
-}
+nor_reduce( const sc_uint_subref_r& a );
 
-inline
 bool
-xor_reduce( const sc_uint_subref_r& a )
-{
-    return a.xor_reduce();
-}
+xor_reduce( const sc_uint_subref_r& a );
 
-inline
 bool
-xnor_reduce( const sc_uint_subref_r& a )
-{
-    return a.xnor_reduce();
-}
+xnor_reduce( const sc_uint_subref_r& a );
 
 
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_uint_subref_r& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_uint_subref_r& a );
 
 
 // ----------------------------------------------------------------------------
@@ -1162,32 +778,8 @@ operator << ( ::std::ostream& os, const sc_uint_subref_r& a )
 
 // assignment operators
 
-inline
-sc_uint_subref&
-sc_uint_subref::operator = ( const sc_uint_base& a )
-{
-    return operator = ( a.operator uint_type() );
-}
-
-inline
-sc_uint_subref&
-sc_uint_subref::operator = ( const char* a )
-{
-    sc_uint_base aa( length() );
-    return ( *this = aa = a );
-}
-
-
-
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_uint_subref& a )
-{
-    a.scan( is );
-    return is;
-}
-
-
+operator >> ( ::std::istream& is, sc_uint_subref& a );
 // ----------------------------------------------------------------------------
 //  CLASS : sc_uint_base
 //
@@ -1196,156 +788,37 @@ operator >> ( ::std::istream& is, sc_uint_subref& a )
 
 // bit selection
 
-inline
-sc_uint_bitref&
-sc_uint_base::operator [] ( int i )
-{
-    check_index( i );
-    sc_uint_bitref* result_p = sc_uint_bitref::m_pool.allocate();
-    result_p->initialize(this, i);
-    return *result_p;
-}
-
-inline
-const sc_uint_bitref_r&
-sc_uint_base::operator [] ( int i ) const
-{
-    check_index( i );
-    sc_uint_bitref* result_p = sc_uint_bitref::m_pool.allocate();
-    result_p->initialize(this, i);
-    return *result_p;
-}
-
-
-inline
-sc_uint_bitref&
-sc_uint_base::bit( int i )
-{
-    check_index( i );
-    sc_uint_bitref* result_p = sc_uint_bitref::m_pool.allocate();
-    result_p->initialize(this, i);
-    return *result_p;
-}
-
-inline
-const sc_uint_bitref_r&
-sc_uint_base::bit( int i ) const
-{
-    check_index( i );
-    sc_uint_bitref* result_p = sc_uint_bitref::m_pool.allocate();
-    result_p->initialize(this, i);
-    return *result_p;
-}
-
-
-// part selection
-
-inline
-sc_uint_subref&
-sc_uint_base::operator () ( int left, int right )
-{
-    check_range( left, right );
-    sc_uint_subref* result_p = sc_uint_subref::m_pool.allocate();
-    result_p->initialize(this, left, right);
-    return *result_p;
-}
-
-inline
-const sc_uint_subref_r&
-sc_uint_base::operator () ( int left, int right ) const
-{
-    check_range( left, right );
-    sc_uint_subref* result_p = sc_uint_subref::m_pool.allocate();
-    result_p->initialize(this, left, right);
-    return *result_p;
-}
-
-
-inline
-sc_uint_subref&
-sc_uint_base::range( int left, int right )
-{
-    check_range( left, right );
-    sc_uint_subref* result_p = sc_uint_subref::m_pool.allocate();
-    result_p->initialize(this, left, right);
-    return *result_p;
-}
-
-inline
-const sc_uint_subref_r&
-sc_uint_base::range( int left, int right ) const
-{
-    check_range( left, right );
-    sc_uint_subref* result_p = sc_uint_subref::m_pool.allocate();
-    result_p->initialize(this, left, right);
-    return *result_p;
-}
-
 
 // functional notation for the reduce methods
 
-inline
 bool
-and_reduce( const sc_uint_base& a )
-{
-    return a.and_reduce();
-}
+and_reduce( const sc_uint_base& a );
 
-inline
 bool
-nand_reduce( const sc_uint_base& a )
-{
-    return a.nand_reduce();
-}
+nand_reduce( const sc_uint_base& a );
 
-inline
 bool
-or_reduce( const sc_uint_base& a )
-{
-    return a.or_reduce();
-}
+or_reduce( const sc_uint_base& a );
 
-inline
 bool
-nor_reduce( const sc_uint_base& a )
-{
-    return a.nor_reduce();
-}
+nor_reduce( const sc_uint_base& a );
 
-inline
 bool
-xor_reduce( const sc_uint_base& a )
-{
-    return a.xor_reduce();
-}
+xor_reduce( const sc_uint_base& a );
 
-inline
 bool
-xnor_reduce( const sc_uint_base& a )
-{
-    return a.xnor_reduce();
-}
+xnor_reduce( const sc_uint_base& a );
 
-
-
-inline
 ::std::ostream&
 operator << ( ::std::ostream& os, const sc_uint_base& a )
 {
     a.print( os );
     return os;
 }
-
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_uint_base& a )
-{
-    a.scan( is );
-    return is;
-}
+operator >> ( ::std::istream& is, sc_uint_base& a );
 
 } // namespace sc_dt
-
 
 #endif
 

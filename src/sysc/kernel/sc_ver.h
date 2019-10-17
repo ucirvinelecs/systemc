@@ -56,7 +56,8 @@ extern const std::string  sc_copyright_string;
 #define SYSTEMC_2_3_1
  
 #define SYSTEMC_VERSION       20140417
-#define SC_VERSION_ORIGINATOR "Accellera"
+//#define SC_VERSION_ORIGINATOR "Accellera"
+#define SC_VERSION_ORIGINATOR "RISC 0.6.0" // identify Accellera-derived RISC version
 #define SC_VERSION_MAJOR      2
 #define SC_VERSION_MINOR      3
 #define SC_VERSION_PATCH      1
@@ -65,8 +66,12 @@ extern const std::string  sc_copyright_string;
 /// compliancy with IEEE 1666-2011 (see 8.6.5)
 #define IEEE_1666_SYSTEMC     201101L
 
+//#define SC_COPYRIGHT                               
+//  "Copyright (c) 1996-2014 by all Contributors,\n" 
+//  "ALL RIGHTS RESERVED\n"
+// 04/06/2015 GL: new compiler message
 #define SC_COPYRIGHT                               \
-  "Copyright (c) 1996-2014 by all Contributors,\n" \
+  "Copyright (c) 1996-2019 by CECS and all Contributors,\n" \
   "ALL RIGHTS RESERVED\n"
 
 

@@ -38,6 +38,59 @@
 #include "sysc/kernel/sc_kernel_ids.h"
 #include "sysc/communication/sc_export.h"
 
+#include <list> // 02/13/2015 GL
+
+#ifndef SC_INCLUDE_WINDOWS_H // 02/20/2015 GL
+#  define SC_INCLUDE_WINDOWS_H // include Windows.h, if needed
+#endif
+#include "sysc/kernel/sc_cmnhdr.h"
+
+#if defined(WIN32) || defined(_WIN32)
+
+#define CHNL_MTX_TYPE_ CRITICAL_SECTION
+
+#define CHNL_MTX_INIT_( Mutex ) \
+    InitializeCriticalSection( &(Mutex) )
+#define CHNL_MTX_LOCK_( Mutex ) \
+    EnterCriticalSection( &(Mutex) )
+#define CHNL_MTX_UNLOCK_( Mutex ) \
+    LeaveCriticalSection( &(Mutex) )
+#define CHNL_MTX_TRYLOCK_( Mutex ) \
+    ( TryEnterCriticalSection( &(Mutex) ) != 0 )
+#define CHNL_MTX_DESTROY_( Mutex ) \
+    DeleteCriticalSection( &(Mutex) )
+
+#else // use pthread mutex
+
+#include <pthread.h>
+#define CHNL_MTX_TYPE_ pthread_mutex_t
+
+#if defined(__hpux)
+#  define CHNL_PTHREAD_NULL_ cma_c_null
+#else // !defined(__hpux)
+#  define CHNL_PTHREAD_NULL_ NULL
+#endif
+
+#define CHNL_MTX_INIT_( Mutex ) \
+    pthread_mutex_init( &(Mutex), CHNL_PTHREAD_NULL_ )
+#define CHNL_MTX_LOCK_( Mutex ) \
+    pthread_mutex_lock( &(Mutex) )
+#define CHNL_MTX_UNLOCK_( Mutex ) \
+    pthread_mutex_unlock( &(Mutex) )
+
+#ifdef _XOPEN_SOURCE
+#   define CHNL_MTX_TRYLOCK_( Mutex ) \
+       ( pthread_mutex_trylock( &(Mutex) ) == 0 )
+#else // no try_lock available
+#   define CHNL_MTX_TRYLOCK_( Mutex ) \
+       ( false ) 
+#endif
+
+#define CHNL_MTX_DESTROY_( Mutex ) \
+    pthread_mutex_destroy( &(Mutex) )
+
+#endif
+
 namespace sc_core {
 
 // Forward declarations:
@@ -88,9 +141,9 @@ enum sc_descendant_inclusion_info {
 class sc_process_host 
 {
   public:
-    sc_process_host() {}
-    virtual ~sc_process_host() { } // Needed for cast check for sc_module.
-    void defunct() {}
+    sc_process_host();
+    virtual ~sc_process_host(); // Needed for cast check for sc_module.
+    void defunct();
 };
 
 
@@ -108,10 +161,9 @@ class sc_process_monitor {
     enum {
         spm_exit = 0
     };
-    virtual ~sc_process_monitor() {}
+    virtual ~sc_process_monitor();
     virtual void signal(sc_thread_handle thread_p, int type);
 };
-inline void sc_process_monitor::signal(sc_thread_handle , int ) {}  
 
 //------------------------------------------------------------------------------
 // PROCESS INVOCATION METHOD OR FUNCTION:
@@ -198,6 +250,7 @@ inline void sc_process_monitor::signal(sc_thread_handle , int ) {}
 
 
 extern void sc_set_stack_size( sc_thread_handle, std::size_t );
+extern void sc_set_stack_size( sc_method_handle, std::size_t ); // 04/03/2015 GL: set the stack size of SC_METHODs
 
 class sc_event;
 class sc_event_list;
@@ -229,8 +282,8 @@ class sc_throw_it_helper {
   public:
     virtual sc_throw_it_helper* clone() const = 0;
     virtual void throw_it() = 0;
-    sc_throw_it_helper() {}
-    virtual ~sc_throw_it_helper() {}
+    sc_throw_it_helper();
+    virtual ~sc_throw_it_helper();
 };
 
 template<typename EXCEPT>
@@ -238,12 +291,56 @@ class sc_throw_it : public sc_throw_it_helper
 {
     typedef sc_throw_it<EXCEPT> this_type;
   public:
-    sc_throw_it( const EXCEPT& value ) : m_value(value) { }
-    virtual ~sc_throw_it() {}
-    virtual inline this_type* clone() const { return new this_type(m_value); }
-    virtual inline void throw_it() { throw m_value; }
+    sc_throw_it( const EXCEPT& value );
+    virtual ~sc_throw_it();
+    virtual  this_type* clone() const;
+    virtual void throw_it();
   protected:
     EXCEPT m_value;  // value to be thrown.
+};
+
+//==============================================================================
+// CLASS sc_acq_chnl_lock_queue - A LIST OF CHANNEL LOCKS ACQUIRED BY A PROCESS:
+//
+// This class implements the object to maintain a list of channel locks acquired 
+// in the hierachical channels. The outer channel lock is at the beginning of the
+// list, and the inner channel lock is at the end of the list. The order of the 
+// acquired channel locks is maintained as LIFO (Last-In-First-Out), meaning that
+// the outer channel lock is acquired first ant released last (02/13/2015 GL).
+//
+// Notes:
+//   (1) In the lock_and_push method, it will first check whether the new channel
+//       lock is the same as the last one in the list. If they are the same (one 
+//       method calls another in the current-level channel), it will only
+//       increment the lock counter; if the new channel lock is not in the list, 
+//       then it will be locked and pushed into the end of the list; if the new 
+//       lock is in the list but not the last one (an inner channel method calls 
+//       an outer channel method), assertion fails and it stops the simulation. 
+//   (2) In the pop_and_unlock method, it will always try to unlock the last 
+//       channel lock in the list, otherwise it breaks the correct order to 
+//       unlock locks (may lead to deadlock issues). When the counter of the last 
+//       lock is larger than one, it will decrement the counter. If the counter 
+//       equals one, it pops the lock from the list and release the lock.
+//   (3) In lock_all and unlock_all methods, it will acquire all the locks from
+//       the beginning to the end, and release all the locks in the reverse
+//       order.
+//       
+//==============================================================================
+struct sc_chnl_lock { // 02/13/2015 GL: data structure to keep the state of a channel lock
+    CHNL_MTX_TYPE_ *lock_p;
+    unsigned int counter;
+    sc_chnl_lock( CHNL_MTX_TYPE_ *m ): lock_p( m ), counter( 1 ) {}
+};
+
+class sc_acq_chnl_lock_queue {
+  public:
+    void lock_and_push( CHNL_MTX_TYPE_ *lock );
+    void pop_and_unlock( CHNL_MTX_TYPE_ *lock );
+    void lock_all( void );
+    void unlock_all( void );
+
+  private:
+    std::list<sc_chnl_lock*> queue;
 };
 
 //==============================================================================
@@ -280,6 +377,7 @@ class sc_process_b : public sc_object {
     friend class sc_sensitive_pos;
     friend class sc_sensitive_neg;
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_report_handler;
     friend class sc_reset;
     friend class sc_reset_finder;
@@ -289,6 +387,74 @@ class sc_process_b : public sc_object {
     friend sc_process_handle sc_get_current_process_handle();
     friend void sc_thread_cor_fn( void* arg );
     friend bool timed_out( sc_simcontext* );
+
+
+  public:
+    /**
+     * \brief sets the upcoming segment ids
+     *        TS 07/08/17
+     */
+    void set_upcoming_segment_ids(int *segment_ids);
+
+    /**
+     * \brief returns the upcoming segment ids
+     *        TS 07/08/17
+     */
+    int* get_upcoming_segment_ids();
+
+    /**
+     * \brief stores the upcoming segment ids
+     *        TS 07/08/17
+     */
+    int *segment_ids;
+
+    /**
+     * \brief sets the upcoming socket id
+     *        ZC 10:30 2018/10/31
+     */
+    void set_upcoming_socket_id(int socket_id);
+
+    /**
+     * \brief returns the upcoming socket id
+     *        ZC 10:31 2018/10/31
+     */
+    int get_upcoming_socket_id();
+
+    /**
+     * \brief stores the upcoming socket id
+     *        ZC 10:31 2018/10/31
+     */
+    int socket_id_;
+
+
+    /**
+     * \brief increase the offset
+     *        ZC 10:30 2018/10/31
+     */
+    void increase_offset(int offset)
+    {
+      this->seg_offset_ += offset;
+    }
+
+    /**
+     * \brief decrease the offset
+     *        ZC 10:31 2018/10/31
+     */
+    void decrease_offset(int offset)
+    {
+      this->seg_offset_ -= offset;
+    }
+
+    /**
+     * \brief returns the offset
+     *        ZC 10:31 2018/10/31
+     */
+    int get_offset(int offset)
+    {
+      return this->seg_offset_;
+    }
+  
+    int seg_offset_;
 
   public:
     enum process_throw_type {
@@ -335,14 +501,18 @@ class sc_process_b : public sc_object {
     virtual ~sc_process_b();
 
   public:
-    inline int current_state() { return m_state; }
-    bool dont_initialize() const { return m_dont_init; }
+    inline int current_state();
+    bool dont_initialize() const;
     virtual void dont_initialize( bool dont );
     std::string dump_state() const;
     const ::std::vector<sc_object*>& get_child_objects() const;
-    inline sc_curr_proc_kind proc_kind() const;
+    sc_curr_proc_kind proc_kind() const;
     sc_event& reset_event();
     sc_event& terminated_event();
+    void lock_and_push( CHNL_MTX_TYPE_ *lock ); // 02/16/2015 GL: wrapper methods
+    void pop_and_unlock( CHNL_MTX_TYPE_ *lock );
+    void lock_all_channels( void );
+    void unlock_all_channels( void );
 
   public:
     static inline sc_process_handle last_created_process_handle();
@@ -350,21 +520,17 @@ class sc_process_b : public sc_object {
   protected:
     virtual void add_child_object( sc_object* );
     void add_static_event( const sc_event& );
-    bool dynamic() const { return m_dynamic_proc; }
+    bool dynamic() const;
     const char* gen_unique_name( const char* basename_, bool preserve_first );
-    inline sc_report* get_last_report() { return m_last_report_p; }
+    sc_report* get_last_report();
     inline bool is_disabled() const;
-    inline bool is_runnable() const;
-    static inline sc_process_b* last_created_process_base();
+    bool is_runnable() const;
+    static sc_process_b* last_created_process_base();
     virtual bool remove_child_object( sc_object* );
     void remove_dynamic_events( bool skip_timeout = false );
     void remove_static_events();
-    inline void set_last_report( sc_report* last_p )
-        {  
-            delete m_last_report_p;
-            m_last_report_p = last_p;
-        }
-    inline bool timed_out() const;
+    void set_last_report( sc_report* last_p );
+    bool timed_out() const;
     void report_error( const char* msgid, const char* msg = "" ) const;
     void report_immediate_self_notification() const;
 
@@ -374,10 +540,10 @@ class sc_process_b : public sc_object {
     void disconnect_process();
     virtual void enable_process(
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS ) = 0;
-    inline void initially_in_reset( bool async );
-    inline bool is_unwinding() const;
-    inline bool start_unwinding();
-    inline bool clear_unwinding();
+    void initially_in_reset( bool async );
+    bool is_unwinding() const;
+    bool start_unwinding();
+    bool clear_unwinding();
     virtual void kill_process(
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS ) = 0;
     void reset_changed( bool async, bool asserted );
@@ -395,8 +561,8 @@ class sc_process_b : public sc_object {
 
   private:
     void        delete_process();
-    inline void reference_decrement();
-    inline void reference_increment();
+    void reference_decrement();
+    void reference_increment();
 
   protected:
     inline void semantics();
@@ -442,182 +608,13 @@ class sc_process_b : public sc_object {
     trigger_t                    m_trigger_type;    // type of trigger using.
     bool                         m_unwinding;       // true if unwinding stack.
 
+    sc_acq_chnl_lock_queue       m_acq_chnl_lock_queue;  // 02/16/2015 GL: a list of acquired channel locks
+
   protected:
     static sc_process_b* m_last_created_process_p; // Last process created.
 };
 
 typedef sc_process_b sc_process_b;  // For compatibility.
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::XXXX_child_YYYYY"
-//
-// These methods provide child object support.
-//------------------------------------------------------------------------------
-inline void
-sc_process_b::add_child_object( sc_object* object_p )
-{
-    sc_object::add_child_object( object_p );
-    reference_increment();
-}
-
-inline bool
-sc_process_b::remove_child_object( sc_object* object_p )
-{
-    if ( sc_object::remove_child_object( object_p ) ) {
-	    reference_decrement();
-            return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-inline const ::std::vector<sc_object*>&
-sc_process_b::get_child_objects() const
-{
-    return m_child_objects;
-}
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::initially_in_reset"
-//
-// This inline method is a callback to indicate that a reset is active at
-// start up. This is because the signal will have been initialized before
-// a reset linkage for it is set up, so we won't get a reset_changed()
-// callback.
-//     async = true if this an asynchronous reset.
-//------------------------------------------------------------------------------
-inline void sc_process_b::initially_in_reset( bool async )
-{
-    if ( async ) 
-        m_active_areset_n++;
-    else
-        m_active_reset_n++;
-}
-
-//------------------------------------------------------------------------------
-//"sc_process_b::is_disabled"
-//
-// This method returns true if this process is disabled. 
-//------------------------------------------------------------------------------
-inline bool sc_process_b::is_disabled() const
-{
-    return (m_state & ps_bit_disabled) ? true : false;
-}
-
-//------------------------------------------------------------------------------
-//"sc_process_b::is_runnable"
-//
-// This method returns true if this process is runnable. That is indicated
-// by a non-zero m_runnable_p field.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::is_runnable() const
-{
-    return m_runnable_p != 0;
-}
-
-//------------------------------------------------------------------------------
-//"sc_process_b::is_unwinding"
-//
-// This method returns true if this process is unwinding from a kill or reset.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::is_unwinding() const
-{
-    return m_unwinding;
-}
-
-//------------------------------------------------------------------------------
-//"sc_process_b::start_unwinding"
-//
-// This method flags that this object instance should start unwinding if the
-// current throw status requires an unwind. 
-//
-// Result is true if the flag is set, false if the flag is already set.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::start_unwinding()
-{
-    if ( !m_unwinding )
-    {
-	switch( m_throw_status )
-	{
-	  case THROW_KILL:
-	  case THROW_ASYNC_RESET:
-	  case THROW_SYNC_RESET:
-	    m_unwinding = true;
-	     return true;
-	  case THROW_USER:
-	   default:
-	     break;
-	 }
-    }
-    return false;
-}
-
-//------------------------------------------------------------------------------
-//"sc_process_b::clear_unwinding"
-//
-// This method clears this object instance's throw status and always returns
-// true.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::clear_unwinding()
-{
-    m_unwinding = false;
-    return true;
-}
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::last_created_process_base"
-//
-// This virtual method returns the sc_process_b pointer for the last
-// created process. It is only used internally by the simulator.
-//------------------------------------------------------------------------------
-inline sc_process_b* sc_process_b::last_created_process_base()
-{
-    return m_last_created_process_p;
-}
-
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::proc_kind"
-//
-// This method returns the kind of this process.
-//------------------------------------------------------------------------------
-inline sc_curr_proc_kind sc_process_b::proc_kind() const
-{
-    return m_process_kind;
-}
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::reference_decrement"
-//
-// This inline method decrements the number of outstanding references to this 
-// object instance. If the number of references goes to zero, this object
-// can be deleted in "sc_process_b::delete_process()".
-//------------------------------------------------------------------------------
-inline void sc_process_b::reference_decrement()
-{
-    m_references_n--;
-    if ( m_references_n == 0 ) delete_process();
-}
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::reference_increment"
-//
-// This inline method increments the number of outstanding references to this 
-// object instance.
-//------------------------------------------------------------------------------
-inline void sc_process_b::reference_increment()
-{
-    assert(m_references_n != 0);
-    m_references_n++;
-}
 
 //------------------------------------------------------------------------------
 //"sc_process_b::semantics"
@@ -632,8 +629,8 @@ inline void sc_process_b::reference_increment()
 //------------------------------------------------------------------------------
 struct scoped_flag
 {
-    scoped_flag( bool& b ) : ref(b){ ref = true;  }
-    ~scoped_flag()                 { ref = false; }
+    scoped_flag( bool& b );
+    ~scoped_flag();
     bool& ref;
 };
 inline void sc_process_b::semantics()
@@ -671,27 +668,6 @@ inline void sc_process_b::semantics()
 #   endif
 }
 
-
-//------------------------------------------------------------------------------
-//"sc_process_b::terminated"
-//
-// This inline method returns true if this object has terminated.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::terminated() const
-{
-    return (m_state & ps_bit_zombie) != 0;
-}
-
-
-//------------------------------------------------------------------------------
-//"sc_process_b::timed_out"
-//
-// This inline method returns true if this object instance timed out.
-//------------------------------------------------------------------------------
-inline bool sc_process_b::timed_out() const
-{
-    return m_timed_out;
-}
 
 } // namespace sc_core
 

@@ -54,6 +54,7 @@ class sc_object
 {
     friend class sc_event;
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend struct sc_invoke_method;
     friend class sc_module_dynalloc_list;
     friend class sc_object_manager;
@@ -64,10 +65,17 @@ class sc_object
     friend class sc_trace_file_base;
 
 public:
+
+    /* begin TS dynamic analysis */
+    virtual void print_variables(FILE *file) {}
+    virtual void print_channels(FILE *file) {}
+    virtual void print_events(FILE *file) {}
+    virtual void print_ports(FILE *file) {}
+    /* end TS dynamic analysis */
+
     typedef unsigned phase_cb_mask;
 
-    const char* name() const
-        { return m_name.c_str(); }
+    const char* name() const;
 
     const char* basename() const;
 
@@ -78,10 +86,9 @@ public:
 
     virtual void trace( sc_trace_file* tf ) const;
 
-    virtual const char* kind() const { return "sc_object"; }
+    virtual const char* kind() const;
 
-    sc_simcontext* simcontext() const
-        { return m_simc; }
+    sc_simcontext* simcontext() const;
 
     // add attribute
     bool add_attribute( sc_attr_base& );
@@ -103,14 +110,12 @@ public:
           sc_attr_cltn& attr_cltn();
     const sc_attr_cltn& attr_cltn() const;
 
-    virtual const std::vector<sc_event*>& get_child_events() const
-        { return m_child_events; }
+    virtual const std::vector<sc_event*>& get_child_events() const;
 
-    virtual const std::vector<sc_object*>& get_child_objects() const
-        { return m_child_objects; }
+    virtual const std::vector<sc_object*>& get_child_objects() const;
 
     sc_object* get_parent() const;
-    sc_object* get_parent_object() const { return m_parent; }
+    sc_object* get_parent_object() const;
 
 protected:
 
@@ -153,26 +158,13 @@ private:
     sc_simcontext*          m_simc;          // simcontext ptr / empty indicator
 };
 
-inline
-sc_object&
-sc_object::operator=( sc_object const & )
-{
-  // deliberately do nothing
-  return *this;
-}
 
 // ----------------------------------------------------------------------------
 
 extern const char SC_HIERARCHY_CHAR;
 extern bool sc_enable_name_checking;
 
-
-inline 
-sc_object* sc_get_parent( const sc_object* obj_p ) 
-{ 
-	return obj_p->get_parent_object(); 
-}
-
+sc_object* sc_get_parent( const sc_object* obj_p );
 } // namespace sc_core
 
 /*****************************************************************************

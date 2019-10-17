@@ -42,7 +42,16 @@
        extern "C" void _Unwind_SjLj_Unregister (struct SjLj_Function_Context *);
 #   endif
 #endif
-
+//---------------------------------------------------------Farah is working here       
+    // constructor
+    sc_core::sc_cor_fiber sc_cor_fiber()
+	: m_stack_size( 0 ), m_fiber( 0 ), m_pkg( 0 )
+       {
+#         if defined(__GNUC__) && __USING_SJLJ_EXCEPTIONS__
+              m_eh.prev = 0;
+#         endif
+       }
+//---------------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

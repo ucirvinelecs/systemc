@@ -105,9 +105,13 @@ public:
 
     // blocking read
 
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     void read( data_type& value_ )
-        { (*this)->read( value_ ); }
+    { (*this)->read( value_ ); }
 
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     data_type read()
         { return (*this)->read(); }
 
@@ -221,6 +225,8 @@ public:
 
     // blocking write
 
+    // 06/13/2016 GL: function annotation
+    #pragma RISC write conflict-free looped-wait event
     void write( const data_type& value_ )
         { (*this)->write( value_ ); }
 

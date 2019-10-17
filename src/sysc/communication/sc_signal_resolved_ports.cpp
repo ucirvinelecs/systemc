@@ -33,7 +33,167 @@
 #include "sysc/communication/sc_communication_ids.h"
 #include "sysc/communication/sc_signal_resolved.h"
 #include "sysc/communication/sc_signal_resolved_ports.h"
+//--------------------------------------------------Farah si working here 
 
+
+  sc_core::sc_in_resolved::sc_in_resolved()
+: base_type()
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const char* name_ )
+: base_type( name_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const in_if_type& interface_ )
+: base_type( interface_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const char* name_, const in_if_type& interface_ )
+: base_type( name_, interface_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( in_port_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const char* name_, in_port_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( inout_port_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const char* name_, inout_port_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( this_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_in_resolved::sc_in_resolved( const char* name_, this_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+
+  sc_core::sc_in_resolved::~sc_in_resolved()
+{}
+
+const char* sc_core::sc_in_resolved::kind() const
+      { return "sc_in_resolved"; }
+
+
+  sc_core::sc_inout_resolved::sc_inout_resolved()
+: base_type()
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( const char* name_ )
+: base_type( name_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( inout_if_type& interface_ )
+: base_type( interface_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( const char* name_, inout_if_type& interface_ )
+: base_type( name_, interface_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( inout_port_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( const char* name_, inout_port_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( this_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_inout_resolved::sc_inout_resolved( const char* name_, this_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  sc_core::sc_inout_resolved::~sc_inout_resolved()
+{}
+
+ sc_core::sc_inout_resolved::this_type& sc_core::sc_inout_resolved::operator = ( const data_type& value_ )
+{ (*this)->write( value_ ); return *this; }
+
+  sc_core::sc_inout_resolved::this_type& sc_core::sc_inout_resolved::operator = ( const in_if_type& interface_ )
+{ (*this)->write( interface_.read() ); return *this; }
+
+  sc_core::sc_inout_resolved::this_type& sc_core::sc_inout_resolved::operator = ( const in_port_type& port_ )
+{ (*this)->write( port_->read() ); return *this; }
+
+  sc_core::sc_inout_resolved::this_type& sc_core::sc_inout_resolved::operator = ( const inout_port_type& port_ )
+{ (*this)->write( port_->read() ); return *this; }
+
+  sc_core::sc_inout_resolved::this_type& sc_core::sc_inout_resolved::operator = ( const this_type& port_ )
+{ (*this)->write( port_->read() ); return *this; }
+
+const char* sc_core::sc_inout_resolved::kind() const
+    { return "sc_inout_resolved"; }
+
+
+  sc_core::sc_out_resolved::sc_out_resolved()
+: base_type()
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( const char* name_ )
+: base_type( name_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( inout_if_type& interface_ )
+: base_type( interface_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( const char* name_, inout_if_type& interface_ )
+: base_type( name_, interface_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( inout_port_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( const char* name_, inout_port_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( this_type& parent_ )
+: base_type( parent_ )
+{}
+
+  sc_core::sc_out_resolved::sc_out_resolved( const char* name_, this_type& parent_ )
+: base_type( name_, parent_ )
+{}
+
+  // destructor (does nothing)
+
+  sc_core::sc_out_resolved::~sc_out_resolved()
+{}
+
+    sc_core::sc_out_resolved::this_type& sc_core::sc_out_resolved::operator = ( const data_type& value_ )
+	{ (*this)->write( value_ ); return *this; }
+
+    sc_core::sc_out_resolved::this_type& sc_core::sc_out_resolved::operator = ( const in_if_type& interface_ )
+	{ (*this)->write( interface_.read() ); return *this; }
+
+    sc_core::sc_out_resolved::this_type& sc_core::sc_out_resolved::operator = ( const in_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_out_resolved::this_type& sc_core::sc_out_resolved::operator = ( const inout_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_out_resolved::this_type& sc_core::sc_out_resolved::operator = ( const this_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+  const char* sc_core::sc_out_resolved::kind() const
+    { return "sc_out_resolved"; }
+
+//---------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

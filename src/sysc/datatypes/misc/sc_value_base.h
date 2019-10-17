@@ -74,7 +74,7 @@ class sc_unsigned;
 //  definitions in sc_object.cpp.
 // ----------------------------------------------------------------------------
 
-class sc_value_base 
+class sc_value_base
 {
     friend class sc_concatref;
   private: 
@@ -88,7 +88,7 @@ class sc_value_base
     virtual void concat_set( const sc_unsigned& src, int low_i );
     virtual void concat_set( uint64 src, int low_i );
   public:
-    virtual ~sc_value_base() {}
+    virtual ~sc_value_base();
 };
 
 

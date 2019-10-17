@@ -128,30 +128,8 @@ operator << ( systemc_ostream& os, sc_numrep numrep )
 }
 
 // only used within vec_from_str (non-standard, deprecated)
-inline void
-is_valid_base(sc_numrep base)
-{
-  switch (base) {
-    case SC_NOBASE: case SC_BIN: 
-    case SC_OCT: case SC_DEC: 
-    case SC_HEX: 
-        break;
-    case SC_BIN_US: case SC_BIN_SM: 
-    case SC_OCT_US: case SC_OCT_SM:
-    case SC_HEX_US: case SC_HEX_SM:
-    case SC_CSD:
-      SC_REPORT_ERROR( sc_core::SC_ID_NOT_IMPLEMENTED_,
-		       "is_valid_base( sc_numrep base ) : "
-		       "bases SC_CSD, or ending in _US and _SM are not supported" );
-      break;
-    default:
-      char msg[BUFSIZ];
-      std::sprintf( msg, "is_valid_base( sc_numrep base ) : "
-	       "base = %s is not valid",
-	       to_string( base ).c_str() );
-      SC_REPORT_ERROR( sc_core::SC_ID_VALUE_NOT_VALID_, msg );
-  }
-}
+void
+is_valid_base(sc_numrep base);
 
 // ----------------------------------------------------------------------------
 
@@ -344,76 +322,43 @@ vec_reverse(int unb, int und, sc_digit *ud,
 // ----------------------------------------------------------------------------
 
 // Return the low half part of d.
-inline 
 sc_digit 
-low_half(sc_digit d) 
-{
-  return (d & HALF_DIGIT_MASK);
-}
+low_half(sc_digit d) ;
 
 // Return the high half part of d. The high part of the digit may have
 // more bits than BITS_PER_HALF_DIGIT due to, e.g., overflow in the
 // multiplication. Hence, in other functions that use high_half(),
 // make sure that the result contains BITS_PER_HALF_DIGIT if
 // necessary. This is done by high_half_masked().
-inline 
 sc_digit 
-high_half(sc_digit d) 
-{
-  return (d >> BITS_PER_HALF_DIGIT);
-}
+high_half(sc_digit d);
 
-inline
 sc_digit
-high_half_masked(sc_digit d)
-{
-  return (high_half(d) & HALF_DIGIT_MASK);
-}
+high_half_masked(sc_digit d);
 
 // Concatenate the high part h and low part l. Assumes that h and l
 // are less than or equal to HALF_DIGIT_MASK;
-inline 
 sc_digit 
-concat(sc_digit h, sc_digit l) 
-{
-  return ((h << BITS_PER_HALF_DIGIT) | l);
-}
+concat(sc_digit h, sc_digit l);
 
 // Create a number with n 1's.
-inline
 sc_digit
-one_and_ones(int n)
-{
-  return (((sc_digit) 1 << n) - 1);
-}
+one_and_ones(int n);
 
 // Create a number with one 1 and n 0's.
-inline
 sc_digit
-one_and_zeros(int n)
-{
-  return ((sc_digit) 1 << n);
-}
+one_and_zeros(int n);
 
 
 // ----------------------------------------------------------------------------
 
 // Find the digit that bit i is in.
-inline
 int 
-digit_ord(int i)
-{
-  return (i / BITS_PER_DIGIT);
-}
+digit_ord(int i);
 
 // Find the bit in digit_ord(i) that bit i corressponds to.
-inline
 int 
-bit_ord(int i)
-{
-  return (i % BITS_PER_DIGIT);
-}
-
+bit_ord(int i);
 
 // ----------------------------------------------------------------------------
 //  Functions to compare, zero, complement vector(s).
@@ -542,12 +487,8 @@ vec_zero(int from, int ulen, sc_digit *u)
 }
 
 // Set u[i] = 0 where i = 0 .. (ulen - 1).
-inline
 void
-vec_zero(int ulen, sc_digit *u)
-{
-  vec_zero(0, ulen, u);
-}
+vec_zero(int ulen, sc_digit *u);
 
 // Copy n digits from v to u.
 inline
@@ -662,18 +603,9 @@ get_sign(Type &u)
 // - Return SC_ZERO if either sign is SC_ZERO.
 // - Return SC_POS if us == vs
 // - Return SC_NEG if us != vs.
-inline
+
 small_type
-mul_signs(small_type us, small_type vs)
-{
-  if ((us == SC_ZERO) || (vs == SC_ZERO))
-    return SC_ZERO;
-
-  if (us == vs)
-    return SC_POS;
-
-  return SC_NEG;
-}
+mul_signs(small_type us, small_type vs);
 
 
 // ----------------------------------------------------------------------------
@@ -751,14 +683,8 @@ check_for_zero(int ulen, const sc_digit *u)
 
 }
 
-inline
 small_type
-make_zero(int nd, sc_digit *d)
-{
-  vec_zero(nd, d);
-  return SC_ZERO;
-}
-
+make_zero(int nd, sc_digit *d);
 
 // ----------------------------------------------------------------------------
 //  Functions for both signed and unsigned numbers to convert sign-magnitude
@@ -782,26 +708,14 @@ trim(small_type added, int nb, int nd, sc_digit *d)
 
 // Convert an (un)signed number from sign-magnitude representation to
 // 2's complement representation and trim the extra bits.
-inline
 void
 convert_SM_to_2C_trimmed(small_type added, 
-                         small_type s, int nb, int nd, sc_digit *d)
-{
-  if (s == SC_NEG) {
-    vec_complement(nd, d);
-    trim(added, nb, nd, d);
-  }
-}
+                         small_type s, int nb, int nd, sc_digit *d);
 
 // Convert an (un)signed number from sign-magnitude representation to
 // 2's complement representation but do not trim the extra bits.
-inline
 void
-convert_SM_to_2C(small_type s, int nd, sc_digit *d)
-{
-  if (s == SC_NEG)
-    vec_complement(nd, d);
-}
+convert_SM_to_2C(small_type s, int nd, sc_digit *d);
 
 
 // ----------------------------------------------------------------------------
@@ -860,32 +774,18 @@ convert_signed_2C_to_SM(int nb, int nd, sc_digit *d)
 // complement representation, get its sign, convert back to
 // sign-magnitude representation, and return its sign. nd is d's
 // actual size, without zeros eliminated.
-inline
 small_type 
-convert_signed_SM_to_2C_to_SM(small_type s, int nb, int nd, sc_digit *d)
-{
-  convert_SM_to_2C(s, nd, d);
-  return convert_signed_2C_to_SM(nb, nd, d);
-}
+convert_signed_SM_to_2C_to_SM(small_type s, int nb, int nd, sc_digit *d);
 
 // Convert a signed number from sign-magnitude representation to 2's
 // complement representation and trim the extra bits.
-inline
 void
-convert_signed_SM_to_2C_trimmed(small_type s, int nb, int nd, sc_digit *d)
-{
-  convert_SM_to_2C_trimmed(1, s, nb, nd, d);
-}
+convert_signed_SM_to_2C_trimmed(small_type s, int nb, int nd, sc_digit *d);
 
 // Convert a signed number from sign-magnitude representation to 2's
 // complement representation but do not trim the extra bits.
-inline
 void
-convert_signed_SM_to_2C(small_type s, int nd, sc_digit *d)
-{
-  convert_SM_to_2C(s, nd, d);
-}
-
+convert_signed_SM_to_2C(small_type s, int nd, sc_digit *d);
 
 // ----------------------------------------------------------------------------
 //  Functions to convert between sign-magnitude (SM) and 2's complement
@@ -907,43 +807,25 @@ trim_unsigned(int nb, int nd, sc_digit *d)
 // Convert an unsigned number from 2's complement representation to
 // sign-magnitude representation, and return its sign. nd is d's
 // actual size, without zeros eliminated.
-inline
 small_type
-convert_unsigned_2C_to_SM(int nb, int nd, sc_digit *d)
-{
-  trim_unsigned(nb, nd, d);
-  return check_for_zero(SC_POS, nd, d);
-}
+convert_unsigned_2C_to_SM(int nb, int nd, sc_digit *d);
 
 // Convert an unsigned number from sign-magnitude representation to
 // 2's complement representation, get its sign, convert back to
 // sign-magnitude representation, and return its sign. nd is d's
 // actual size, without zeros eliminated.
-inline
 small_type
-convert_unsigned_SM_to_2C_to_SM(small_type s, int nb, int nd, sc_digit *d)
-{
-  convert_SM_to_2C(s, nd, d);
-  return convert_unsigned_2C_to_SM(nb, nd, d);
-}
+convert_unsigned_SM_to_2C_to_SM(small_type s, int nb, int nd, sc_digit *d);
 
 // Convert an unsigned number from sign-magnitude representation to
 // 2's complement representation and trim the extra bits.
-inline
 void
-convert_unsigned_SM_to_2C_trimmed(small_type s, int nb, int nd, sc_digit *d)
-{
-  convert_SM_to_2C_trimmed(0, s, nb, nd, d);
-}
+convert_unsigned_SM_to_2C_trimmed(small_type s, int nb, int nd, sc_digit *d);
 
 // Convert an unsigned number from sign-magnitude representation to
 // 2's complement representation but do not trim the extra bits.
-inline
 void
-convert_unsigned_SM_to_2C(small_type s, int nd, sc_digit *d)
-{
-  convert_SM_to_2C(s, nd, d);
-}
+convert_unsigned_SM_to_2C(small_type s, int nd, sc_digit *d);
 
 
 // ----------------------------------------------------------------------------
@@ -951,44 +833,16 @@ convert_unsigned_SM_to_2C(small_type s, int nd, sc_digit *d)
 // ----------------------------------------------------------------------------
 
 // Copy v to u.
-inline
 void
 copy_digits_signed(small_type &us, 
                    int unb, int und, sc_digit *ud,
-                   int vnb, int vnd, const sc_digit *vd)
-{
-
-  if (und <= vnd) {
-
-    vec_copy(und, ud, vd);
-
-    if (unb <= vnb)
-      us = convert_signed_SM_to_2C_to_SM(us, unb, und, ud);
-
-  }
-  else // und > vnd
-    vec_copy_and_zero(und, ud, vnd, vd);
-
-}
+                   int vnb, int vnd, const sc_digit *vd);
 
 // Copy v to u.
-inline
 void
 copy_digits_unsigned(small_type &us, 
                      int unb, int und, sc_digit *ud,
-                     int /* vnb */, int vnd, const sc_digit *vd)
-{
-
-  if (und <= vnd)
-    vec_copy(und, ud, vd);
-
-  else // und > vnd
-    vec_copy_and_zero(und, ud, vnd, vd);
-
-  us = convert_unsigned_SM_to_2C_to_SM(us, unb, und, ud);
-
-}
-
+                     int /* vnb */, int vnd, const sc_digit *vd);
 
 // ----------------------------------------------------------------------------
 //  Faster set(i, v), without bound checking.
@@ -1005,13 +859,13 @@ safe_set(int i, bool v, sc_digit *d)
 #endif
 
   int bit_num = bit_ord(i);
-  int digit_num = digit_ord(i);    
-  
+  int digit_num = digit_ord(i);
+
   if (v)
-    d[digit_num] |= one_and_zeros(bit_num);      
+    d[digit_num] |= one_and_zeros(bit_num);
   else
     d[digit_num] &= ~(one_and_zeros(bit_num));
-  
+
 }
 
 
@@ -1019,31 +873,14 @@ safe_set(int i, bool v, sc_digit *d)
 //  Function to check if a double number is bad (NaN or infinite).
 // ----------------------------------------------------------------------------
 
-inline
 bool
-is_nan( double v )
-{
-    return std::numeric_limits<double>::has_quiet_NaN && (v != v);
-}
+is_nan( double v );
 
-inline
 bool
-is_inf( double v )
-{
-    return v ==  std::numeric_limits<double>::infinity()
-        || v == -std::numeric_limits<double>::infinity();
-}
+is_inf( double v );
 
-inline
 void
-is_bad_double(double v)
-{
-// Windows throws exception.
-    if( is_nan(v) || is_inf(v) )
-        SC_REPORT_ERROR( sc_core::SC_ID_VALUE_NOT_VALID_,
-		         "is_bad_double( double v ) : "
-		         "v is not finite - NaN or Inf" );
-}
+is_bad_double(double v);
 
 } // namespace sc_dt
 

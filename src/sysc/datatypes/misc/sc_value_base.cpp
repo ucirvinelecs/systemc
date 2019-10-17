@@ -55,7 +55,9 @@
 
 #include "sysc/datatypes/int/sc_int_ids.h"
 #include "sysc/datatypes/misc/sc_value_base.h"
-
+//------------------------------------------------------Farah is working here
+sc_dt::sc_value_base::~sc_value_base() {}
+//-----------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

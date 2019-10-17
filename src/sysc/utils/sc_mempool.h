@@ -60,17 +60,13 @@ class sc_mpobject
 {
 public:
 
-    static void* operator new( std::size_t sz )
-	{ return sc_mempool::allocate( sz ); }
+    static void* operator new( std::size_t sz );
 
-    static void operator delete( void* p, std::size_t sz )
-	{ sc_mempool::release( p, sz ); }
+    static void operator delete( void* p, std::size_t sz );
 
-    static void* operator new[]( std::size_t sz )
-	{ return sc_mempool::allocate( sz ); }
+    static void* operator new[]( std::size_t sz );
 
-    static void operator delete[]( void* p, std::size_t sz )
-	{ sc_mempool::release( p, sz ); }
+    static void operator delete[]( void* p, std::size_t sz );
 };
 
 } // namespace sc_core

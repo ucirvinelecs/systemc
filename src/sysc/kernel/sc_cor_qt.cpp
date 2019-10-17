@@ -34,7 +34,17 @@
 
 #include "sysc/kernel/sc_cor_qt.h"
 #include "sysc/kernel/sc_simcontext.h"
+//----------------------------------------------Farah is working here  
 
+    // constructor
+  sc_core::sc_cor_qt::sc_cor_qt()
+	: m_stack_size( 0 ), m_stack( 0 ), m_sp( 0 ), m_pkg( 0 )
+	{}
+
+    // destructor
+  sc_core::sc_cor_qt::~sc_cor_qt()
+        { delete[] (char*) m_stack; }
+//---------------------------------------------Frah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

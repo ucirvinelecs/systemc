@@ -226,13 +226,8 @@ private:
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
 systemc_ostream&
-operator << ( systemc_ostream& os, const sc_string_old& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( systemc_ostream& os, const sc_string_old& a );
 
 } // namespace sc_dt
 

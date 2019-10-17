@@ -31,7 +31,630 @@
 #include "sysc/datatypes/int/sc_unsigned.h"
 #include "sysc/datatypes/bit/sc_lv_base.h"
 #include "sysc/utils/sc_utils_ids.h"
+//---------------------------------------------Farah is working here 
+ 
+  sc_core::sc_trace_params::sc_trace_params( sc_trace_file* tf_, const std::string& name_ )
+	: tf( tf_ ), name( name_ )
+	{}
 
+  sc_core::sc_in<bool>::sc_in()
+	: base_type(), m_traces( 0 ), m_change_finder_p(0), 
+	  m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( const char* name_ )
+	: base_type( name_ ), m_traces( 0 ), m_change_finder_p(0), 
+	  m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( const in_if_type& interface_ )
+	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ), 
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( const char* name_, const in_if_type& interface_ )
+	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( in_port_type& parent_ )
+	: base_type( parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( const char* name_, in_port_type& parent_ )
+	: base_type( name_, parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( inout_port_type& parent_ )
+	: base_type(), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{ sc_port_base::bind( parent_ ); }
+
+    sc_core::sc_in<bool>::sc_in( const char* name_, inout_port_type& parent_ )
+	: base_type( name_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{ sc_port_base::bind( parent_ ); }
+
+    sc_core::sc_in<bool>::sc_in( this_type& parent_ )
+	: base_type( parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::sc_in( const char* name_, this_type& parent_ )
+	: base_type( name_, parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<bool>::~sc_in()
+	{
+	    remove_traces();
+	    delete m_change_finder_p;
+	    delete m_neg_finder_p;
+	    delete m_pos_finder_p;
+	}
+
+     void sc_core::sc_in<bool>::bind( const in_if_type& interface_ )
+	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+
+     void sc_core::sc_in<bool>::bind( in_if_type& interface_ )
+	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+
+    void sc_core::sc_in<bool>::operator () ( const in_if_type& interface_ )
+	{ this->bind( interface_ ); }
+
+    void sc_core::sc_in<bool>::bind( in_port_type& parent_ )
+        { sc_port_base::bind( parent_ ); }
+
+    void sc_core::sc_in<bool>::operator () ( in_port_type& parent_ )
+        { this->bind( parent_ ); }
+
+    void sc_core::sc_in<bool>::bind( inout_port_type& parent_ )
+	{ sc_port_base::bind( parent_ ); }
+
+
+    void sc_core::sc_in<bool>::operator () ( inout_port_type& parent_ )
+	{ this->bind( parent_ ); }
+
+
+    const sc_core::sc_event&  sc_core::sc_in<bool>::default_event() const
+	  { return (*this)->default_event(); }
+
+
+    // get the value changed event
+
+    const sc_core::sc_event& sc_core::sc_in<bool>::value_changed_event() const
+	{ return (*this)->value_changed_event(); }
+
+    // get the positive edge event
+
+    const sc_core::sc_event& sc_core::sc_in<bool>::posedge_event() const
+	{ return (*this)->posedge_event(); }
+
+    // get the negative edge event
+
+    const sc_core::sc_event& sc_core::sc_in<bool>::negedge_event() const
+	{ return (*this)->negedge_event(); }
+
+
+    // read the current value
+
+    const sc_core::sc_in<bool>::data_type& sc_core::sc_in<bool>::read() const
+	{ return (*this)->read(); }
+
+  sc_core::sc_in<bool>::operator const data_type& () const
+	{ return (*this)->read(); }
+
+
+    // use for positive edge sensitivity
+
+    sc_core::sc_event_finder& sc_core::sc_in<bool>::pos() const
+    {
+        if ( !m_pos_finder_p )
+	{
+	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::posedge_event );
+	} 
+	return *m_pos_finder_p;
+    }
+
+    // use for negative edge sensitivity
+
+    sc_core::sc_event_finder& sc_core::sc_in<bool>::neg() const
+    {
+        if ( !m_neg_finder_p )
+	{
+	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::negedge_event );
+	} 
+	return *m_neg_finder_p;
+    }
+
+
+    // was there a value changed event?
+
+    bool sc_core::sc_in<bool>::event() const
+	{ return (*this)->event(); }
+
+    // was there a positive edge event?
+
+    bool sc_core::sc_in<bool>::posedge() const
+        { return (*this)->posedge(); }
+
+    // was there a negative edge event?
+
+    bool sc_core::sc_in<bool>::negedge() const
+        { return (*this)->negedge(); }
+
+    // (other) event finder method(s)
+
+    sc_core::sc_event_finder& sc_core::sc_in<bool>::value_changed() const
+    {
+        if ( !m_change_finder_p )
+	{
+	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::value_changed_event );
+	}
+	return *m_change_finder_p;
+    }
+
+    const char* sc_core::sc_in<bool>::kind() const
+        { return "sc_in"; }
+
+void sc_core::sc_in<bool>::bind( base_port_type& parent_ )
+        { sc_port_base::bind( parent_ ); }
+
+  sc_core::sc_in<sc_dt::sc_logic>::sc_in()
+	: base_type(), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const char* name_ )
+	: base_type( name_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const in_if_type& interface_ )
+	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const char* name_, const in_if_type& interface_ )
+	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( in_port_type& parent_ )
+	: base_type( parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const char* name_, in_port_type& parent_ )
+	: base_type( name_, parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( inout_port_type& parent_ )
+	: base_type(), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{ sc_port_base::bind( parent_ ); }
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const char* name_, inout_port_type& parent_ )
+	: base_type( name_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{ sc_port_base::bind( parent_ ); }
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( this_type& parent_ )
+	: base_type( parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_in<sc_dt::sc_logic>::sc_in( const char* name_, this_type& parent_ )
+	: base_type( name_, parent_ ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+
+    // destructor
+
+    sc_core::sc_in<sc_dt::sc_logic>::~sc_in()
+	{
+	    remove_traces();
+	    delete m_change_finder_p;
+	    delete m_neg_finder_p;
+	    delete m_pos_finder_p;
+	}
+
+    void sc_core::sc_in<sc_dt::sc_logic>::bind( const in_if_type& interface_ )
+	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+
+    void sc_core::sc_in<sc_dt::sc_logic>::bind( in_if_type& interface_ )
+	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+
+    void sc_core::sc_in<sc_dt::sc_logic>::operator () ( const in_if_type& interface_ )
+	{ this->bind( interface_ ); }
+
+
+    void sc_core::sc_in<sc_dt::sc_logic>::bind( in_port_type& parent_ )
+        { sc_port_base::bind( parent_ ); }
+
+    void sc_core::sc_in<sc_dt::sc_logic>::operator () ( in_port_type& parent_ )
+        { this->bind( parent_ ); }
+
+
+    void sc_core::sc_in<sc_dt::sc_logic>::bind( inout_port_type& parent_ )
+	{ sc_port_base::bind( parent_ ); }
+
+    void sc_core::sc_in<sc_dt::sc_logic>::operator () ( inout_port_type& parent_ )
+	{ this->bind( parent_ ); }
+
+    const sc_core::sc_event& sc_core::sc_in<sc_dt::sc_logic>::default_event() const
+	{ return (*this)->default_event(); }
+
+    const sc_core::sc_event& sc_core::sc_in<sc_dt::sc_logic>::value_changed_event() const
+	{ return (*this)->value_changed_event(); }
+
+    const sc_core::sc_event& sc_core::sc_in<sc_dt::sc_logic>::posedge_event() const
+	{ return (*this)->posedge_event(); }
+
+    const sc_core::sc_event& sc_core::sc_in<sc_dt::sc_logic>::negedge_event() const
+	{ return (*this)->negedge_event(); }
+
+    const sc_core::sc_in<sc_dt::sc_logic>::data_type& sc_core::sc_in<sc_dt::sc_logic>::read() const
+	{ return (*this)->read(); }
+
+    sc_core::sc_in<sc_dt::sc_logic>::operator const data_type& () const
+	{ return (*this)->read(); }
+
+    sc_core::sc_event_finder& sc_core::sc_in<sc_dt::sc_logic>::pos() const
+    {
+        if ( !m_pos_finder_p )
+	{
+	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::posedge_event );
+	} 
+	return *m_pos_finder_p;
+    }
+
+
+    sc_core::sc_event_finder& sc_core::sc_in<sc_dt::sc_logic>::neg() const
+    {
+        if ( !m_neg_finder_p )
+	{
+	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::negedge_event );
+	} 
+	return *m_neg_finder_p;
+    }
+
+    bool sc_core::sc_in<sc_dt::sc_logic>::event() const
+	{ return (*this)->event(); }
+
+    bool sc_core::sc_in<sc_dt::sc_logic>::posedge() const
+        { return (*this)->posedge(); }
+
+    bool sc_core::sc_in<sc_dt::sc_logic>::negedge() const
+        { return (*this)->negedge(); }
+
+
+    sc_core::sc_event_finder& sc_core::sc_in<sc_dt::sc_logic>::value_changed() const
+    {
+        if ( !m_change_finder_p )
+	{
+	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::value_changed_event );
+	}
+	return *m_change_finder_p;
+    }
+
+
+    const char* sc_core::sc_in<sc_dt::sc_logic>::kind() const
+        { return "sc_in"; }
+
+    void sc_core::sc_in<sc_dt::sc_logic>::bind( base_port_type& parent_ )
+        { sc_port_base::bind( parent_ ); }
+
+  sc_core::sc_inout<bool>:: sc_inout()
+	: base_type(), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( const char* name_ )
+	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( inout_if_type& interface_ )
+	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( const char* name_, inout_if_type& interface_ )
+	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( inout_port_type& parent_ )
+	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( const char* name_, inout_port_type& parent_ )
+	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( this_type& parent_ )
+	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<bool>::sc_inout( const char* name_, this_type& parent_ )
+	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    const sc_core::sc_event& sc_core::sc_inout<bool>::default_event() const
+	{ return (*this)->default_event(); }
+
+
+    // get the value changed event
+
+    const sc_core::sc_event& sc_core::sc_inout<bool>::value_changed_event() const
+	{ return (*this)->value_changed_event(); }
+
+    // get the positive edge event
+
+    const sc_core::sc_event& sc_core::sc_inout<bool>::posedge_event() const
+	{ return (*this)->posedge_event(); }
+
+    // get the negative edge event
+
+    const sc_core::sc_event& sc_core::sc_inout<bool>::negedge_event() const
+	{ return (*this)->negedge_event(); }
+
+
+    // read the current value
+
+    const sc_core::sc_inout<bool>::data_type& sc_core::sc_inout<bool>::read() const
+	{ return (*this)->read(); }
+
+    sc_core::sc_inout<bool>::operator const data_type& () const
+	{ return (*this)->read(); }
+
+    sc_core::sc_event_finder& sc_core::sc_inout<bool>::pos() const
+    {
+        if ( !m_pos_finder_p )
+	{
+	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::posedge_event );
+	} 
+	return *m_pos_finder_p;
+    }
+
+    // use for negative edge sensitivity
+
+    sc_core::sc_event_finder& sc_core::sc_inout<bool>::neg() const
+    {
+        if ( !m_neg_finder_p )
+	{
+	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::negedge_event );
+	} 
+	return *m_neg_finder_p;
+    }
+
+
+    // was there a value changed event?
+
+    bool sc_core::sc_inout<bool>::event() const
+	{ return (*this)->event(); }
+
+    // was there a positive edge event?
+
+    bool sc_core::sc_inout<bool>::posedge() const
+        { return (*this)->posedge(); }
+
+    // was there a negative edge event?
+
+    bool sc_core::sc_inout<bool>::negedge() const
+        { return (*this)->negedge(); }
+
+    // write the new value
+
+    void sc_core::sc_inout<bool>::write( const data_type& value_ )
+	{ (*this)->write( value_ ); }
+
+    sc_core::sc_inout<bool>::this_type& sc_core::sc_inout<bool>::operator = ( const data_type& value_ )
+	{ (*this)->write( value_ ); return *this; }
+
+    sc_core::sc_inout<bool>::this_type& sc_core::sc_inout<bool>::operator = ( const in_if_type& interface_ )
+	{ (*this)->write( interface_.read() ); return *this; }
+
+    sc_core::sc_inout<bool>::this_type& sc_core::sc_inout<bool>::operator = ( const in_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_inout<bool>::this_type& sc_core::sc_inout<bool>::operator = ( const inout_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_inout<bool>::this_type& sc_core::sc_inout<bool>::operator = ( const this_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    void sc_core::sc_inout<bool>::initialize( const in_if_type& interface_ )
+	{ initialize( interface_.read() ); }
+
+  sc_core::sc_event_finder& sc_core::sc_inout<bool>::value_changed() const
+    {
+        if ( !m_change_finder_p )
+	{
+	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::value_changed_event );
+	}
+	return *m_change_finder_p;
+    }
+
+    const char* sc_core::sc_inout<bool>::kind() const
+        { return "sc_inout"; }
+
+    sc_core::sc_inout<sc_dt::sc_logic>:: sc_inout()
+	: base_type(), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+   sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( const char* name_ )
+	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( inout_if_type& interface_ )
+	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( const char* name_, inout_if_type& interface_ )
+	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( inout_port_type& parent_ )
+	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( const char* name_, inout_port_type& parent_ )
+	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( this_type& parent_ )
+	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    sc_core::sc_inout<sc_dt::sc_logic>::sc_inout( const char* name_, this_type& parent_ )
+	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
+	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
+	{}
+
+    const sc_core::sc_event& sc_core::sc_inout<sc_dt::sc_logic>::default_event() const
+	{ return (*this)->default_event(); }
+
+
+    // get the value changed event
+
+    const sc_core::sc_event& sc_core::sc_inout<sc_dt::sc_logic>::value_changed_event() const
+	{ return (*this)->value_changed_event(); }
+
+    // get the positive edge event
+
+    const sc_core::sc_event& sc_core::sc_inout<sc_dt::sc_logic>::posedge_event() const
+	{ return (*this)->posedge_event(); }
+
+    // get the negative edge event
+
+    const sc_core::sc_event& sc_core::sc_inout<sc_dt::sc_logic>::negedge_event() const
+	{ return (*this)->negedge_event(); }
+
+    // read the current value
+
+    const sc_core::sc_inout<sc_dt::sc_logic>::data_type& sc_core::sc_inout<sc_dt::sc_logic>::read() const
+	{ return (*this)->read(); }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::operator const data_type& () const
+	{ return (*this)->read(); }
+
+  sc_core::sc_event_finder& sc_core::sc_inout<sc_dt::sc_logic>::pos() const
+    {
+        if ( !m_pos_finder_p )
+	{
+	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::posedge_event );
+	} 
+	return *m_pos_finder_p;
+    }
+
+    // use for negative edge sensitivity
+
+sc_core::sc_event_finder& sc_core::sc_inout<sc_dt::sc_logic>::neg() const
+    {
+        if ( !m_neg_finder_p )
+	{
+	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::negedge_event );
+	} 
+	return *m_neg_finder_p;
+    }
+
+
+    // was there a value changed event?
+
+    bool sc_core::sc_inout<sc_dt::sc_logic>::event() const
+	{ return (*this)->event(); }
+
+    // was there a positive edge event?
+
+    bool sc_core::sc_inout<sc_dt::sc_logic>::posedge() const
+        { return (*this)->posedge(); }
+
+    // was there a negative edge event?
+
+    bool sc_core::sc_inout<sc_dt::sc_logic>::negedge() const
+        { return (*this)->negedge(); }
+
+    // write the new value
+
+    void sc_core::sc_inout<sc_dt::sc_logic>::write( const data_type& value_ )
+	{ (*this)->write( value_ ); }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::this_type& sc_core::sc_inout<sc_dt::sc_logic>::operator = ( const data_type& value_ )
+	{ (*this)->write( value_ ); return *this; }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::this_type& sc_core::sc_inout<sc_dt::sc_logic>::operator = ( const in_if_type& interface_ )
+	{ (*this)->write( interface_.read() ); return *this; }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::this_type& sc_core::sc_inout<sc_dt::sc_logic>::operator = ( const in_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::this_type& sc_core::sc_inout<sc_dt::sc_logic>::operator = ( const inout_port_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    sc_core::sc_inout<sc_dt::sc_logic>::this_type& sc_core::sc_inout<sc_dt::sc_logic>::operator = ( const this_type& port_ )
+	{ (*this)->write( port_->read() ); return *this; }
+
+    void sc_core::sc_inout<sc_dt::sc_logic>::initialize( const in_if_type& interface_ )
+	{ initialize( interface_.read() ); }
+
+
+  sc_core::sc_event_finder& sc_core::sc_inout<sc_dt::sc_logic>::value_changed() const
+    {
+        if ( !m_change_finder_p )
+	{
+	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
+	        *this, &in_if_type::value_changed_event );
+	}
+        return *m_change_finder_p;
+    }
+
+    const char* sc_core::sc_inout<sc_dt::sc_logic>::kind() const
+        { return "sc_inout"; }
+
+template<typename T>
+::std::ostream& sc_core::operator << ( ::std::ostream& os, const sc_in<T>& a )
+{
+    return os << a->read();
+}
+
+
+template<typename T>
+::std::ostream& sc_core::operator << ( ::std::ostream& os, const sc_inout<T>& a )
+{
+    return os << a->read();
+}
+
+
+
+//--------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

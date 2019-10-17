@@ -90,26 +90,19 @@ public:
     virtual void write( const bool& );
 
     // get the period
-    const sc_time& period() const
-	{ return m_period; }
+    const sc_time& period() const;
 
     // get the duty cycle
-    double duty_cycle() const
-	{ return m_duty_cycle; }
-
+    double duty_cycle() const;
 
     // get the current time / clock characteristics
+    bool posedge_first() const;
 
-    bool posedge_first() const
-        { return m_posedge_first; }
-
-    sc_time start_time() const
-        { return m_start_time; }
+    sc_time start_time() const;
 
     static const sc_time& time_stamp();
 
-    virtual const char* kind() const
-        { return "sc_clock"; }
+    virtual const char* kind() const;
 
 
 #if 0 // @@@@#### REMOVE
@@ -149,7 +142,7 @@ protected:
 
     void init( const sc_time&, double, const sc_time&, bool );
 
-    bool is_clock() const { return true; }
+    bool is_clock() const;
 
 protected:
 
@@ -171,43 +164,20 @@ private:
 };
 
 
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-// processes
-
-inline
-void
-sc_clock::posedge_action()
-{
-    m_next_negedge_event.notify_internal( m_negedge_time );
-	m_new_val = true;
-	request_update();
-}
-
-inline
-void
-sc_clock::negedge_action()
-{
-    m_next_posedge_event.notify_internal( m_posedge_time );
-	m_new_val = false;
-	request_update();
-}
-
-
 // ----------------------------------------------------------------------------
 
 class sc_clock_posedge_callback {
 public:
-    sc_clock_posedge_callback(sc_clock* target_p) : m_target_p(target_p) {}
-    inline void operator () () { m_target_p->posedge_action(); }
+    sc_clock_posedge_callback(sc_clock* target_p);
+    void operator () ();
   protected:
     sc_clock* m_target_p;
 };
 
 class sc_clock_negedge_callback {
   public:
-    sc_clock_negedge_callback(sc_clock* target_p) : m_target_p(target_p) {}
-    inline void operator () () { m_target_p->negedge_action(); }
+    sc_clock_negedge_callback(sc_clock* target_p);
+    void operator () ();
   protected:
     sc_clock* m_target_p;
 };

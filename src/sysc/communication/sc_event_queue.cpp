@@ -28,6 +28,23 @@
 
 #include "sysc/communication/sc_event_queue.h"
 #include "sysc/kernel/sc_method_process.h"
+//-------------------------------------------Farah is working here 
+// API of sc_object
+const char* sc_core::sc_event_queue::kind() const { return "sc_event_queue"; }
+
+void sc_core::sc_event_queue::notify(double when, sc_time_unit base )
+{
+	notify( sc_time(when,base) );
+}
+    
+
+const sc_core::sc_event& sc_core::sc_event_queue::default_event() const
+{ 
+  return m_e; 
+}
+
+
+//-------------------------------------------Farah is done working here
 
 namespace sc_core {
 

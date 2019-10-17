@@ -43,10 +43,10 @@ namespace sc_core
 void
 halt( sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
-    switch( cpi->kind ) {
+    sc_process_b* cp = simc->get_curr_proc();
+    switch( cp->proc_kind() ) {
     case SC_CTHREAD_PROC_: {
-	RCAST<sc_cthread_handle>( cpi->process_handle )->wait_halt();
+	RCAST<sc_cthread_handle>( cp )->wait_halt();
 	break;
     }
     default:
@@ -59,16 +59,16 @@ halt( sc_simcontext* simc )
 void
 wait( int n, sc_simcontext* simc )
 {
-    sc_curr_proc_handle cpi = simc->get_curr_proc_info();
+    sc_process_b* cp = simc->get_curr_proc();
     if( n <= 0 ) {
 	char msg[BUFSIZ];
 	std::sprintf( msg, "n = %d", n );
 	SC_REPORT_ERROR( SC_ID_WAIT_N_INVALID_, msg );
     }
-    switch( cpi->kind ) {
+    switch( cp->proc_kind() ) {
       case SC_THREAD_PROC_: 
       case SC_CTHREAD_PROC_: 
-	RCAST<sc_cthread_handle>( cpi->process_handle )->wait_cycles( n );
+	RCAST<sc_cthread_handle>( cp )->wait_cycles( n );
         break;
       default:
         SC_REPORT_ERROR( SC_ID_WAIT_NOT_ALLOWED_, "\n        "

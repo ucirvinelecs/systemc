@@ -50,6 +50,120 @@
 
 #include "sysc/datatypes/bit/sc_bit_ids.h"
 #include "sysc/datatypes/bit/sc_lv_base.h"
+//-------------------------------------------------Farah is working here 
+  sc_dt::sc_lv_base::sc_lv_base( int length_  )
+	: m_len( 0 ), m_size( 0 ), m_data( 0 ), m_ctrl( 0 )
+	{ init( length_ ); }
+
+    sc_dt::sc_lv_base::sc_lv_base( const sc_logic& a,
+			 int length_  )
+	: m_len( 0 ), m_size( 0 ), m_data( 0 ), m_ctrl( 0 )
+	{ init( length_, a ); }
+
+    sc_dt::sc_lv_base::~sc_lv_base()
+	{ delete [] m_data; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_lv_base& a )
+	{ assign_p_( *this, a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const bool* a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_logic* a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_unsigned& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_signed& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_uint_base& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( const sc_int_base& a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( unsigned long a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( long a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( unsigned int a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( int a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( uint64 a )
+	{ base_type::assign_( a ); return *this; }
+
+    sc_dt::sc_lv_base& sc_dt::sc_lv_base::operator = ( int64 a )
+	{ base_type::assign_( a ); return *this; }
+
+    int sc_dt::sc_lv_base::length() const
+	{ return m_len; }
+
+    int sc_dt::sc_lv_base::size() const
+	{ return m_size; }
+
+    sc_dt::sc_digit sc_dt::sc_lv_base::get_word( int wi ) const
+	{ return m_data[wi]; }
+
+    void sc_dt::sc_lv_base::set_word( int wi, sc_digit w )
+	{ assert ( wi < m_size ); m_data[wi] = w; }
+
+    sc_dt::sc_digit sc_dt::sc_lv_base::get_cword( int wi ) const
+	{ return m_ctrl[wi]; }
+
+    void sc_dt::sc_lv_base::set_cword( int wi, sc_digit w )
+	{ assert ( wi < m_size ); m_ctrl[wi] = w; }
+
+
+
+  sc_dt::sc_logic_value_t
+sc_dt::sc_lv_base::get_bit( int i ) const
+{
+    int wi = i / SC_DIGIT_SIZE;
+    int bi = i % SC_DIGIT_SIZE;
+    return sc_logic_value_t( ((m_data[wi] >> bi) & SC_DIGIT_ONE) |
+			     (((m_ctrl[wi] >> bi) << 1) & SC_DIGIT_TWO) );
+}
+
+
+void
+sc_dt::sc_lv_base::set_bit( int i, sc_logic_value_t value )
+{
+    int wi = i / SC_DIGIT_SIZE; // word index
+    int bi = i % SC_DIGIT_SIZE; // bit index
+    sc_digit mask = SC_DIGIT_ONE << bi;
+    m_data[wi] |= mask; // set bit to 1
+    m_ctrl[wi] |= mask; // set bit to 1
+    m_data[wi] &= value << bi | ~mask;
+    m_ctrl[wi] &= value >> 1 << bi | ~mask;
+}
+
+
+
+void
+sc_dt::sc_lv_base::clean_tail()
+{
+    int wi = m_size - 1;
+    int bi = m_len % SC_DIGIT_SIZE;
+    sc_digit mask = ~SC_DIGIT_ZERO >> (SC_DIGIT_SIZE - bi);
+	if ( mask )
+	{
+		m_data[wi] &= mask;
+		m_ctrl[wi] &= mask;
+	}
+}
+
+
+
+
+
+//-----------------------------------------------------Farah is done working here
 
 
 namespace sc_dt
@@ -59,6 +173,7 @@ namespace sc_dt
 //  CLASS : sc_lv_base
 //
 //  Arbitrary size logic vector base class.
+
 // ----------------------------------------------------------------------------
 
 static const sc_digit data_array[] =

@@ -46,8 +46,57 @@
 //
 
 #include "sysc/datatypes/fx/sc_fxnum_observer.h"
+//--------------------------------------------------------Farah is working here 
+    sc_dt::sc_fxnum_observer::sc_fxnum_observer() {}
+    sc_dt::sc_fxnum_observer::~sc_fxnum_observer() {}
+    sc_dt::sc_fxnum_fast_observer::sc_fxnum_fast_observer() {}
+    sc_dt::sc_fxnum_fast_observer::~sc_fxnum_fast_observer() {}
 
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_observer
+//
+//  Abstract base class for fixed-point types observers; arbitrary precision.
+// ----------------------------------------------------------------------------
 
+void
+sc_dt::sc_fxnum_observer::construct( const sc_fxnum& )
+{}
+
+void
+sc_dt::sc_fxnum_observer::destruct( const sc_fxnum& )
+{}
+
+void
+sc_dt::sc_fxnum_observer::read( const sc_fxnum& )
+{}
+
+void
+sc_dt::sc_fxnum_observer::write( const sc_fxnum& )
+{}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_fast_observer
+//
+//  Abstract base class for fixed-point types observers; limited precision.
+// ----------------------------------------------------------------------------
+
+void
+sc_dt::sc_fxnum_fast_observer::construct( const sc_fxnum_fast& )
+{}
+
+void
+sc_dt::sc_fxnum_fast_observer::destruct( const sc_fxnum_fast& )
+{}
+
+void
+sc_dt::sc_fxnum_fast_observer::read( const sc_fxnum_fast& )
+{}
+
+void
+sc_dt::sc_fxnum_fast_observer::write( const sc_fxnum_fast& )
+{}
+
+//--------------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

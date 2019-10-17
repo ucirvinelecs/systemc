@@ -38,6 +38,251 @@
 #include "sysc/kernel/sc_event.h"
 #include <sstream>
 
+
+//--------------------------------------------Farah is working here 
+sc_core::sc_process_host::sc_process_host() {}
+sc_core::sc_process_host::~sc_process_host() {} 
+void sc_core::sc_process_host::defunct() {}
+
+sc_core::sc_process_monitor::~sc_process_monitor() {}
+void sc_core::sc_process_monitor::signal(sc_thread_handle , int ) {}  
+
+
+sc_core::sc_throw_it_helper::sc_throw_it_helper() {}
+sc_core::sc_throw_it_helper::~sc_throw_it_helper() {}
+
+
+template<typename EXCEPT>
+sc_core::sc_throw_it<EXCEPT>::sc_throw_it( const EXCEPT& value ) : m_value(value) { }
+
+template<typename EXCEPT>
+sc_core::sc_throw_it<EXCEPT>::~sc_throw_it() {}
+
+template<typename EXCEPT>
+typename sc_core::sc_throw_it<EXCEPT>::this_type* sc_core::sc_throw_it<EXCEPT>::clone() const { return new this_type(m_value); }
+
+template<typename EXCEPT>
+void sc_core::sc_throw_it<EXCEPT>::throw_it() { throw m_value; }
+
+
+int sc_core::sc_process_b::current_state() { return m_state; }
+bool sc_core::sc_process_b::dont_initialize() const { return m_dont_init; }
+
+bool sc_core::sc_process_b::dynamic() const { return m_dynamic_proc; }
+
+sc_core::sc_report* sc_core::sc_process_b::get_last_report() { return m_last_report_p; }
+
+
+void sc_core::sc_process_b::set_last_report( sc_report* last_p )
+{  
+    delete m_last_report_p;
+    m_last_report_p = last_p;
+}
+
+
+void sc_core::sc_process_b::add_child_object( sc_object* object_p )
+{
+    sc_object::add_child_object( object_p );
+    reference_increment();
+}
+sc_core::scoped_flag::scoped_flag( bool& b ) : ref(b){ ref = true;  }
+sc_core::scoped_flag::~scoped_flag()                 { ref = false; }
+//------------------------------------------------------------------------------
+//"sc_process_b::XXXX_child_YYYYY"
+//
+// These methods provide child object support.
+//------------------------------------------------------------------------------
+
+bool sc_core::sc_process_b::remove_child_object( sc_object* object_p )
+{
+    if ( sc_object::remove_child_object( object_p ) ) {
+	    reference_decrement();
+            return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+const ::std::vector<sc_core::sc_object*>&
+sc_core::sc_process_b::get_child_objects() const
+{
+    return m_child_objects;
+}
+//------------------------------------------------------------------------------
+//"sc_process_b::initially_in_reset"
+//
+// This inline method is a callback to indicate that a reset is active at
+// start up. This is because the signal will have been initialized before
+// a reset linkage for it is set up, so we won't get a reset_changed()
+// callback.
+//     async = true if this an asynchronous reset.
+//------------------------------------------------------------------------------
+void sc_core::sc_process_b::initially_in_reset( bool async )
+{
+    if ( async ) 
+        m_active_areset_n++;
+    else
+        m_active_reset_n++;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::is_disabled"
+//
+// This method returns true if this process is disabled. 
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::is_disabled() const
+{
+    return (m_state & ps_bit_disabled) ? true : false;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::is_runnable"
+//
+// This method returns true if this process is runnable. That is indicated
+// by a non-zero m_runnable_p field.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::is_runnable() const
+{
+    return m_runnable_p != 0;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::is_unwinding"
+//
+// This method returns true if this process is unwinding from a kill or reset.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::is_unwinding() const
+{
+    return m_unwinding;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::start_unwinding"
+//
+// This method flags that this object instance should start unwinding if the
+// current throw status requires an unwind. 
+//
+// Result is true if the flag is set, false if the flag is already set.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::start_unwinding()
+{
+    if ( !m_unwinding )
+    {
+	switch( m_throw_status )
+	{
+	  case THROW_KILL:
+	  case THROW_ASYNC_RESET:
+	  case THROW_SYNC_RESET:
+	    m_unwinding = true;
+	     return true;
+	  case THROW_USER:
+	   default:
+	     break;
+	 }
+    }
+    return false;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::clear_unwinding"
+//
+// This method clears this object instance's throw status and always returns
+// true.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::clear_unwinding()
+{
+    m_unwinding = false;
+    return true;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::last_created_process_base"
+//
+// This virtual method returns the sc_process_b pointer for the last
+// created process. It is only used internally by the simulator.
+//------------------------------------------------------------------------------
+sc_core::sc_process_b* sc_core::sc_process_b::last_created_process_base()
+{
+    return m_last_created_process_p;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::proc_kind"
+//
+// This method returns the kind of this process.
+//------------------------------------------------------------------------------
+sc_core::sc_curr_proc_kind sc_core::sc_process_b::proc_kind() const
+{
+    return m_process_kind;
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_process_b::reference_decrement"
+//
+// This inline method decrements the number of outstanding references to this 
+// object instance. If the number of references goes to zero, this object
+// can be deleted in "sc_process_b::delete_process()".
+//------------------------------------------------------------------------------
+void sc_core::sc_process_b::reference_decrement()
+{
+    m_references_n--;
+    if ( m_references_n == 0 ) delete_process();
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_process_b::reference_increment"
+//
+// This inline method increments the number of outstanding references to this 
+// object instance.
+//------------------------------------------------------------------------------
+void sc_core::sc_process_b::reference_increment()
+{
+    assert(m_references_n != 0);
+    m_references_n++;
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::terminated"
+//
+// This inline method returns true if this object has terminated.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::terminated() const
+{
+    return (m_state & ps_bit_zombie) != 0;
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_process_b::timed_out"
+//
+// This inline method returns true if this object instance timed out.
+//------------------------------------------------------------------------------
+bool sc_core::sc_process_b::timed_out() const
+{
+    return m_timed_out;
+}
+
+
+//-----------------------------------------Farah is done working here
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 namespace sc_core {
 
 // sc_process_handle entities that are returned for null pointer instances:
@@ -575,7 +820,9 @@ sc_process_b::sc_process_b( const char* name_p, bool is_thread, bool free_host,
     m_timed_out(false),
     m_timeout_event_p(0),
     m_trigger_type(STATIC),
-    m_unwinding(false)
+    m_unwinding(false),
+    m_acq_chnl_lock_queue(),
+    seg_offset_(0)
 {
 
     // THIS OBJECT INSTANCE IS NOW THE LAST CREATED PROCESS:
@@ -634,6 +881,42 @@ sc_event& sc_process_b::terminated_event()
     return *m_term_event_p;
 }
 
+//------------------------------------------------------------------------------
+//"sc_process_b::lock_and_push"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::lock_and_push( CHNL_MTX_TYPE_ *lock )
+{
+    m_acq_chnl_lock_queue.lock_and_push( lock );
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::pop_and_unlock"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::pop_and_unlock( CHNL_MTX_TYPE_ *lock )
+{
+    m_acq_chnl_lock_queue.pop_and_unlock( lock );
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::lock_all_channels"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::lock_all_channels( void )
+{
+    m_acq_chnl_lock_queue.lock_all();
+}
+
+//------------------------------------------------------------------------------
+//"sc_process_b::unlock_all_channels"
+//
+//------------------------------------------------------------------------------
+void sc_process_b::unlock_all_channels( void )
+{
+    m_acq_chnl_lock_queue.unlock_all();
+}
+
 // +----------------------------------------------------------------------------
 // |"sc_process_b::trigger_reset_event"
 // | 
@@ -671,6 +954,82 @@ sc_process_handle::operator sc_method_handle()
 sc_process_handle::operator sc_thread_handle()  
 {
     return DCAST<sc_thread_handle>(m_target_p); 
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::lock_and_push"
+//
+// This method locks the channel lock and pushes it into the list.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::lock_and_push( CHNL_MTX_TYPE_ *lock )
+{
+#ifdef FANCY_DEBUG
+    for ( std::list<sc_chnl_lock*>::iterator it=queue.begin(); it!=(queue.end()-1); it++ )
+         assert( lock != (*it)->lock_p ); // 02/13/2015 GL: the new lock cannot be in the queue except at the last position
+#endif
+
+    if ( queue.empty() || ( queue.back()->lock_p != lock ) ) // 02/13/2015 GL: the new lock is not the same as the previous one
+    {
+        CHNL_MTX_LOCK_( *lock );
+        sc_chnl_lock *chnl_lock = new sc_chnl_lock( lock );
+        queue.push_back( chnl_lock );
+    }
+    else // 02/13/2015 GL: the new lock is the same as the previous one
+    {
+#ifdef FANCY_DEBUG
+        assert( queue.back()->lock_p == lock );
+#endif
+        queue.back()->counter ++;
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::pop_and_unlock"
+//
+// This method pops the channel lock from the list and releases it.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::pop_and_unlock( CHNL_MTX_TYPE_ *lock )
+{
+#ifdef FANCY_DEBUG
+    assert( queue.back()->lock_p == lock ); // 02/13/2015 GL: it is required to release the lock in the reverse order
+#endif
+
+    if ( queue.back()->counter == 1 ) // 02/13/2015 GL: only one (or the last) instance of the lock is encountered
+    {
+        sc_chnl_lock *chnl_lock = queue.back();
+        queue.pop_back();
+        delete chnl_lock;
+        CHNL_MTX_UNLOCK_( *lock );
+    }
+    else // 02/13/2015 GL: more than one instance are encountered, and only unlock at the last one
+    {
+        queue.back()->counter --;
+#ifdef FANCY_DEBUG
+        assert( queue.back()->counter >= 1 );
+#endif
+    }
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::lock_all"
+//
+// This method locks all the channel locks in the list.
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::lock_all( void )
+{
+    for ( std::list<sc_chnl_lock*>::iterator it=queue.begin(); it!=queue.end(); it++ )
+        CHNL_MTX_LOCK_( *((*it)->lock_p) );
+}
+
+//------------------------------------------------------------------------------
+//"sc_acq_chnl_lock_queue::unlock_all"
+//
+// This method unlocks all the channel locks in the list (in the reverse order).
+//------------------------------------------------------------------------------
+void sc_acq_chnl_lock_queue::unlock_all( void )
+{
+    for ( std::list<sc_chnl_lock*>::reverse_iterator it=queue.rbegin(); it!=queue.rend(); it++ )
+        CHNL_MTX_UNLOCK_( *((*it)->lock_p) );
 }
 
 } // namespace sc_core 

@@ -47,8 +47,7 @@ class sc_event_finder
 
 public:
 
-    const sc_port_base& port() const
-        { return m_port; }
+    const sc_port_base& port() const;
 
     // destructor (does nothing)
     virtual ~sc_event_finder();

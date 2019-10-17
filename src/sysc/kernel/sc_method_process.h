@@ -85,6 +85,7 @@ class sc_process_handle;
 class sc_simcontext;
 class sc_runnable;
 
+sc_cor* get_cor_pointer( sc_process_b* process_p ); // 05/22/2015 GL: get m_cor_p
 void next_trigger( sc_simcontext* );
 void next_trigger( const sc_event&, sc_simcontext* );
 void next_trigger( const sc_event_or_list&, sc_simcontext* );
@@ -106,10 +107,12 @@ class sc_method_process : public sc_process_b {
     friend void sc_set_stack_size( sc_method_handle, std::size_t );
     friend class sc_event;
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_process_table;
     friend class sc_process_handle;
     friend class sc_simcontext;
     friend class sc_runnable;
+    friend sc_cor* get_cor_pointer( sc_process_b* process_p ); // 05/22/2015 GL: get m_cor_p
 
     friend void next_trigger( sc_simcontext* );
     friend void next_trigger( const sc_event&,
@@ -132,8 +135,7 @@ class sc_method_process : public sc_process_b {
         SC_ENTRY_FUNC method_p, sc_process_host* host_p, 
         const sc_spawn_options* opt_p );
 
-    virtual const char* kind() const
-        { return "sc_method_process"; }
+    virtual const char* kind() const;
 
   protected:
     void check_for_throws();
@@ -146,6 +148,7 @@ class sc_method_process : public sc_process_b {
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
     sc_method_handle next_exist();
     sc_method_handle next_runnable();
+    virtual void prepare_for_simulation(); // 11/13/2014 GL: create a coroutine for this method process
     void clear_trigger();
     void next_trigger( const sc_event& );
     void next_trigger( const sc_event_or_list& );
@@ -158,7 +161,7 @@ class sc_method_process : public sc_process_b {
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
     void set_next_exist( sc_method_handle next_p );
     void set_next_runnable( sc_method_handle next_p );
-    void set_stack_size( std::size_t size );
+    void set_stack_size( std::size_t size ); // 11/13/2014 GL: set the stack size of the method process
     virtual void suspend_process( 
         sc_descendant_inclusion_info descendants = SC_NO_DESCENDANTS );
     virtual void throw_reset( bool async );
@@ -168,7 +171,7 @@ class sc_method_process : public sc_process_b {
     inline void trigger_static();
 
   protected:
-    sc_cor*                          m_cor;        // Thread's coroutine.
+    sc_cor*                          m_cor_p;      // Thread's coroutine.
     std::size_t                      m_stack_size; // Thread stack size.
     std::vector<sc_process_monitor*> m_monitor_q;  // Thread monitors.
 
@@ -182,75 +185,147 @@ class sc_method_process : public sc_process_b {
 
 };
 
+//------------------------------------------------------------------------------
+//"sc_method_process::set_stack_size"
+//
+// (04/03/2015 GL)
+//------------------------------------------------------------------------------
+inline void sc_method_process::set_stack_size( std::size_t size )
+{
+    assert( size );
+    m_stack_size = size;
+}
+
+//------------------------------------------------------------------------------
+//"sc_method_process::next_trigger"
+//
+// Notes:
+//   (1) The correct order to lock and unlock channel locks (to avoid deadlocks
+//       and races) for SystemC functions without context switch:
+//
+//       outer_channel.lock_and_push
+//           [outer channel work]
+//           inner_channel.lock_and_push
+//               [inner channel work]
+//   +------------------------------NEXT_TRIGGER------------------------------+
+//   |   +------------------------Simulation Kernel------------------------+  |
+//   |   |       acquire kernel lock                                       |  |
+//   |   |           [kernel work]                                         |  |
+//   |   |       release kernel lock                                       |  |
+//   |   +-----------------------------------------------------------------+  |
+//   +------------------------------------------------------------------------+
+//               [inner channel work]
+//           inner_channel.pop_and_unlock
+//           [outer channel work]
+//       outer_channel.pop_and_unlock
+//
+//   (2) For more information, please refer to sc_thread_process.h: 272
+//
+// (02/20/2015 GL)
+//------------------------------------------------------------------------------
 inline
 void
 sc_method_process::next_trigger( const sc_event& e )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     e.add_dynamic( this );
     m_event_p = &e;
     m_trigger_type = EVENT;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_event_or_list& el )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     el.add_dynamic( this );
     m_event_list_p = &el;
     m_trigger_type = OR_LIST;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_event_and_list& el )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     el.add_dynamic( this );
     m_event_list_p = &el;
     m_event_count = el.size();
     m_trigger_type = AND_LIST;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_time& t )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     m_timeout_event_p->notify_internal( t );
     m_timeout_event_p->add_dynamic( this );
     m_trigger_type = TIMEOUT;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_time& t, const sc_event& e )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     m_timeout_event_p->notify_internal( t );
     m_timeout_event_p->add_dynamic( this );
     e.add_dynamic( this );
     m_event_p = &e;
     m_trigger_type = EVENT_TIMEOUT;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_time& t, const sc_event_or_list& el )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     m_timeout_event_p->notify_internal( t );
     m_timeout_event_p->add_dynamic( this );
     el.add_dynamic( this );
     m_event_list_p = &el;
     m_trigger_type = OR_LIST_TIMEOUT;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 inline
 void
 sc_method_process::next_trigger( const sc_time& t, const sc_event_and_list& el )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     clear_trigger();
     m_timeout_event_p->notify_internal( t );
     m_timeout_event_p->add_dynamic( this );
@@ -258,31 +333,7 @@ sc_method_process::next_trigger( const sc_time& t, const sc_event_and_list& el )
     m_event_list_p = &el;
     m_event_count = el.size();
     m_trigger_type = AND_LIST_TIMEOUT;
-}
-
-inline
-void sc_method_process::set_next_exist(sc_method_handle next_p)
-{
-    m_exist_p = next_p;
-}
-
-inline
-sc_method_handle sc_method_process::next_exist()
-{
-    return (sc_method_handle)m_exist_p;
-}
-
-
-inline
-void sc_method_process::set_next_runnable(sc_method_handle next_p)
-{
-    m_runnable_p = next_p;
-}
-
-inline
-sc_method_handle sc_method_process::next_runnable()
-{
-    return (sc_method_handle)m_runnable_p;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 // +----------------------------------------------------------------------------
@@ -339,6 +390,11 @@ inline
 void
 sc_method_process::trigger_static()
 {
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel lock is acquired
+
     if ( (m_state & ps_bit_disabled) || is_runnable() ||
           m_trigger_type != STATIC )
         return;

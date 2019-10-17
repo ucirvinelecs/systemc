@@ -62,7 +62,7 @@ public:
     void* back() const;
 
     void erase_all();
-    bool empty() const { return (head == 0); }
+    bool empty() const;
     int size() const;
 
 private:
@@ -88,7 +88,7 @@ public:
     void remove(int direction);
 
     void set_handle(handle_t h);
-    handle_t get_handle() const { return ptr; }
+    handle_t get_handle() const;
     
 private:
     sc_plist_base* lst;

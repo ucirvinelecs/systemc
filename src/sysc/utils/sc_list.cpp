@@ -36,7 +36,12 @@
 #include "sysc/utils/sc_mempool.h"
 #include "sysc/utils/sc_report.h"
 #include "sysc/utils/sc_utils_ids.h"
+//----------------------------------------------------Farah is working here 
+bool sc_core::sc_plist_base::empty() const { return (head == 0); }
 
+sc_core::sc_plist_base_iter::handle_t sc_core::sc_plist_base_iter::get_handle() const { return ptr; }
+
+//----------------------------------------------------Farah is done working here
 namespace sc_core {
 
 class sc_plist_elem {

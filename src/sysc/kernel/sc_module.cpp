@@ -52,8 +52,130 @@
 #include "sysc/utils/sc_utils_ids.h"
 #include "sysc/utils/sc_iostream.h"
 
-namespace sc_core {
+//----------------------------------------------------Farah is working here----
+const char* sc_core::sc_module::kind() const
+{ return "sc_module"; }
 
+sc_core::sc_simcontext* sc_core::sc_module::sc_get_curr_simcontext() 
+{ return simcontext(); }
+/*
+void sc_core::sc_module::wait()
+{ ::sc_core::wait( simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_event& e )
+{ ::sc_core::wait( e, simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_event_or_list& el )
+{ ::sc_core::wait( el, simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_event_and_list& el )
+{ ::sc_core::wait( el, simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_time& t )
+{ ::sc_core::wait( t, simcontext() ); }
+
+void sc_core::sc_module::wait( double v, sc_time_unit tu )
+{ ::sc_core::wait( sc_time( v, tu, simcontext() ), simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_time& t, const sc_event& e )
+{ ::sc_core::wait( t, e, simcontext() ); }
+
+void sc_core::sc_module::wait( double v, sc_time_unit tu, const sc_event& e )
+{ ::sc_core::wait( 
+sc_time( v, tu, simcontext() ), e, simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_time& t, const sc_event_or_list& el )
+{ ::sc_core::wait( t, el, simcontext() ); }
+
+void sc_core::sc_module::wait( double v, sc_time_unit tu, const sc_event_or_list& el )
+{ ::sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+void sc_core::sc_module::wait( const sc_time& t, const sc_event_and_list& el )
+{ ::sc_core::wait( t, el, simcontext() ); }
+
+void sc_core::sc_module::wait( double v, sc_time_unit tu, const sc_event_and_list& el )
+{ ::sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+*/
+void sc_core::sc_module::next_trigger()
+{ ::sc_core::next_trigger( simcontext() ); }
+
+// dynamic sensitivty for SC_METHODs
+
+void sc_core::sc_module::next_trigger( const sc_event& e )
+{ ::sc_core::next_trigger( e, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_event_or_list& el )
+{ ::sc_core::next_trigger( el, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_event_and_list& el )
+{ ::sc_core::next_trigger( el, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_time& t )
+{ ::sc_core::next_trigger( t, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( double v, sc_time_unit tu )
+{ ::sc_core::next_trigger( 
+sc_time( v, tu, simcontext() ), simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_time& t, const sc_event& e )
+{ ::sc_core::next_trigger( t, e, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( double v, sc_time_unit tu, const sc_event& e )
+{ ::sc_core::next_trigger( 
+sc_time( v, tu, simcontext() ), e, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_time& t, const sc_event_or_list& el )
+{ ::sc_core::next_trigger( t, el, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
+{ ::sc_core::next_trigger( 
+sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( const sc_time& t, const sc_event_and_list& el )
+{ ::sc_core::next_trigger( t, el, simcontext() ); }
+
+void sc_core::sc_module::next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
+{ ::sc_core::next_trigger( 
+sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+bool sc_core::sc_module::timed_out()
+{ return ::sc_core::timed_out(); }
+
+// for SC_CTHREADs
+
+void sc_core::sc_module::halt()
+{ ::sc_core::halt( simcontext() ); }
+
+/*void sc_core::sc_module::wait( int n )
+{ ::sc_core::wait( n, simcontext() ); }
+*/
+void sc_core::sc_module::at_posedge( const sc_signal_in_if<bool>& s )
+{ ::sc_core::at_posedge( s, simcontext() ); }
+
+void sc_core::sc_module::at_posedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
+{ ::sc_core::at_posedge( s, simcontext() ); }
+
+void sc_core::sc_module::at_negedge( const sc_signal_in_if<bool>& s )
+{ ::sc_core::at_negedge( s, simcontext() ); }
+
+void sc_core::sc_module::at_negedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
+{ ::sc_core::at_negedge( s, simcontext() ); }
+
+// Catch uses of watching:
+void sc_core::sc_module::watching( bool /* expr */ )
+    { SC_REPORT_ERROR(SC_ID_WATCHING_NOT_ALLOWED_,""); }
+
+sc_core::sc_module& sc_core::sc_module::operator , ( sc_interface& interface_ )
+        { return operator << ( interface_ ); }
+
+sc_core::sc_module& sc_core::sc_module::operator , ( sc_port_base& port_ )
+        { return operator << ( port_ ); }
+
+void sc_core::sc_module::defunct() { }
+//---------------------------------------------------------Farah is done working here---------------
+
+
+namespace sc_core {
 // ----------------------------------------------------------------------------
 //  CLASS : sc_module_dynalloc_list
 //
@@ -443,20 +565,35 @@ sc_module::set_stack_size( std::size_t size )
 {
     sc_process_handle  proc_h(
     	sc_is_running() ?
-	sc_get_current_process_handle() :
-	sc_get_last_created_process_handle()
+        sc_get_current_process_handle() :
+        sc_get_last_created_process_handle()
     );
-    sc_thread_handle thread_h;  // Current process as thread.
+//    sc_thread_handle thread_h;  // Current process as thread.
 
 
-    thread_h = (sc_thread_handle)proc_h;
-    if ( thread_h ) 
+//    thread_h = (sc_thread_handle)proc_h;
+//    if ( thread_h ) 
+//    {
+//        thread_h->set_stack_size( size );
+//    }
+//    else
+//    {
+//        SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
+//    }
+
+// 04/03/2015 GL: now the current process may be a thread or method
+    if ( proc_h.proc_kind() == SC_METHOD_PROC_ ) // this is a method process
     {
-	thread_h->set_stack_size( size );
+        ((sc_method_handle)proc_h)->set_stack_size( size );
+    }
+    // this is a (c)thread process
+    else if ( ( proc_h.proc_kind() == SC_THREAD_PROC_ ) || ( proc_h.proc_kind() == SC_CTHREAD_PROC_ ) )
+    {
+        ((sc_thread_handle)proc_h)->set_stack_size( size );
     }
     else
     {
-	SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
+        SC_REPORT_WARNING( SC_ID_SET_STACK_SIZE_, 0 );
     }
 }
 
@@ -716,6 +853,38 @@ sc_module::operator () ( const sc_bind_proxy& p001,
     TRY_BIND( p063 );
     TRY_BIND( p064 );
 }
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_channel
+//
+//  Base class for all hierarchical channels.
+//
+//  (04/07/2015 GL).
+// ----------------------------------------------------------------------------
+
+sc_channel::sc_channel()
+: sc_module()
+{}
+
+sc_channel::sc_channel( const sc_module_name& nm )
+: sc_module( nm )
+{}
+
+/* --------------------------------------------------------------------
+ *
+ * Deprecated constructors:
+ *   sc_module( const char* )
+ *   sc_module( const std::string& )
+ */
+sc_channel::sc_channel( const char* nm )
+: sc_module( nm )
+{}
+
+sc_channel::sc_channel( const std::string& nm )
+: sc_module( nm )
+{}
+
+sc_channel::~sc_channel() {}
 
 } // namespace sc_core
 

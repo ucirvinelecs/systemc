@@ -108,20 +108,15 @@ public:
     void remove_all();
 
     // get the size of the collection
-    int size() const
-        { return m_cltn.size(); }
+    int size() const;
 
     // get the begin iterator
-    iterator begin()
-        { return m_cltn.begin(); }
-    const_iterator begin() const
-        { return m_cltn.begin(); }
+    iterator begin();
+    const_iterator begin() const;
 
     // get the end iterator
-    iterator end()
-        { return m_cltn.end(); }
-    const_iterator end() const
-        { return m_cltn.end(); }
+    iterator end();
+    const_iterator end() const;
 
 private:
     std::vector<sc_attr_base*> m_cltn;
@@ -148,23 +143,15 @@ public:
 
     // constructors
 
-    sc_attribute( const std::string& name_ )
-        : sc_attr_base( name_ ), value()
-        {}
+    sc_attribute( const std::string& name_ );
 
-    sc_attribute( const std::string& name_, const T& value_ )
-        : sc_attr_base( name_ ), value( value_ )
-        {}
+    sc_attribute( const std::string& name_, const T& value_ );
 
-    sc_attribute( const sc_attribute<T>& a )
-        : sc_attr_base( a.name() ), value( a.value )
-        {}
-
+    sc_attribute( const sc_attribute<T>& a );
 
     // destructor (does nothing)
 
-    virtual ~sc_attribute()
-        {}
+    virtual ~sc_attribute();
 
 public:
 

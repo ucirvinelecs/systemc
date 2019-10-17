@@ -35,7 +35,20 @@
 #include "sysc/kernel/sc_object_manager.h"
 #include "sysc/kernel/sc_simcontext.h"
 #include "sysc/utils/sc_iostream.h"
+//----------------------------------------------Farah is working here 
 
+void sc_core::sc_module_name::clear_module( sc_module* module_p )
+{
+    assert( m_module_p == module_p );
+    m_module_p = 0;
+}
+
+void sc_core::sc_module_name::set_module( sc_module* module_p )
+{
+    m_module_p = module_p;
+}
+
+//- ---------------------------------------------Farah is done working here
 namespace sc_core {
 
 sc_module_name::sc_module_name( const char* name_ )

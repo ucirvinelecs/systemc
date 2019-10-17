@@ -46,7 +46,37 @@
 //
 
 #include "sysc/datatypes/fx/sc_fxdefs.h"
+//---------------------------------------Farah is working here
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, sc_enc enc )
+{
+    return os << to_string( enc );
+}
 
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, sc_q_mode q_mode )
+{
+    return os << to_string( q_mode );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, sc_o_mode o_mode )
+{
+    return os << to_string( o_mode );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, sc_switch sw )
+{
+    return os << to_string( sw );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, sc_fmt fmt )
+{
+    return os << to_string( fmt );
+}
+//---------------------------------------Farah is done working here
 
 namespace sc_dt
 {

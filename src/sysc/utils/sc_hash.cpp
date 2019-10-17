@@ -36,7 +36,43 @@
 #include "sysc/kernel/sc_cmnhdr.h"
 #include "sysc/utils/sc_hash.h"
 #include "sysc/utils/sc_mempool.h"
+//----------------------------------------------------------Farah is working here
+    unsigned sc_core::sc_phash_base::do_hash(const void* key) const { return (*hash)(key) % num_bins; }
 
+    sc_core::sc_phash_elem* sc_core::sc_phash_base::find_entry(unsigned hv, const void* k, sc_phash_elem*** plast=0) const
+    {
+      /* Got rid of member func. pointer and replaced with if-else  */
+      /* Amit (5/14/99)                                             */
+      if( cmpr == 0 )
+        return ((sc_phash_base*)this)->find_entry_q( hv, k, plast );
+      else
+	return ((sc_phash_base*)this)->find_entry_c( hv, k, plast );
+    }
+
+    bool sc_core::sc_phash_base::empty() const { return (num_entries == 0); }
+
+    unsigned sc_core::sc_phash_base::count() const { return num_entries; }
+
+    void sc_core::sc_phash_base::copy( const sc_phash_base& b ) { copy(&b); }
+
+    int sc_core::sc_phash_base::insert( void* k ) { return insert(k, default_value); }
+
+    int sc_core::sc_phash_base::insert_if_not_exists(void* k) { return insert_if_not_exists(k, default_value); }
+
+    bool sc_core::sc_phash_base::contains(const void* k) const { return (lookup(k, 0) != 0); }
+
+    void sc_core::sc_phash_base_iter::reset(sc_phash_base& t) { reset(&t); }
+
+    sc_core::sc_phash_base_iter::sc_phash_base_iter(sc_phash_base* t)
+    : table(t), entry(0), next(0), last(0), index(0)
+        { reset(t); }
+    sc_core::sc_phash_base_iter::sc_phash_base_iter(sc_phash_base& t)
+    : table(&t), entry(0), next(0), last(0), index(0)
+        { reset(t); }
+    sc_core::sc_phash_base_iter::~sc_phash_base_iter() { }
+
+    void sc_core::sc_phash_base_iter::operator++(int) { step(); }
+//---------------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // we can't assume global availability of uintptr_t,

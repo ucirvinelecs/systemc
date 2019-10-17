@@ -103,14 +103,10 @@ public:
 
     // constructors
 
-    explicit sc_lv_base( int length_ = sc_length_param().len() )
-	: m_len( 0 ), m_size( 0 ), m_data( 0 ), m_ctrl( 0 )
-	{ init( length_ ); }
+    explicit sc_lv_base( int length_ = sc_length_param().len() );
 
     explicit sc_lv_base( const sc_logic& a,
-			 int length_ = sc_length_param().len()  )
-	: m_len( 0 ), m_size( 0 ), m_data( 0 ), m_ctrl( 0 )
-	{ init( length_, a ); }
+			 int length_ = sc_length_param().len()  );
 
     sc_lv_base( const char* a );
 
@@ -146,9 +142,7 @@ public:
 
     // destructor
 
-    virtual ~sc_lv_base()
-	{ delete [] m_data; }
-
+    virtual ~sc_lv_base();
 
     // assignment operators
 
@@ -156,47 +150,33 @@ public:
     sc_lv_base& operator = ( const sc_proxy<X>& a )
 	{ assign_p_( *this, a ); return *this; }
 
-    sc_lv_base& operator = ( const sc_lv_base& a )
-	{ assign_p_( *this, a ); return *this; }
+    sc_lv_base& operator = ( const sc_lv_base& a );
 
     sc_lv_base& operator = ( const char* a );
 
-    sc_lv_base& operator = ( const bool* a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const bool* a );
 
-    sc_lv_base& operator = ( const sc_logic* a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const sc_logic* a );
 
-    sc_lv_base& operator = ( const sc_unsigned& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const sc_unsigned& a );
 
-    sc_lv_base& operator = ( const sc_signed& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const sc_signed& a );
 
-    sc_lv_base& operator = ( const sc_uint_base& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const sc_uint_base& a );
 
-    sc_lv_base& operator = ( const sc_int_base& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( const sc_int_base& a );
 
-    sc_lv_base& operator = ( unsigned long a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( unsigned long a );
 
-    sc_lv_base& operator = ( long a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( long a );
 
-    sc_lv_base& operator = ( unsigned int a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( unsigned int a );
 
-    sc_lv_base& operator = ( int a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( int a );
 
-    sc_lv_base& operator = ( uint64 a )
-	{ base_type::assign_( a ); return *this; }
+    sc_lv_base& operator = ( uint64 a );
 
-    sc_lv_base& operator = ( int64 a )
-	{ base_type::assign_( a ); return *this; }
-
+    sc_lv_base& operator = ( int64 a );
 
 #if 0
 
@@ -243,31 +223,24 @@ public:
 
     // common methods
 
-    int length() const
-	{ return m_len; }
+    int length() const;
 
-    int size() const
-	{ return m_size; }
+    int size() const;
 
     sc_logic_value_t get_bit( int i ) const;
     void set_bit( int i, sc_logic_value_t value );
 
-    sc_digit get_word( int wi ) const
-	{ return m_data[wi]; }
+    sc_digit get_word( int wi ) const;
 
 	// note the test for out of range access here. this is necessary 
 	// because of the hair-brained way concatenations are set up.
 	// an extend_sign on a concatenation uses the whole length of 
 	// the concatenation to determine how many words to set.
-    void set_word( int wi, sc_digit w )
-	{ assert ( wi < m_size ); m_data[wi] = w; }
-	 
+    void set_word( int wi, sc_digit w );
 
-    sc_digit get_cword( int wi ) const
-	{ return m_ctrl[wi]; }
+    sc_digit get_cword( int wi ) const;
 
-    void set_cword( int wi, sc_digit w )
-	{ assert ( wi < m_size ); m_ctrl[wi] = w; }
+    void set_cword( int wi, sc_digit w );
 
     void clean_tail();
 
@@ -311,46 +284,6 @@ rrotate( const sc_lv_base& x, int n )
 }
 
 #endif
-
-
-inline
-sc_logic_value_t
-sc_lv_base::get_bit( int i ) const
-{
-    int wi = i / SC_DIGIT_SIZE;
-    int bi = i % SC_DIGIT_SIZE;
-    return sc_logic_value_t( ((m_data[wi] >> bi) & SC_DIGIT_ONE) |
-			     (((m_ctrl[wi] >> bi) << 1) & SC_DIGIT_TWO) );
-}
-
-inline
-void
-sc_lv_base::set_bit( int i, sc_logic_value_t value )
-{
-    int wi = i / SC_DIGIT_SIZE; // word index
-    int bi = i % SC_DIGIT_SIZE; // bit index
-    sc_digit mask = SC_DIGIT_ONE << bi;
-    m_data[wi] |= mask; // set bit to 1
-    m_ctrl[wi] |= mask; // set bit to 1
-    m_data[wi] &= value << bi | ~mask;
-    m_ctrl[wi] &= value >> 1 << bi | ~mask;
-}
-
-
-inline
-void
-sc_lv_base::clean_tail()
-{
-    int wi = m_size - 1;
-    int bi = m_len % SC_DIGIT_SIZE;
-    sc_digit mask = ~SC_DIGIT_ZERO >> (SC_DIGIT_SIZE - bi);
-	if ( mask )
-	{
-		m_data[wi] &= mask;
-		m_ctrl[wi] &= mask;
-	}
-}
-
 
 // ----------------------------------------------------------------------------
 //  CLASS TEMPLATE : sc_proxy

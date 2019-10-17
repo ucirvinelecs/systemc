@@ -42,7 +42,58 @@
 #include "sysc/kernel/sc_process.h"
 #include "sysc/kernel/sc_spawn.h"
 #include "sysc/utils/sc_utils_ids.h"
+//--------------------------------------------------Farah is working here
 
+const sc_core::sc_time& sc_core::sc_clock::period() const
+	{ return m_period; }
+
+double sc_core::sc_clock::duty_cycle() const
+	{ return m_duty_cycle; }
+
+bool sc_core::sc_clock::posedge_first() const
+  { return m_posedge_first; }
+
+  sc_core::sc_time sc_core::sc_clock::start_time() const
+  { return m_start_time; }
+
+const char* sc_core::sc_clock::kind() const
+   { return "sc_clock"; }
+
+bool sc_core::sc_clock::is_clock() const { return true; }
+
+
+// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
+// processes
+
+
+void sc_core::sc_clock::posedge_action()
+{
+    m_next_negedge_event.notify_internal( m_negedge_time );
+	m_new_val = true;
+	request_update();
+}
+
+
+void sc_core::sc_clock::negedge_action()
+{
+    m_next_posedge_event.notify_internal( m_posedge_time );
+	m_new_val = false;
+	request_update();
+}
+
+
+sc_core::sc_clock_posedge_callback::sc_clock_posedge_callback(sc_clock* target_p) : m_target_p(target_p) {}
+
+void sc_core::sc_clock_posedge_callback::operator () () { m_target_p->posedge_action(); }
+
+sc_core::sc_clock_negedge_callback::sc_clock_negedge_callback(sc_clock* target_p) : m_target_p(target_p) {}
+
+void sc_core::sc_clock_negedge_callback::operator () () { m_target_p->negedge_action(); }
+
+
+
+//-------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -269,6 +320,7 @@ void sc_clock::register_port( sc_port_base& /*port*/, const char* if_typename_ )
 void
 sc_clock::write( const bool& /* value */ )
 {
+    // 02/23/2015 GL: take care of error handling in the future
     SC_REPORT_ERROR(SC_ID_ATTEMPT_TO_WRITE_TO_CLOCK_, "");
 }
 

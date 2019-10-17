@@ -28,6 +28,54 @@
 
 #include "sysc/kernel/sc_attribute.h"
 
+//--------------------------------------Farah is working here------------------- 
+
+int sc_core::sc_attr_cltn::size() const
+    { return m_cltn.size(); }
+
+// get the begin iterator
+sc_core::sc_attr_cltn::iterator sc_core::sc_attr_cltn::begin()
+    { return m_cltn.begin(); }
+
+sc_core::sc_attr_cltn::const_iterator sc_core::sc_attr_cltn::begin() const
+   { return m_cltn.begin(); }
+
+//get the end iterator
+sc_core::sc_attr_cltn::iterator sc_core::sc_attr_cltn::end()
+   { return m_cltn.end(); }
+
+sc_core::sc_attr_cltn::const_iterator sc_core::sc_attr_cltn::end() const
+   { return m_cltn.end(); }
+
+
+// constructors
+
+template <class T>
+sc_core::sc_attribute<T>::sc_attribute( const std::string& name_ )
+    : sc_attr_base( name_ ), value()
+    {}
+
+template <class T>
+sc_core::sc_attribute<T>::sc_attribute( const std::string& name_, const T& value_ )
+    : sc_attr_base( name_ ), value( value_ )
+    {}
+
+template <class T>
+sc_core::sc_attribute<T>::sc_attribute( const sc_attribute<T>& a )
+    : sc_attr_base( a.name() ), value( a.value )
+    {}
+
+
+// destructor (does nothing)
+
+template <class T>
+sc_core::sc_attribute<T>::~sc_attribute()
+    {}
+
+
+
+
+//-----------------------------------Farah is done working here------------
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

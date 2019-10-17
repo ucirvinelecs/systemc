@@ -91,6 +91,76 @@
 #endif
 
 
+//----------------------------------------------Farah is working here
+
+const char* sc_core::sc_thread_process::kind() const
+        { return "sc_thread_process"; }
+ 
+//------------------------------------------------------------------------------
+//"sc_thread_process::set_stack_size"
+//
+//------------------------------------------------------------------------------
+void sc_core::sc_thread_process::set_stack_size( std::size_t size )
+{
+    assert( size );
+    m_stack_size = size;
+}
+
+
+//------------------------------------------------------------------------------
+//"sc_thread_process::miscellaneous support"
+//
+//------------------------------------------------------------------------------
+
+void sc_core::sc_thread_process::add_monitor(sc_process_monitor* monitor_p)
+{
+    m_monitor_q.push_back(monitor_p);
+}
+
+void sc_core::sc_thread_process::remove_monitor(sc_process_monitor* monitor_p)
+{
+    int mon_n = m_monitor_q.size();
+
+    for ( int mon_i = 0; mon_i < mon_n; mon_i++ )
+    {
+    if  ( m_monitor_q[mon_i] == monitor_p )
+        {
+            m_monitor_q[mon_i] = m_monitor_q[mon_n-1];
+            m_monitor_q.resize(mon_n-1);
+        }
+    }
+}
+
+void  sc_core::sc_thread_process::set_next_exist(sc_thread_handle next_p)
+{
+    m_exist_p = next_p;
+}
+
+sc_core::sc_thread_handle sc_core::sc_thread_process::next_exist()
+{
+    return (sc_thread_handle)m_exist_p;
+}
+
+void sc_core::sc_thread_process::set_next_runnable(sc_thread_handle next_p)
+{
+    m_runnable_p = next_p;
+}
+
+sc_core::sc_thread_handle sc_core::sc_thread_process::next_runnable()
+{
+    return (sc_thread_handle)m_runnable_p;
+}
+
+/* THIS FUNCTION CANNOT BE FOUND IN PARSC VERSION SC_THREAD_PROCESS.H OR SC_THREAD_PROCESS.CPP FILE
+SO I COMMENTYED OUT HERE, BUT THE FUNCTION BODY STILL SEEMS TO BE MISSING IF THIS IS COMMENTED OUT. 
+sc_core::sc_cor* sc_core::get_cor_pointer( sc_process_b* process_p )
+{
+    sc_thread_handle thread_p = DCAST<sc_thread_handle>(process_p);
+    return thread_p->m_cor_p;
+}*/
+
+//----------------------------------------------Farah is done working here
+
 namespace sc_core {
 
 const int SC_DEFAULT_STACK_SIZE   = SC_DEFAULT_STACK_SIZE_;
@@ -133,28 +203,34 @@ void sc_thread_cor_fn( void* arg )
         break;
     }
 
-    sc_process_b*    active_p = sc_get_current_process_b();
+//    sc_process_b*    active_p = sc_get_current_process_b();
 
     // REMOVE ALL TRACES OF OUR THREAD FROM THE SIMULATORS DATA STRUCTURES:
+{
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
 
     thread_h->disconnect_process();
 
     // IF WE AREN'T ACTIVE MAKE SURE WE WON'T EXECUTE:
 
-    if ( thread_h->next_runnable() != 0 )
-    {
-	simc_p->remove_runnable_thread(thread_h);
-    }
+        if ( thread_h->next_runnable() != 0 )
+        {
+	    simc_p->remove_runnable_thread( thread_h );
+        }
 
     // IF WE ARE THE ACTIVE PROCESS ABORT OUR EXECUTION:
 
 
-    if ( active_p == (sc_process_b*)thread_h )
-    {
-     
-        sc_core::sc_cor* x = simc_p->next_cor();
-	simc_p->cor_pkg()->abort( x );
+        simc_p->remove_running_process( (sc_process_b*)thread_h );
+        simc_p->schedule( thread_h->m_cor_p );
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
 
 }
 
@@ -502,6 +578,7 @@ void sc_thread_process::signal_monitors(int type)
 void sc_thread_process::suspend_process(
     sc_descendant_inclusion_info descendants )
 {     
+    assert(0); // 11/21/2014 GL TODO: clean up the codes later
 
     // IF NEEDED PROPOGATE THE SUSPEND REQUEST THROUGH OUR DESCENDANTS:
 
@@ -693,6 +770,11 @@ void sc_thread_process::throw_user( const sc_throw_it_helper& helper,
 //------------------------------------------------------------------------------
 bool sc_thread_process::trigger_dynamic( sc_event* e )
 {
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel lock is acquired
+
     // No time outs yet, and keep gcc happy.
 
     m_timed_out = false;

@@ -91,8 +91,7 @@ public:
     virtual       sc_interface* get_interface()       = 0;
     virtual const sc_interface* get_interface() const = 0;
 
-    virtual const char* kind() const
-        { return "sc_port_base"; }
+    virtual const char* kind() const;
 
 protected:
 
@@ -197,8 +196,7 @@ public:
     void insert( sc_port_base* );
     void remove( sc_port_base* );
 
-    int size() const
-        { return m_port_vec.size(); }
+    int size() const;
 
 private:
 

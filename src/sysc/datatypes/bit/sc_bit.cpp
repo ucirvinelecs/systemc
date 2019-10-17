@@ -62,7 +62,138 @@
 #include "sysc/datatypes/bit/sc_logic.h"
 
 #include <cstdio>
+//------------------------------------------------Farah is working here
 
+    bool sc_dt::sc_bit::to_value( char c )
+	{
+	    if( c != '0' && c != '1' ) {
+		invalid_value( c );
+	    }
+	    return ( c == '0' ? false : true );
+	}
+
+    bool sc_dt::sc_bit::to_value( int i )
+	{
+	    if( i != 0 && i != 1 ) {
+		invalid_value( i );
+	    }
+	    return ( i == 0 ? false : true );
+	}
+    bool sc_dt::sc_bit::to_value( bool b )
+       { return b; }
+
+    sc_dt::sc_bit::sc_bit()
+	: m_val( false )
+	{
+	    sc_deprecated_sc_bit();
+	}
+
+
+    sc_dt::sc_bit::sc_bit( const sc_bit& a )
+	: m_val( a.m_val )
+	{}
+
+
+    sc_dt::sc_bit::~sc_bit()
+	{}
+
+sc_dt::sc_bit& sc_dt::sc_bit::operator = ( const sc_bit& b )
+	{ m_val = b.m_val; return *this; }
+
+    sc_dt::sc_bit& sc_dt::sc_bit::operator &= ( const sc_bit& b )
+	{ m_val = ( m_val && b.m_val ); return *this; }
+
+    sc_dt::sc_bit& sc_dt::sc_bit::operator |= ( const sc_bit& b )
+	{ m_val = ( m_val || b.m_val ); return *this; }
+
+    sc_dt::sc_bit& sc_dt::sc_bit::operator ^= ( const sc_bit& b )
+	{ m_val = ( m_val != b.m_val ); return *this; }
+
+    sc_dt::sc_bit::operator bool () const
+	{ return m_val; }
+
+    bool sc_dt::sc_bit::operator ! () const  // non-VSIA
+	{ return ! m_val; }
+
+
+    // explicit conversions
+
+    bool sc_dt::sc_bit::to_bool() const  // non-VSIA
+	{ return m_val; }
+
+    char sc_dt::sc_bit::to_char() const
+	{ return ( m_val ? '1' : '0' ); }
+
+  sc_dt::sc_bit& sc_dt::sc_bit::b_not()
+        { m_val = ( ! m_val ); return *this; }
+
+
+    void sc_dt::sc_bit::print( ::std::ostream& os ) const
+       { os << to_bool(); }
+
+bool sc_dt::operator == ( const sc_bit& a, const sc_bit& b )
+    { return ( a.m_val == b.m_val ); }
+
+bool sc_dt::operator != ( const sc_bit& a, const sc_bit& b )
+    { return ( a.m_val != b.m_val ); }
+
+bool sc_dt::equal( const sc_bit& a, const sc_bit& b )
+    { return ( a == b ); }
+
+bool sc_dt::not_equal( const sc_bit& a, const sc_bit& b )
+    { return ( a != b ); }
+// MANDATORY
+
+const sc_dt::sc_bit sc_dt::operator ~ ( const sc_bit& a )
+   { return sc_bit( ! a.m_val ); }
+
+// OPTIONAL
+
+const sc_dt::sc_bit sc_dt::b_not( const sc_bit& a )
+   { return ( ~ a ); }
+
+// RECOMMENDED
+
+void sc_dt::b_not( sc_bit& r, const sc_bit& a )
+   { r = ( ~ a ); }
+
+// binary bit-wise operations
+
+// MANDATORY
+
+const sc_dt::sc_bit sc_dt::operator & ( const sc_bit& a, const sc_bit& b )
+    { return sc_bit( a.m_val && b.m_val ); }
+
+const sc_dt::sc_bit sc_dt::operator | ( const sc_bit& a, const sc_bit& b )
+    { return sc_bit( a.m_val || b.m_val ); }
+
+const sc_dt::sc_bit sc_dt::operator ^ ( const sc_bit& a, const sc_bit& b )
+    { return sc_bit( a.m_val != b.m_val ); }
+
+const sc_dt::sc_bit sc_dt::b_and ( const sc_bit& a, const sc_bit& b )
+    { return a & b; }
+
+const sc_dt::sc_bit sc_dt::b_or ( const sc_bit& a, const sc_bit& b )
+    { return a | b; }
+
+const sc_dt::sc_bit sc_dt::b_xor ( const sc_bit& a, const sc_bit& b )
+    { return a ^ b; }
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_bit& a )
+{
+    a.print( os );
+    return os;
+}
+
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_bit& a )
+{
+    a.scan( is );
+    return is;
+}
+//------------------------------------------------Fraah is done working here
 
 namespace sc_dt
 {

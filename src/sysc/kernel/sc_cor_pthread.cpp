@@ -33,6 +33,9 @@
 #include "sysc/kernel/sc_cor_pthread.h"
 #include "sysc/kernel/sc_simcontext.h"
 
+#include <unistd.h>
+#include <syscall.h>
+
 using namespace std;
 
 namespace sc_core {
@@ -57,11 +60,12 @@ namespace sc_core {
 //     thread scheduling away from the pthread package.
 // ----------------------------------------------------------------------------
 
-static sc_cor_pthread* active_cor_p=0;   // Active co-routine.
+//static sc_cor_pthread* active_cor_p=0;   // Active co-routine.
 static pthread_cond_t  create_condition; // See note 1 above.
 static pthread_mutex_t create_mutex;     // See note 1 above.
 static sc_cor_pthread  main_cor;         // Main coroutine.
-
+static pthread_mutex_t sched_mutex;      // Kernel scheduling mutex
+static pthread_key_t thread_key;         // thread-specific data key
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_cor_pthread
@@ -72,7 +76,7 @@ static sc_cor_pthread  main_cor;         // Main coroutine.
 // constructor
 
 sc_cor_pthread::sc_cor_pthread()
-    : m_cor_fn_arg( 0 ), m_pkg_p( 0 )
+    : m_cor_fn_arg( 0 ), m_pkg_p( 0 ), m_counter( 0 )
 {
     DEBUGF << this << ": sc_cor_pthread::sc_cor_pthread()" << std::endl;
     pthread_cond_init( &m_pt_condition, PTHREAD_NULL );
@@ -85,8 +89,8 @@ sc_cor_pthread::sc_cor_pthread()
 sc_cor_pthread::~sc_cor_pthread()
 {
     DEBUGF << this << ": sc_cor_pthread::~sc_cor_pthread()" << std::endl;
-	pthread_cond_destroy( &m_pt_condition);
-	pthread_mutex_destroy( &m_mutex );
+    pthread_cond_destroy( &m_pt_condition);
+    pthread_mutex_destroy( &m_mutex );
 }
 
 
@@ -111,22 +115,41 @@ void* sc_cor_pthread::invoke_module_method(void* context_p)
     // wait point.
 
     pthread_mutex_lock( &create_mutex );
-	DEBUGF << p << ": child signalling main thread " << endl;
+    pthread_setspecific( thread_key, p->m_cor_fn_arg ); // m_cor_fn_arg is a pointer to sc_thread_process or sc_method_process
+    DEBUGF << p << ": child signalling main thread " << endl;
     pthread_cond_signal( &create_condition );
-    pthread_mutex_lock( &p->m_mutex );
+    pthread_mutex_lock( &sched_mutex );
     pthread_mutex_unlock( &create_mutex );
-    pthread_cond_wait( &p->m_pt_condition, &p->m_mutex );
-    pthread_mutex_unlock( &p->m_mutex );
+    pthread_cond_wait( &p->m_pt_condition, &sched_mutex );
+    pthread_mutex_unlock( &sched_mutex );
 
 
     // CALL THE SYSTEMC CODE THAT WILL ACTUALLY START THE THREAD OFF:
 
-    active_cor_p = p;
-    DEBUGF << p << ": about to invoke real method " 
-	   << active_cor_p << std::endl;
+//    active_cor_p = p;
+//    DEBUGF << p << ": about to invoke real method " 
+//	   << active_cor_p << std::endl;
     (p->m_cor_fn)(p->m_cor_fn_arg);
 
     return 0;
+}
+
+// increment the lock counter
+void sc_cor_pthread::increment_counter()
+{
+    m_counter++;
+}
+
+// decrement the lock counter
+void sc_cor_pthread::decrement_counter()
+{
+    m_counter--;
+}
+
+// return the lock counter
+unsigned int sc_cor_pthread::get_counter()
+{
+    return m_counter;
 }
 
 
@@ -149,10 +172,12 @@ sc_cor_pkg_pthread::sc_cor_pkg_pthread( sc_simcontext* simc )
     {
         pthread_cond_init( &create_condition, PTHREAD_NULL );
         pthread_mutex_init( &create_mutex, PTHREAD_NULL );
-        assert( active_cor_p == 0 );
+//        assert( active_cor_p == 0 );
         main_cor.m_pkg_p = this;
-		DEBUGF << &main_cor << ": is main co-routine" << std::endl;
-        active_cor_p = &main_cor;
+        DEBUGF << &main_cor << ": is main co-routine" << std::endl;
+//        active_cor_p = &main_cor;
+        pthread_mutex_init( &sched_mutex, PTHREAD_NULL );
+        pthread_key_create( &thread_key, PTHREAD_NULL );
     }
 }
 
@@ -163,6 +188,11 @@ sc_cor_pkg_pthread::~sc_cor_pkg_pthread()
 {
     if( -- instance_count == 0 ) {
         // cleanup the main coroutine
+        // 10/14/2014 GL: destroy create_condition & create_mutex
+        pthread_cond_destroy( &create_condition );
+        pthread_mutex_destroy( &create_mutex );
+        pthread_mutex_destroy( &sched_mutex );
+        pthread_key_delete( thread_key );
     }
 }
 
@@ -174,7 +204,7 @@ sc_cor_pkg_pthread::create( std::size_t stack_size, sc_cor_fn* fn, void* arg )
 {
     sc_cor_pthread* cor_p = new sc_cor_pthread;
     DEBUGF << &main_cor << ": sc_cor_pkg_pthread::create(" 
-	       << cor_p << ")" << std::endl;
+           << cor_p << ")" << std::endl;
 
 
     // INITIALIZE OBJECT'S FIELDS FROM ARGUMENT LIST:
@@ -240,7 +270,7 @@ sc_cor_pkg_pthread::create( std::size_t stack_size, sc_cor_fn* fn, void* arg )
 void
 sc_cor_pkg_pthread::yield( sc_cor* next_cor_p )
 {
-    sc_cor_pthread* from_p = active_cor_p;
+    sc_cor_pthread* from_p = 0;//active_cor_p;
     sc_cor_pthread* to_p = (sc_cor_pthread*)next_cor_p;
 
     DEBUGF << from_p << ": switch to " << to_p << std::endl;
@@ -254,8 +284,40 @@ sc_cor_pkg_pthread::yield( sc_cor* next_cor_p )
         pthread_mutex_unlock( &from_p->m_mutex );
     }
 
-    active_cor_p = from_p; // When we come out of wait make ourselves active.
-	DEBUGF << from_p << " restarting after yield to " << to_p << std::endl;
+//    active_cor_p = from_p; // When we come out of wait make ourselves active.
+    DEBUGF << from_p << " restarting after yield to " << to_p << std::endl;
+}
+
+
+// suspend the current coroutine
+void
+sc_cor_pkg_pthread::wait( sc_cor* cur_cor_p )
+{
+    sc_cor_pthread* from_p = (sc_cor_pthread*)cur_cor_p;
+
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+    pthread_cond_wait( &from_p->m_pt_condition, &sched_mutex );
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+}
+
+
+// resume the next coroutine
+void
+sc_cor_pkg_pthread::go( sc_cor* next_cor_p )
+{
+    sc_cor_pthread* to_p = (sc_cor_pthread*)next_cor_p;
+
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+    pthread_cond_signal( &to_p->m_pt_condition );
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
 }
 
 
@@ -266,10 +328,27 @@ sc_cor_pkg_pthread::abort( sc_cor* next_cor_p )
 {
     sc_cor_pthread* n_p = (sc_cor_pthread*)next_cor_p;
 
-    DEBUGF << active_cor_p << ": aborting, switching to " << n_p << std::endl;
-    pthread_mutex_lock( &n_p->m_mutex );
+//    DEBUGF << active_cor_p << ": aborting, switching to " << n_p << std::endl;
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     pthread_cond_signal( &n_p->m_pt_condition );
-    pthread_mutex_unlock( &n_p->m_mutex );
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+}
+
+// join another coroutine
+
+void
+sc_cor_pkg_pthread::join( sc_cor* join_cor_p )
+{
+    sc_cor_pthread* join_p = (sc_cor_pthread*)join_cor_p;
+
+    if ( pthread_join( join_p->m_thread, NULL ) )
+    {
+        std::fprintf(stderr, "ERROR - could not join thread\n");
+    }
 }
 
 
@@ -280,6 +359,92 @@ sc_cor_pkg_pthread::get_main()
 {
     return &main_cor;
 }
+
+
+// acquire the scheduling mutex
+
+void
+sc_cor_pkg_pthread::acquire_sched_mutex()
+{
+#ifdef SC_LOCK_CHECK
+    assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    pthread_mutex_lock( &sched_mutex );
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+}
+
+
+// release the scheduling mutex
+
+void
+sc_cor_pkg_pthread::release_sched_mutex()
+{
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+    pthread_mutex_unlock( &sched_mutex );
+#ifdef SC_LOCK_CHECK
+    assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+}
+
+
+// set the thread specific data value
+
+void
+sc_cor_pkg_pthread::set_thread_specific( void* process_b )
+{
+    pthread_setspecific( thread_key, process_b );
+}
+
+
+// get the thread specific data value
+
+void*
+sc_cor_pkg_pthread::get_thread_specific()
+{
+    return pthread_getspecific( thread_key );
+}
+
+
+// get the state of the kernel lock
+
+bool
+sc_cor_pkg_pthread::is_locked()
+{
+    return ( sched_mutex.__data.__lock > 0 );
+}
+
+
+bool
+sc_cor_pkg_pthread::is_unlocked()
+{
+    return ( sched_mutex.__data.__lock == 0 );
+}
+
+
+bool
+sc_cor_pkg_pthread::is_lock_owner()
+{
+    return ( sched_mutex.__data.__owner == syscall(SYS_gettid) );
+}
+
+
+bool
+sc_cor_pkg_pthread::is_not_owner()
+{
+    return ( sched_mutex.__data.__owner != syscall(SYS_gettid) );
+}
+
+
+bool
+sc_cor_pkg_pthread::is_locked_and_owner()
+{
+    return ( sched_mutex.__data.__lock > 0 && sched_mutex.__data.__owner == syscall(SYS_gettid) );
+}
+
 
 } // namespace sc_core
 

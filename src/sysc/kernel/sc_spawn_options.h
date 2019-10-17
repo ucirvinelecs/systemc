@@ -55,12 +55,7 @@ class sc_spawn_options {
     friend class sc_process_b;
     friend class sc_thread_process;
   public:
-    sc_spawn_options() :                  
-        m_dont_initialize(false), m_resets(), m_sensitive_events(),
-        m_sensitive_event_finders(), m_sensitive_interfaces(),
-        m_sensitive_port_bases(), m_spawn_method(false), m_stack_size(0)
-        { }
-
+    sc_spawn_options();
     ~sc_spawn_options();
 
     void async_reset_signal_is( const sc_in<bool>&,           bool level );
@@ -73,28 +68,21 @@ class sc_spawn_options {
     void reset_signal_is( const sc_out<bool>&,          bool level );
     void reset_signal_is( const sc_signal_in_if<bool>&, bool level );
 
-    void dont_initialize()   { m_dont_initialize = true; }
+    void dont_initialize();
+    bool is_method() const;
+    void set_stack_size(int stack_size);
 
-    bool is_method() const   { return m_spawn_method; }
+    void set_sensitivity(const sc_event* event);
 
-    void set_stack_size(int stack_size) { m_stack_size = stack_size; }
+    void set_sensitivity(sc_port_base* port_base);
 
-    void set_sensitivity(const sc_event* event) 
-        { m_sensitive_events.push_back(event); }
+    void set_sensitivity(sc_interface* interface_p);
 
-    void set_sensitivity(sc_port_base* port_base)
-        { m_sensitive_port_bases.push_back(port_base); }
+    void set_sensitivity(sc_export_base* export_base);
 
-    void set_sensitivity(sc_interface* interface_p) 
-        { m_sensitive_interfaces.push_back(interface_p); }
+    void set_sensitivity(sc_event_finder* event_finder);
 
-    void set_sensitivity(sc_export_base* export_base) 
-        { m_sensitive_interfaces.push_back(export_base->get_interface()); }
-
-    void set_sensitivity(sc_event_finder* event_finder) 
-        { m_sensitive_event_finders.push_back(event_finder); }
-
-    void spawn_method()                 { m_spawn_method = true; }
+    void spawn_method();
 
   protected:
     void specify_resets() const;

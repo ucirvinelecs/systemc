@@ -66,7 +66,13 @@ class sc_fifo_blocking_in_if
 public: 
 
     // blocking read 
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     virtual void read( T& ) = 0; 
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     virtual T read() = 0; 
 }; 
 
@@ -133,6 +139,9 @@ class sc_fifo_blocking_out_if
 public: 
 
     // blocking write 
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC write conflict-free looped-wait event
     virtual void write( const T& ) = 0; 
 
 }; 

@@ -28,7 +28,10 @@
  *****************************************************************************/
 
 #include "sysc/communication/sc_event_finder.h"
-
+//---------------------------------------------------Farah is working here
+    const sc_core::sc_port_base& sc_core::sc_event_finder::port() const
+        { return m_port; } 
+//---------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

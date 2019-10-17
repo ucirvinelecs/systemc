@@ -32,7 +32,28 @@
 #include "sysc/kernel/sc_process.h"
 //
 #include "sysc/utils/sc_report.h"
+//--------------------------------------------------Farah is working here 
 
+sc_core::sc_user::sc_user() {}
+sc_core::sc_user::sc_user( const sc_user& ) {}
+
+sc_core::sc_halt::sc_halt() {}
+sc_core::sc_halt::sc_halt( const sc_halt& ) {}
+
+sc_core::sc_kill::sc_kill() {}
+sc_core::sc_kill::sc_kill( const sc_kill& ) {}
+
+bool sc_core::sc_unwind_exception::is_reset() const { return m_is_reset; }
+
+sc_core::sc_unwind_exception::sc_unwind_exception( const sc_unwind_exception& that )
+  : std::exception( that )
+  , m_proc_p( that.m_proc_p )
+  , m_is_reset( that.m_is_reset )
+{
+    that.m_proc_p = 0; // move to new instance
+}
+
+//-----------------------------------------------Farah is done working here
 namespace sc_core {
 
 sc_unwind_exception::sc_unwind_exception( sc_process_b* proc_p, bool is_reset )

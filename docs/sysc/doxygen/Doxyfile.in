@@ -32,7 +32,8 @@ PROJECT_NAME           = @PACKAGE_NAME@
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = @PACKAGE_VERSION@
+#PROJECT_NUMBER        = @PACKAGE_VERSION@
+PROJECT_NUMBER         = "Recoding Infrastructure for SystemC v0.6.0 derived from Accellera SystemC 2.3.1"
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer

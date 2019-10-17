@@ -72,14 +72,8 @@ enum sc_enc
 const std::string to_string( sc_enc );
 
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, sc_enc enc )
-{
-    return os << to_string( enc );
-}
-
-
+operator << ( ::std::ostream& os, sc_enc enc );
 // ----------------------------------------------------------------------------
 //  ENUM : sc_q_mode
 //
@@ -101,14 +95,8 @@ enum sc_q_mode
 const std::string to_string( sc_q_mode );
 
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, sc_q_mode q_mode )
-{
-    return os << to_string( q_mode );
-}
-
-
+operator << ( ::std::ostream& os, sc_q_mode q_mode );
 // ----------------------------------------------------------------------------
 //  ENUM : sc_o_mode
 //
@@ -130,13 +118,8 @@ enum sc_o_mode
 const std::string to_string( sc_o_mode );
 
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, sc_o_mode o_mode )
-{
-    return os << to_string( o_mode );
-}
-
+operator << ( ::std::ostream& os, sc_o_mode o_mode );
 
 // ----------------------------------------------------------------------------
 //  ENUM : sc_switch
@@ -154,14 +137,8 @@ enum sc_switch
 const std::string to_string( sc_switch );
 
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, sc_switch sw )
-{
-    return os << to_string( sw );
-}
-
-
+operator << ( ::std::ostream& os, sc_switch sw );
 // ----------------------------------------------------------------------------
 //  ENUM : sc_fmt
 //
@@ -178,13 +155,8 @@ enum sc_fmt
 const std::string to_string( sc_fmt );
 
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, sc_fmt fmt )
-{
-    return os << to_string( fmt );
-}
-
+operator << ( ::std::ostream& os, sc_fmt fmt );
 
 // ----------------------------------------------------------------------------
 //  Built-in & default fixed-point type parameter values.

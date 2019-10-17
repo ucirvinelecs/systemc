@@ -52,7 +52,116 @@
 #   define DEBUG_MSG(NAME,P,MSG) 
 #endif
 
+//------------------------------------------------------------------------------
+// user-defined default stack-size
+//------------------------------------------------------------------------------
+#if defined(SC_OVERRIDE_DEFAULT_STACK_SIZE)
+#   define SC_DEFAULT_STACK_SIZE_ SC_OVERRIDE_DEFAULT_STACK_SIZE
+
+//------------------------------------------------------------------------------
+// architecture-specific default stack sizes
+//------------------------------------------------------------------------------
+#elif !defined(SC_USE_PTHREADS) && (defined(__CYGWIN32__) || defined(__CYGWIN32))
+#   define SC_DEFAULT_STACK_SIZE_ 0x50000
+
+#elif defined(SC_LONG_64) || defined(__x86_64__) || defined(__LP64__) || \
+      defined(_M_X64) || defined(_M_AMD64)
+#   define SC_DEFAULT_STACK_SIZE_ 0x40000
+
+#else
+#   define SC_DEFAULT_STACK_SIZE_ 0x20000
+
+#endif // SC_DEFAULT_STACK_SIZE_
+
+
+//------------------------------------------------------------------------------
+// force 16-byte alignment on coroutine entry functions, needed for
+// QuickThreads (32-bit, see also fixes in qt/md/{i386,iX86_64}.[hs]),
+// and MinGW32 / Cygwin32 compilers on Windows platforms
+#if defined(__GNUC__) && !defined(__ICC) && !defined(__x86_64__) && \
+    (__GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ > 1 )
+# define SC_ALIGNED_STACK_ \
+    __attribute__((force_align_arg_pointer))
+#else
+# define SC_ALIGNED_STACK_ /* empty */
+#endif
+
+//--------------------------------------------Farah is working here 
+
+const char* sc_core::sc_method_process::kind() const
+        { return "sc_method_process"; }
+
+
+
+void sc_core::sc_method_process::set_next_exist(sc_method_handle next_p)
+{
+    m_exist_p = next_p;
+}
+
+sc_core::sc_method_handle sc_core::sc_method_process::next_exist()
+{
+    return (sc_method_handle)m_exist_p;
+}
+
+
+void sc_core::sc_method_process::set_next_runnable(sc_method_handle next_p)
+{
+    m_runnable_p = next_p;
+}
+
+sc_core::sc_method_handle sc_core::sc_method_process::next_runnable()
+{
+    return (sc_method_handle)m_runnable_p;
+}
+
+
+
+
+//------------------------------------------Farah is done working here
 namespace sc_core {
+
+//------------------------------------------------------------------------------
+//"sc_method_cor_fn"
+// 
+// This function invokes the coroutine for the supplied object instance.
+//------------------------------------------------------------------------------
+SC_ALIGNED_STACK_
+void sc_method_cor_fn( void* arg )
+{
+    sc_simcontext*   simc_p = sc_get_curr_simcontext();
+    sc_method_handle method_h = RCAST<sc_method_handle>( arg );
+
+    // PROCESS THE METHOD AND PROCESS ANY EXCEPTIONS THAT ARE THROWN:
+
+    while( true ) {
+
+        try {
+            method_h->semantics();
+        }
+        catch( sc_unwind_exception& ex ) {
+	    ex.clear();
+            if ( ex.is_reset() ) continue;
+        }
+        catch( ... ) {
+            sc_report* err_p = sc_handle_exception();
+            method_h->simcontext()->set_error( err_p );
+        }
+        
+        {
+            sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+            assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+	    simc_p->remove_running_process( (sc_process_b*)method_h );
+	    simc_p->schedule( method_h->m_cor_p );
+            simc_p->suspend_cor( method_h->m_cor_p );
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+	}
+#ifdef SC_LOCK_CHECK
+        assert( sc_get_curr_simcontext()->is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+    }
+}
 
 // +----------------------------------------------------------------------------
 // |"sc_method_process::check_for_throws"
@@ -293,6 +402,19 @@ void sc_method_process::kill_process(sc_descendant_inclusion_info descendants)
 }
 
 //------------------------------------------------------------------------------
+//"sc_method_process::prepare_for_simulation"
+//
+// This method prepares this object instance for simulation. It calls the
+// coroutine package to create the actual thread.
+//------------------------------------------------------------------------------
+void sc_method_process::prepare_for_simulation()
+{
+    m_cor_p = simcontext()->cor_pkg()->create( m_stack_size,
+                         sc_method_cor_fn, this );
+    m_cor_p->stack_protect( true );
+}
+
+//------------------------------------------------------------------------------
 //"sc_method_process::sc_method_process"
 //
 // This is the object instance constructor for this class.
@@ -304,7 +426,7 @@ sc_method_process::sc_method_process( const char* name_p,
     sc_process_b(
         name_p ? name_p : sc_gen_unique_name("method_p"), 
         false, free_host, method_p, host_p, opt_p),
-	m_cor(0), m_stack_size(0), m_monitor_q()
+	m_cor_p(0), m_stack_size(SC_DEFAULT_STACK_SIZE), m_monitor_q()
 {
 
     // CHECK IF THIS IS AN sc_module-BASED PROCESS AND SIMUALTION HAS STARTED:
@@ -368,6 +490,14 @@ sc_method_process::sc_method_process( const char* name_p,
 //------------------------------------------------------------------------------
 sc_method_process::~sc_method_process()
 {
+
+    // DESTROY THE COROUTINE FOR THIS THREAD:
+
+    if( m_cor_p != 0 ) {
+        m_cor_p->stack_protect( false );
+        delete m_cor_p;
+        m_cor_p = 0;
+    }
 }
 
 
@@ -634,6 +764,11 @@ void sc_method_process::throw_user( const sc_throw_it_helper& helper,
 //------------------------------------------------------------------------------
 bool sc_method_process::trigger_dynamic( sc_event* e )
 {
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel lock is acquired
+
     // No time outs yet, and keep gcc happy.
 
     m_timed_out = false;
@@ -799,6 +934,21 @@ bool sc_method_process::trigger_dynamic( sc_event* e )
 
     return true;
 }
+
+
+//------------------------------------------------------------------------------
+//"sc_set_stack_size"
+//
+// (04/03/2015 GL)
+//------------------------------------------------------------------------------
+void
+sc_set_stack_size( sc_method_handle method_h, std::size_t size )
+{
+    method_h->set_stack_size( size );
+}
+
+#undef DEBUG_MSG
+#undef DEBUG_NAME
 
 } // namespace sc_core 
 

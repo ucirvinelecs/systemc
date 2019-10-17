@@ -92,23 +92,11 @@ class sc_bit
     static void invalid_value( char );
     static void invalid_value( int );
 
-    static bool to_value( char c )
-	{
-	    if( c != '0' && c != '1' ) {
-		invalid_value( c );
-	    }
-	    return ( c == '0' ? false : true );
-	}
+    static bool to_value( char c );
 
-    static bool to_value( int i )
-	{
-	    if( i != 0 && i != 1 ) {
-		invalid_value( i );
-	    }
-	    return ( i == 0 ? false : true );
-	}
-    static bool to_value( bool b )
-       { return b; }
+    static bool to_value( int i );
+
+    static bool to_value( bool b );
 
 #define DEFN_TO_VALUE_T(tp)              \
     static bool to_value( tp i )         \
@@ -127,11 +115,7 @@ public:
     // constructors
     // MANDATORY
 
-    sc_bit()
-	: m_val( false )
-	{
-	    sc_deprecated_sc_bit();
-	}
+    sc_bit();
 
 #define DEFN_CTOR_T(tp)              \
     explicit sc_bit( tp a )          \
@@ -155,23 +139,18 @@ public:
     // copy constructor
     // MANDATORY
 
-    sc_bit( const sc_bit& a )
-	: m_val( a.m_val )
-	{}
+    sc_bit( const sc_bit& a );
 
 
     // destructor
     // MANDATORY
 
-    ~sc_bit()
-	{}
-
+    ~sc_bit();
 
     // assignment operators
     // MANDATORY
 
-    sc_bit& operator = ( const sc_bit& b )
-	{ m_val = b.m_val; return *this; }
+    sc_bit& operator = ( const sc_bit& b );
 
 #define DEFN_ASN_OP_T(op,tp) \
     sc_bit& operator op( tp b ) \
@@ -192,14 +171,11 @@ public:
 
     // bitwise assignment operators
 
-    sc_bit& operator &= ( const sc_bit& b )
-	{ m_val = ( m_val && b.m_val ); return *this; }
+    sc_bit& operator &= ( const sc_bit& b );
 
-    sc_bit& operator |= ( const sc_bit& b )
-	{ m_val = ( m_val || b.m_val ); return *this; }
+    sc_bit& operator |= ( const sc_bit& b );
 
-    sc_bit& operator ^= ( const sc_bit& b )
-	{ m_val = ( m_val != b.m_val ); return *this; }
+    sc_bit& operator ^= ( const sc_bit& b );
 
     DEFN_ASN_OP(&=)
     DEFN_ASN_OP(|=)
@@ -213,20 +189,16 @@ public:
 
     // implicit conversion to bool
 
-    operator bool () const
-	{ return m_val; }
+    operator bool () const;
 
-    bool operator ! () const  // non-VSIA
-	{ return ! m_val; }
+    bool operator ! () const;  // non-VSIA
 
 
     // explicit conversions
 
-    bool to_bool() const  // non-VSIA
-	{ return m_val; }
+    bool to_bool() const;  // non-VSIA
 
-    char to_char() const
-	{ return ( m_val ? '1' : '0' ); }
+    char to_char() const;
 
 
     // relational operators and functions
@@ -246,8 +218,7 @@ public:
 
     // RECOMMENDED
 
-    sc_bit& b_not()
-        { m_val = ( ! m_val ); return *this; }
+    sc_bit& b_not();
 
     // binary bit-wise operations
 
@@ -257,8 +228,7 @@ public:
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-       { os << to_bool(); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
     void scan( ::std::istream& = ::std::cin );
 
@@ -282,22 +252,18 @@ private:
 
 // MANDATORY
 
-inline bool operator == ( const sc_bit& a, const sc_bit& b )
-    { return ( a.m_val == b.m_val ); }
+bool operator == ( const sc_bit& a, const sc_bit& b );
 
-inline bool operator != ( const sc_bit& a, const sc_bit& b )
-    { return ( a.m_val != b.m_val ); }
+bool operator != ( const sc_bit& a, const sc_bit& b );
 
 DEFN_BIN_FUN(bool,operator==)
 DEFN_BIN_FUN(bool,operator!=)
 
 // OPTIONAL
 
-inline bool equal( const sc_bit& a, const sc_bit& b )
-    { return ( a == b ); }
+bool equal( const sc_bit& a, const sc_bit& b );
 
-inline bool not_equal( const sc_bit& a, const sc_bit& b )
-    { return ( a != b ); }
+bool not_equal( const sc_bit& a, const sc_bit& b );
 
 DEFN_BIN_FUN(bool,equal)
 DEFN_BIN_FUN(bool,not_equal)
@@ -309,33 +275,25 @@ DEFN_BIN_FUN(bool,not_equal)
 
     // MANDATORY
 
-    inline const sc_bit operator ~ ( const sc_bit& a )
-       { return sc_bit( ! a.m_val ); }
-
+    const sc_bit operator ~ ( const sc_bit& a );
 
     // OPTIONAL
 
-    inline const sc_bit b_not( const sc_bit& a )
-       { return ( ~ a ); }
-
+    const sc_bit b_not( const sc_bit& a );
 
     // RECOMMENDED
 
-    inline void b_not( sc_bit& r, const sc_bit& a )
-       { r = ( ~ a ); }
+    void b_not( sc_bit& r, const sc_bit& a );
 
     // binary bit-wise operations
 
     // MANDATORY
 
-    inline const sc_bit operator & ( const sc_bit& a, const sc_bit& b )
-        { return sc_bit( a.m_val && b.m_val ); }
+    const sc_bit operator & ( const sc_bit& a, const sc_bit& b );
 
-    inline const sc_bit operator | ( const sc_bit& a, const sc_bit& b )
-        { return sc_bit( a.m_val || b.m_val ); }
+    const sc_bit operator | ( const sc_bit& a, const sc_bit& b );
 
-    inline const sc_bit operator ^ ( const sc_bit& a, const sc_bit& b )
-        { return sc_bit( a.m_val != b.m_val ); }
+    const sc_bit operator ^ ( const sc_bit& a, const sc_bit& b );
 
     DEFN_BIN_FUN(const sc_bit,operator&)
     DEFN_BIN_FUN(const sc_bit,operator|)
@@ -343,14 +301,11 @@ DEFN_BIN_FUN(bool,not_equal)
 
     // OPTIONAL
 
-    inline const sc_bit b_and ( const sc_bit& a, const sc_bit& b )
-        { return a & b; }
+    const sc_bit b_and ( const sc_bit& a, const sc_bit& b );
 
-    inline const sc_bit b_or ( const sc_bit& a, const sc_bit& b )
-        { return a | b; }
+    const sc_bit b_or ( const sc_bit& a, const sc_bit& b );
 
-    inline const sc_bit b_xor ( const sc_bit& a, const sc_bit& b )
-        { return a ^ b; }
+    const sc_bit b_xor ( const sc_bit& a, const sc_bit& b );
 
     DEFN_BIN_FUN(const sc_bit,b_and)
     DEFN_BIN_FUN(const sc_bit,b_or)
@@ -383,21 +338,11 @@ DEFN_BIN_FUN(bool,not_equal)
 
 // ----------------------------------------------------------------------------
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_bit& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_bit& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_bit& a )
-{
-    a.scan( is );
-    return is;
-}
+operator >> ( ::std::istream& is, sc_bit& a );
 
 } // namespace sc_dt
 

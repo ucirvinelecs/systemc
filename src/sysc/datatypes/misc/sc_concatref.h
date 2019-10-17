@@ -105,43 +105,19 @@ class sc_concatref : public sc_generic_base<sc_concatref>, public sc_value_base
 public:
     friend class sc_core::sc_vpool<sc_concatref>;
 
-    inline void initialize( 
-        sc_value_base& left, sc_value_base& right )
-        {    
-            bool left_xz;   // True if x's and/or z's found in left.
-            bool right_xz;  // True if x's and/or z's found in right.
-            
-            m_left_p = (sc_value_base*)&left;
-            m_right_p = (sc_value_base*)&right;
-            m_len_r = right.concat_length(&right_xz);
-            m_len = left.concat_length(&left_xz) + m_len_r;
-            m_flags = ( left_xz || right_xz ) ? cf_xz_present : cf_none;
-        }
+    void initialize( 
+        sc_value_base& left, sc_value_base& right );
 
-
-    inline void initialize( 
-        const sc_value_base& left, const sc_value_base& right )
-        {    
-            bool left_xz;   // True if x's and/or z's found in left.
-            bool right_xz;  // True if x's and/or z's found in right.
-
-            m_left_p = (sc_value_base*)&left;
-            m_right_p = (sc_value_base*)&right;
-            m_len_r = right.concat_length(&right_xz);
-            m_len = left.concat_length(&left_xz) + m_len_r;
-            m_flags = ( left_xz || right_xz ) ? cf_xz_present : cf_none;
-        }
+    void initialize( 
+        const sc_value_base& left, const sc_value_base& right );
 
     // destructor
 
-    virtual ~sc_concatref()
-    {}
-
+    virtual ~sc_concatref();
 
     // capacity
 
-    unsigned int length() const
-        { return m_len; }
+    unsigned int length() const;
 
 #ifdef SC_DT_DEPRECATED
     int bitwidth() const
@@ -150,90 +126,27 @@ public:
 
     // concatenation
 
-    virtual int concat_length( bool* xz_present_p ) const
-    { 
-        if ( xz_present_p ) 
-            *xz_present_p = m_flags & cf_xz_present ? true : false;
-        return m_len; 
-    }
+    virtual int concat_length( bool* xz_present_p ) const;
 
-    virtual void concat_clear_data( bool to_ones )
-    { 
-        m_left_p->concat_clear_data(to_ones); 
-        m_right_p->concat_clear_data(to_ones); 
-    }
+    virtual void concat_clear_data( bool to_ones );
 
-    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const
-    {
-        bool rnz = m_right_p->concat_get_ctrl( dst_p, low_i );
-        bool lnz = m_left_p->concat_get_ctrl( dst_p, low_i+m_len_r );
-        return rnz || lnz;
-    }
+    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const;
 
-    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const
-    {
-        bool rnz = m_right_p->concat_get_data( dst_p, low_i );
-        bool lnz = m_left_p->concat_get_data( dst_p, low_i+m_len_r );
-        return rnz || lnz;
-    }
+    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const;
 
-    virtual uint64 concat_get_uint64() const
-    {
-        if ( m_len_r >= 64 )
-            return m_right_p->concat_get_uint64();
-        else
-        {
-            return (m_left_p->concat_get_uint64() << m_len_r) | 
-                m_right_p->concat_get_uint64();
-        }
-    }
+    virtual uint64 concat_get_uint64() const;
 
-    virtual void concat_set( int64 src, int low_i ) 
-    { 
-        m_right_p->concat_set( src, low_i );
-        m_left_p->concat_set( src, low_i+m_len_r);
-    }
+    virtual void concat_set( int64 src, int low_i );
 
-    virtual void concat_set( const sc_signed& src, int low_i ) 
-    {
-        m_right_p->concat_set( src, low_i );
-        m_left_p->concat_set( src, low_i+m_len_r);
-    }
+    virtual void concat_set( const sc_signed& src, int low_i );
 
-    virtual void concat_set( const sc_unsigned& src, int low_i ) 
-    { 
-        m_right_p->concat_set( src, low_i );
-        m_left_p->concat_set( src, low_i+m_len_r);
-    }
+    virtual void concat_set( const sc_unsigned& src, int low_i );
 
-    virtual void concat_set( uint64 src, int low_i )
-    { 
-        m_right_p->concat_set( src, low_i );
-        m_left_p->concat_set( src, low_i+m_len_r);
-    }
-
+    virtual void concat_set( uint64 src, int low_i );
 
     // explicit conversions
 
-    uint64 to_uint64() const 
-        {
-            uint64 mask;
-            uint64 result;
-
-            result = m_right_p->concat_get_uint64();
-            if ( m_len_r < 64 )
-            {
-                mask = (uint64)~0;
-                result = (m_left_p->concat_get_uint64() << m_len_r) | 
-                            (result & ~(mask << m_len_r));
-            }
-            if ( m_len < 64 )
-            {
-                mask = (uint64)~0;
-                result = result & ~(mask << m_len);
-            }
-            return result;
-        }
+    uint64 to_uint64() const;
 
     const sc_unsigned& value() const
         {
@@ -260,182 +173,87 @@ public:
             return *result_p;
         }
 
-    int64 to_int64() const
-        { 
-            return (int64)to_uint64();
-        }
-    int to_int() const
-        { return (int)to_int64(); }
-    unsigned int  to_uint() const
-        { return (unsigned int)to_uint64(); }
-    long to_long() const
-        { return (long)to_int64(); }
-    unsigned long to_ulong() const
-        { return (unsigned long)to_uint64(); }
-    double to_double() const
-        { return value().to_double(); }
+    int64 to_int64() const;
 
-    void to_sc_signed( sc_signed& target ) const
-        { target = value(); }
+    int to_int() const;
 
-    void to_sc_unsigned( sc_unsigned& target ) const
-        { target = value(); }
+    unsigned int  to_uint() const;
+
+    long to_long() const;
+
+    unsigned long to_ulong() const;
+
+    double to_double() const;
+
+    void to_sc_signed( sc_signed& target ) const;
+
+    void to_sc_unsigned( sc_unsigned& target ) const;
 
     // implicit conversions:
 
-    operator  uint64 () const 
-        { return to_uint64(); }
+    operator  uint64 () const ;
 
-    operator const sc_unsigned& () const
-        { return value(); }
+    operator const sc_unsigned& () const;
 
     // unary operators:
 
-    sc_unsigned operator + () const
-        { return value(); } 
+    sc_unsigned operator + () const;
 
-    sc_signed operator - () const
-        { return -value(); } 
+    sc_signed operator - () const;
 
-    sc_unsigned operator ~ () const
-        { return ~value(); } 
+    sc_unsigned operator ~ () const;
 
     // explicit conversion to character string
 
-    const std::string to_string( sc_numrep numrep = SC_DEC ) const
-        { return value().to_string(numrep); }
+    const std::string to_string( sc_numrep numrep = SC_DEC ) const;
 
-    const std::string to_string( sc_numrep numrep, bool w_prefix ) const
-        { return value().to_string(numrep,w_prefix); }
-
-
+    const std::string to_string( sc_numrep numrep, bool w_prefix ) const;
 
     // assignments
 
-    inline const sc_concatref& operator = ( int v )
-    {
-        m_right_p->concat_set((int64)v, 0);
-        m_left_p->concat_set((int64)v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( int v );
 
-    inline const sc_concatref& operator = ( long v )
-    {
-        m_right_p->concat_set((int64)v, 0);
-        m_left_p->concat_set((int64)v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( long v );
 
-    inline const sc_concatref& operator = ( int64 v )
-    {
-        m_right_p->concat_set(v, 0);
-        m_left_p->concat_set(v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( int64 v );
 
-    inline const sc_concatref& operator = ( unsigned int v )
-    {
-        m_right_p->concat_set((uint64)v, 0);
-        m_left_p->concat_set((uint64)v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( unsigned int v );
 
-    inline const sc_concatref& operator = ( unsigned long v )
-    {
-        m_right_p->concat_set((uint64)v, 0);
-        m_left_p->concat_set((uint64)v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( unsigned long v );
 
-    inline const sc_concatref& operator = ( uint64 v )
-    {
-        m_right_p->concat_set(v, 0);
-        m_left_p->concat_set(v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( uint64 v );
 
-    const sc_concatref& operator = ( const sc_concatref& v )
-    {
-        sc_unsigned temp(v.length());
-        temp = v.value();
-        m_right_p->concat_set(temp, 0);
-        m_left_p->concat_set(temp, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( const sc_concatref& v );
 
-    const sc_concatref& operator = ( const sc_signed& v )
-    {
-        m_right_p->concat_set(v, 0);
-        m_left_p->concat_set(v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( const sc_signed& v );
 
-    const sc_concatref& operator = ( const sc_unsigned& v )
-    {
-        m_right_p->concat_set(v, 0);
-        m_left_p->concat_set(v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( const sc_unsigned& v );
 
-    const sc_concatref& operator = ( const char* v_p )
-    {
-        sc_unsigned v(m_len);
-        v = v_p;
-        m_right_p->concat_set(v, 0);
-        m_left_p->concat_set(v, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( const char* v_p );
 
-    const sc_concatref& operator = ( const sc_bv_base& v )
-    {
-        sc_unsigned temp(v.length());
-        temp = v;
-        m_right_p->concat_set(temp, 0);
-        m_left_p->concat_set(temp, m_len_r);
-        return *this;
-    }
+    const sc_concatref& operator = ( const sc_bv_base& v );
 
-    const sc_concatref& operator = ( const sc_lv_base& v )
-    {
-        sc_unsigned data(v.length());
-        data = v;
-        m_right_p->concat_set(data, 0);
-        m_left_p->concat_set(data, m_len_r);
-        return *this;
-    }
-
+    const sc_concatref& operator = ( const sc_lv_base& v );
 
     // reduce methods
 
-    bool and_reduce() const
-        { return value().and_reduce(); }
+    bool and_reduce() const;
 
-    bool nand_reduce() const
-        { return value().nand_reduce(); }
+    bool nand_reduce() const;
 
-    bool or_reduce() const
-        { return value().or_reduce(); }
+    bool or_reduce() const;
 
-    bool nor_reduce() const
-        { return value().nor_reduce(); }
+    bool nor_reduce() const;
 
-    bool xor_reduce() const
-        { return value().xor_reduce(); }
+    bool xor_reduce() const;
 
-    bool xnor_reduce() const
-        { return value().xnor_reduce(); }
+    bool xnor_reduce() const;
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-        { os << this->value(); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
-    void scan( ::std::istream& is ) 
-    { 
-        std::string s; 
-        is >> s; 
-        *this = s.c_str(); 
-    } 
+    void scan( ::std::istream& is ) ;
 
 public:
     static sc_core::sc_vpool<sc_concatref> m_pool; // Pool of temporary objects.
@@ -455,54 +273,29 @@ protected:
 
 private:
     sc_concatref(const sc_concatref&);
-    sc_concatref() : m_left_p(0), m_right_p(0), m_len(0), m_len_r(0), m_flags()
-      {}
+    sc_concatref();
 };
 
 
 // functional notation for the reduce methods
 
-inline
 bool
-and_reduce( const sc_concatref& a )
-{
-    return a.and_reduce();
-}
+and_reduce( const sc_concatref& a );
 
-inline
 bool
-nand_reduce( const sc_concatref& a )
-{
-    return a.nand_reduce();
-}
+nand_reduce( const sc_concatref& a );
 
-inline
 bool
-or_reduce( const sc_concatref& a )
-{
-    return a.or_reduce();
-}
+or_reduce( const sc_concatref& a );
 
-inline
 bool
-nor_reduce( const sc_concatref& a )
-{
-    return a.nor_reduce();
-}
+nor_reduce( const sc_concatref& a );
 
-inline
 bool
-xor_reduce( const sc_concatref& a )
-{
-    return a.xor_reduce();
-}
+xor_reduce( const sc_concatref& a );
 
-inline
 bool
-xnor_reduce( const sc_concatref& a )
-{
-    return a.xnor_reduce();
-}
+xnor_reduce( const sc_concatref& a );
 
 
 // SHIFT OPERATORS FOR sc_concatref OBJECT INSTANCES:
@@ -512,91 +305,43 @@ xnor_reduce( const sc_concatref& a )
 // this in favor of sc_unsigned so that precision is not lost. To get an
 // integer-based result use a cast to uint64 before performing the shift.
 
-inline const sc_unsigned operator << (const sc_concatref& target, uint64 shift)
-{
-    return target.value() << (int)shift;
-}
+const sc_unsigned operator << (const sc_concatref& target, uint64 shift);
 
-inline const sc_unsigned operator << (const sc_concatref& target, int64 shift)
-{
-    return target.value() << (int)shift;
-}
+const sc_unsigned operator << (const sc_concatref& target, int64 shift);
 
-inline const sc_unsigned operator << ( 
-    const sc_concatref& target, unsigned long shift )
-{
-    return target.value() << (int)shift;
-}
+const sc_unsigned operator << ( 
+    const sc_concatref& target, unsigned long shift );
 
-inline const sc_unsigned operator << ( 
-    const sc_concatref& target, int shift )
-{
-    return target.value() << shift;
-}
+const sc_unsigned operator << ( 
+    const sc_concatref& target, int shift );
 
-inline const sc_unsigned operator << ( 
-    const sc_concatref& target, unsigned int shift )
-{
-    return target.value() << (int)shift;
-}
+const sc_unsigned operator << ( 
+    const sc_concatref& target, unsigned int shift );
 
-inline const sc_unsigned operator << ( const sc_concatref& target, long shift )
-{
-    return target.value() << (int)shift;
-}
+const sc_unsigned operator << ( const sc_concatref& target, long shift );
 
-inline const sc_unsigned operator >> (const sc_concatref& target, uint64 shift)
-{
-    return target.value() >> (int)shift;
-}
+const sc_unsigned operator >> (const sc_concatref& target, uint64 shift);
 
-inline const sc_unsigned operator >> (const sc_concatref& target, int64 shift)
-{
-    return target.value() >> (int)shift;
-}
+const sc_unsigned operator >> (const sc_concatref& target, int64 shift);
 
-inline const sc_unsigned operator >> ( 
-    const sc_concatref& target, unsigned long shift )
-{
-    return target.value() >> (int)shift;
-}
+const sc_unsigned operator >> ( 
+    const sc_concatref& target, unsigned long shift );
 
-inline const sc_unsigned operator >> ( 
-    const sc_concatref& target, int shift )
-{
-    return target.value() >> shift;
-}
+const sc_unsigned operator >> ( 
+    const sc_concatref& target, int shift );
 
-inline const sc_unsigned operator >> ( 
-    const sc_concatref& target, unsigned int shift )
-{
-    return target.value() >> (int)shift;
-}
+const sc_unsigned operator >> ( 
+    const sc_concatref& target, unsigned int shift );
 
-inline const sc_unsigned operator >> ( const sc_concatref& target, long shift )
-{
-    return target.value() >> (int)shift;
-}
-
+const sc_unsigned operator >> ( const sc_concatref& target, long shift );
 
 // STREAM OPERATORS FOR sc_concatref OBJECT INSTANCES:
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_concatref& v )
-{ 
-    return os << v.value();
-}
+operator << ( ::std::ostream& os, const sc_concatref& v );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_concatref& a )
-{
-    sc_unsigned temp(a.concat_length(0));   
-    temp.scan( is );
-    a = temp;
-    return is;
-}
+operator >> ( ::std::istream& is, sc_concatref& a );
 
 
 // ----------------------------------------------------------------------------
@@ -615,55 +360,25 @@ class sc_concat_bool : public sc_value_base
 
     // constructor:
     
-    sc_concat_bool()
-    : sc_value_base(), m_value()
-    {}
+    sc_concat_bool();
 
     // destructor:
 
-    virtual ~sc_concat_bool() 
-        { }
+    virtual ~sc_concat_bool();
 
     // allocation of temporary object:
 
-    static inline sc_concat_bool* allocate( bool v )
-    {
-        sc_concat_bool* result_p = m_pool.allocate();
-        result_p->m_value = v;
-        return result_p;
-    }
+    static sc_concat_bool* allocate( bool v );
 
     // concatenation:
 
-    virtual int concat_length( bool* xz_present_p ) const
-    { 
-        if ( xz_present_p ) *xz_present_p = false;
-        return 1; 
-    }
+    virtual int concat_length( bool* xz_present_p ) const;
 
-    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const
-    {
-        int bit = 1 << (low_i % BITS_PER_DIGIT); 
-        int word_i = low_i / BITS_PER_DIGIT;
-        dst_p[word_i] &= ~bit;
-        return false;
-    }
+    virtual bool concat_get_ctrl( sc_digit* dst_p, int low_i ) const;
 
-    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const
-    {
-        int bit = 1 << (low_i % BITS_PER_DIGIT); 
-        int word_i = low_i / BITS_PER_DIGIT;
-        if ( m_value )
-            dst_p[word_i] |= bit;
-        else 
-            dst_p[word_i] &= ~bit;
-        return m_value;
-    }
+    virtual bool concat_get_data( sc_digit* dst_p, int low_i ) const;
 
-    virtual uint64 concat_get_uint64() const
-    {
-        return m_value ? 1 : 0;
-    }
+    virtual uint64 concat_get_uint64() const;
 };
 
 
@@ -753,101 +468,31 @@ SC_CONCAT_BOOL_OP(<)
 // CONCATENATION FUNCTION AND OPERATOR FOR STANDARD SYSTEM C DATA TYPES:
 // ----------------------------------------------------------------------------
 
-inline sc_dt::sc_concatref& concat(
-    sc_dt::sc_value_base& a, sc_dt::sc_value_base& b)
-{
-    sc_dt::sc_concatref* result_p;     // Proxy for the concatenation.
+sc_dt::sc_concatref& concat(
+    sc_dt::sc_value_base& a, sc_dt::sc_value_base& b);
 
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, b );
-    return *result_p;
-}
-
-inline 
 const
 sc_dt::sc_concatref& concat(
-    const sc_dt::sc_value_base& a, const sc_dt::sc_value_base& b)
-{
-    sc_dt::sc_concatref* result_p;     // Proxy for the concatenation.
+    const sc_dt::sc_value_base& a, const sc_dt::sc_value_base& b);
 
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, b );
-    return *result_p;
-}
-
-inline 
 const
-sc_dt::sc_concatref& concat(const sc_dt::sc_value_base& a, bool b)
-{
-    const sc_dt::sc_concat_bool* b_p;        // Proxy for boolean value.
-    sc_dt::sc_concatref*         result_p;   // Proxy for the concatenation.
+sc_dt::sc_concatref& concat(const sc_dt::sc_value_base& a, bool b);
 
-    b_p = sc_dt::sc_concat_bool::allocate(b);
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, *b_p );
-    return *result_p;
-}
-
-inline 
 const
-sc_dt::sc_concatref& concat(bool a, const sc_dt::sc_value_base& b)
-{
-    const sc_dt::sc_concat_bool* a_p;        // Proxy for boolean value.
-    sc_dt::sc_concatref*         result_p;   // Proxy for the concatenation.
+sc_dt::sc_concatref& concat(bool a, const sc_dt::sc_value_base& b);
 
-    a_p = sc_dt::sc_concat_bool::allocate(a);
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( *a_p, b );
-    return *result_p;
-}
+sc_dt::sc_concatref& operator , (
+    sc_dt::sc_value_base& a, sc_dt::sc_value_base& b);
 
-inline sc_dt::sc_concatref& operator , (
-    sc_dt::sc_value_base& a, sc_dt::sc_value_base& b)
-{
-    sc_dt::sc_concatref* result_p;     // Proxy for the concatenation.
-
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, b );
-    return *result_p;
-}
-
-inline 
 const
 sc_dt::sc_concatref& operator , (
-    const sc_dt::sc_value_base& a, const sc_dt::sc_value_base& b)
-{
-    sc_dt::sc_concatref* result_p;     // Proxy for the concatenation.
+    const sc_dt::sc_value_base& a, const sc_dt::sc_value_base& b);
 
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, b );
-    return *result_p;
-}
-
-inline 
 const
-sc_dt::sc_concatref& operator , (const sc_dt::sc_value_base& a, bool b)
-{
-    const sc_dt::sc_concat_bool* b_p;      // Proxy for boolean value.
-    sc_dt::sc_concatref*         result_p; // Proxy for the concatenation.
+sc_dt::sc_concatref& operator , (const sc_dt::sc_value_base& a, bool b);
 
-    b_p = sc_dt::sc_concat_bool::allocate(b);
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( a, *b_p );
-    return *result_p;
-}
-
-inline 
 const
-sc_dt::sc_concatref& operator , (bool a, const sc_dt::sc_value_base& b)
-{
-    const sc_dt::sc_concat_bool* a_p;      // Proxy for boolean value.
-    sc_dt::sc_concatref*         result_p; // Proxy for the concatenation.
-
-    a_p = sc_dt::sc_concat_bool::allocate(a);
-    result_p = sc_dt::sc_concatref::m_pool.allocate();
-    result_p->initialize( *a_p, b );
-    return *result_p;
-}
+sc_dt::sc_concatref& operator , (bool a, const sc_dt::sc_value_base& b);
 
 } // namespace sc_dt
 

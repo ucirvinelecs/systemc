@@ -32,7 +32,12 @@
 #include "sysc/kernel/sc_module.h"
 #include "sysc/kernel/sc_module_registry.h"
 #include "sysc/kernel/sc_simcontext.h"
+//------------------------------------------------Farah is woprking here
 
+int sc_core::sc_module_registry::size() const
+        { return m_module_vec.size(); }
+
+//----------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

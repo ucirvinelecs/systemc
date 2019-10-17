@@ -49,20 +49,7 @@ extern void sc_deprecated_get_new_value();
 extern void sc_deprecated_trace();
 extern sc_event * sc_lazy_kernel_event( sc_event**, const char* name );
 
-inline
-bool
-sc_writer_policy_check_write::check_write( sc_object* target, bool )
-{
-  sc_object* writer_p = sc_get_curr_simcontext()->get_current_writer();
-  if( SC_UNLIKELY_(m_writer_p == 0) ) {
-       m_writer_p = writer_p;
-  } else if( SC_UNLIKELY_(m_writer_p != writer_p && writer_p != 0) ) {
-       sc_signal_invalid_writer( target, m_writer_p, writer_p, m_check_delta );
-       // error has been suppressed, ignore check as well
-       // return false;
-  }
-  return true;
-}
+
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_signal<T>
@@ -123,8 +110,10 @@ public: // constructors and destructor:
     // get the value changed event
     virtual const sc_event& value_changed_event() const
     {
+        chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
         return *sc_lazy_kernel_event( &m_change_event_p
                                     , "value_changed_event");
+        // 02/22/2015 GL: return releases the lock 
     }
 
 
@@ -134,7 +123,11 @@ public: // constructors and destructor:
 
     // get a reference to the current value (for tracing)
     virtual const T& get_data_ref() const
-        { sc_deprecated_get_data_ref(); return m_cur_val; }
+    {
+        chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect sc_deprecated_get_data_ref, later we maybe refine this for performance enhancement
+        sc_deprecated_get_data_ref(); return m_cur_val; 
+        // 02/22/2015 GL: return releases the lock
+    }
 
 
     // was there an event?
@@ -162,18 +155,22 @@ public: // constructors and destructor:
 
 
     const T& get_new_value() const
-        { sc_deprecated_get_new_value(); return m_new_val; }
+    {
+        chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect sc_deprecated_get_new_value & m_new_val
+        sc_deprecated_get_new_value(); return m_new_val;
+	// 02/22/2015 GL: return releases the lock
+    }
 
 
-    void trace( sc_trace_file* tf ) const
-	{ 
-	    sc_deprecated_trace();
-#           ifdef DEBUG_SYSTEMC
-	        sc_trace( tf, read(), name() ); 
-#           else
-                if ( tf ) {}
-#	    endif
-	}
+    void trace( sc_trace_file* tf ) const // 02/05/2015 GL: take care of tracing later, and sc_trace is not MT safe now
+    { 
+        sc_deprecated_trace();
+#       ifdef DEBUG_SYSTEMC
+            sc_trace( tf, read(), name() ); 
+#       else
+            if ( tf ) {}
+#	endif
+    }
 
 
     virtual void print( ::std::ostream& = ::std::cout ) const;
@@ -224,6 +221,7 @@ inline
 void
 sc_signal<T,POL>::write( const T& value_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication, but sc_signal should have a single write port?!
     bool value_changed = !( m_cur_val == value_ );
     if ( !policy_type::check_write(this, value_changed) )
         return;
@@ -232,6 +230,7 @@ sc_signal<T,POL>::write( const T& value_ )
     if( value_changed ) {
         request_update();
     }
+    // 02/22/2015 GL: return release the lock
 }
 
 
@@ -247,15 +246,17 @@ template< class T, sc_writer_policy POL >
 void
 sc_signal<T,POL>::dump( ::std::ostream& os ) const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     os << "     name = " << name() << ::std::endl;
     os << "    value = " << m_cur_val << ::std::endl;
     os << "new value = " << m_new_val << ::std::endl;
+    // 02/22/2015 GL: return releases the lock
 }
 
 
 template< class T, sc_writer_policy POL >
 void
-sc_signal<T,POL>::update()
+sc_signal<T,POL>::update() // 02/05/2015 GL: only executed by the root thread in the evaluate-update phase
 {
     policy_type::update();
     if( !( m_new_val == m_cur_val ) ) {
@@ -293,38 +294,11 @@ protected:
 
 public: // constructors and destructor:
 
-    sc_signal()
-	: sc_prim_channel( sc_gen_unique_name( "signal" ) ),
-	  m_change_event_p( 0 ),
-          m_cur_val( false ),
-          m_change_stamp( ~sc_dt::UINT64_ONE ),
-	  m_negedge_event_p( 0 ),
-          m_new_val( false ),
-	  m_posedge_event_p( 0 ),
-          m_reset_p( 0 )
-	{}
+    sc_signal();
 
-    explicit sc_signal( const char* name_ )
-	: sc_prim_channel( name_ ),
-	  m_change_event_p( 0 ),
-          m_cur_val( false ),
-          m_change_stamp( ~sc_dt::UINT64_ONE ),
-	  m_negedge_event_p( 0 ),
-          m_new_val( false ),
-	  m_posedge_event_p( 0 ),
-          m_reset_p( 0 )
-	{}
+    explicit sc_signal( const char* name_ );
 
-    sc_signal( const char* name_, bool initial_value_ )
-      : sc_prim_channel( name_ )
-      , m_change_event_p( 0 )
-      , m_cur_val( initial_value_ )
-      , m_change_stamp( ~sc_dt::UINT64_ONE )
-      , m_negedge_event_p( 0 )
-      , m_new_val( initial_value_ )
-      , m_posedge_event_p( 0 )
-      , m_reset_p( 0 )
-    {}
+    sc_signal( const char* name_, bool initial_value_ );
 
     virtual ~sc_signal();
 
@@ -333,12 +307,10 @@ public: // constructors and destructor:
 
     virtual void register_port( sc_port_base&, const char* );
 
-    virtual sc_writer_policy get_writer_policy() const
-        { return POL; }
+    virtual sc_writer_policy get_writer_policy() const;
 
     // get the default event
-    virtual const sc_event& default_event() const
-        { return value_changed_event(); }
+    virtual const sc_event& default_event() const;
 
     // get the value changed event
     virtual const sc_event& value_changed_event() const;
@@ -351,48 +323,34 @@ public: // constructors and destructor:
 
 
     // read the current value
-    virtual const bool& read() const
-	{ return m_cur_val; }
+    virtual const bool& read() const;
 
     // get a reference to the current value (for tracing)
-    virtual const bool& get_data_ref() const
-        { sc_deprecated_get_data_ref(); return m_cur_val; }
-
+    virtual const bool& get_data_ref() const;
 
     // was there a value changed event?
-    virtual bool event() const
-        { return simcontext()->event_occurred(m_change_stamp); }
+    virtual bool event() const;
 
     // was there a positive edge event?
-    virtual bool posedge() const
-	{ return ( event() && m_cur_val ); }
+    virtual bool posedge() const;
 
     // was there a negative edge event?
-    virtual bool negedge() const
-	{ return ( event() && ! m_cur_val ); }
+    virtual bool negedge() const;
 
     // write the new value
     virtual void write( const bool& );
 
     // other methods
 
-    operator const bool& () const
-	{ return read(); }
+    operator const bool& () const;
 
+    this_type& operator = ( const bool& a );
 
-    this_type& operator = ( const bool& a )
-	{ write( a ); return *this; }
+    this_type& operator = ( const sc_signal_in_if<bool>& a );
 
-    this_type& operator = ( const sc_signal_in_if<bool>& a )
-	{ write( a.read() ); return *this; }
+    this_type& operator = ( const this_type& a );
 
-    this_type& operator = ( const this_type& a )
-	{ write( a.read() ); return *this; }
-
-
-    const bool& get_new_value() const
-	{ sc_deprecated_get_new_value(); return m_new_val; }
-
+    const bool& get_new_value() const;
 
     void trace( sc_trace_file* tf ) const
 	{
@@ -408,15 +366,14 @@ public: // constructors and destructor:
     virtual void print( ::std::ostream& = ::std::cout ) const;
     virtual void dump( ::std::ostream& = ::std::cout ) const;
 
-    virtual const char* kind() const
-        { return "sc_signal"; }
+    virtual const char* kind() const;
 
 protected:
 
     virtual void update();
             void do_update();
 
-    virtual bool is_clock() const { return false; }
+    virtual bool is_clock() const;
 
 protected:
     mutable sc_event* m_change_event_p;  // value change event if present.
@@ -430,7 +387,7 @@ protected:
 private:
 
     // reset creation
-    virtual sc_reset* is_reset() const;
+    virtual sc_reset* is_reset() const; // 02/08/2015 GL: taking care of sc_reset later, this function is not MT safe now
 
     // disabled
     sc_signal( const this_type& );
@@ -456,54 +413,23 @@ protected:
 
 public: // constructors and destructor:
 
-    sc_signal()
-	: sc_prim_channel( sc_gen_unique_name( "signal" ) ),
-	  m_change_event_p( 0 ),
-	  m_cur_val(),
-          m_change_stamp( ~sc_dt::UINT64_ONE ),
-	  m_negedge_event_p( 0 ),
-	  m_new_val(),
-	  m_posedge_event_p( 0 )
-	{}
+    sc_signal();
 
-    explicit sc_signal( const char* name_ )
-	: sc_prim_channel( name_ ),
-	  m_change_event_p( 0 ),
-	  m_cur_val(),
-          m_change_stamp( ~sc_dt::UINT64_ONE ),
-	  m_negedge_event_p( 0 ),
-	  m_new_val(),
-	  m_posedge_event_p( 0 )
-	{}
+    explicit sc_signal( const char* name_ );
 
-    sc_signal( const char* name_, sc_dt::sc_logic initial_value_ )
-      : sc_prim_channel( name_ )
-      , m_change_event_p( 0 )
-      , m_cur_val( initial_value_ )
-      , m_change_stamp( ~sc_dt::UINT64_ONE )
-      , m_negedge_event_p( 0 )
-      , m_new_val( initial_value_ )
-      , m_posedge_event_p( 0 )
-    {}
+    sc_signal( const char* name_, sc_dt::sc_logic initial_value_ );
 
-    virtual ~sc_signal()
-	{
-	    delete m_change_event_p;
-	    delete m_negedge_event_p;
-	    delete m_posedge_event_p;
-	}
+    virtual ~sc_signal();
 
 
     // interface methods
 
     virtual void register_port( sc_port_base&, const char* );
 
-    virtual sc_writer_policy get_writer_policy() const
-        { return POL; }
+    virtual sc_writer_policy get_writer_policy() const;
 
     // get the default event
-    virtual const sc_event& default_event() const
-        { return value_changed_event(); }
+    virtual const sc_event& default_event() const;
 
     // get the value changed event
     virtual const sc_event& value_changed_event() const;
@@ -516,50 +442,34 @@ public: // constructors and destructor:
 
 
     // read the current value
-    virtual const sc_dt::sc_logic& read() const
-	{ return m_cur_val; }
+    virtual const sc_dt::sc_logic& read() const;
 
     // get a reference to the current value (for tracing)
-    virtual const sc_dt::sc_logic& get_data_ref() const
-        { sc_deprecated_get_data_ref(); return m_cur_val; }
-
+    virtual const sc_dt::sc_logic& get_data_ref() const;
 
     // was there an event?
-    virtual bool event() const
-        { return simcontext()->event_occurred(m_change_stamp); }
+    virtual bool event() const;
 
     // was there a positive edge event?
-    virtual bool posedge() const
-	{ return ( event() && m_cur_val == sc_dt::SC_LOGIC_1 ); }
+    virtual bool posedge() const;
 
     // was there a negative edge event?
-    virtual bool negedge() const
-	{ return ( event() && m_cur_val == sc_dt::SC_LOGIC_0 ); }
-
+    virtual bool negedge() const;
 
     // write the new value
     virtual void write( const sc_dt::sc_logic& );
 
-
     // other methods
 
-    operator const sc_dt::sc_logic& () const
-	{ return read(); }
+    operator const sc_dt::sc_logic& () const;
 
+    this_type& operator = ( const sc_dt::sc_logic& a );
 
-    this_type& operator = ( const sc_dt::sc_logic& a )
-	{ write( a ); return *this; }
+    this_type& operator = ( const sc_signal_in_if<sc_dt::sc_logic>& a );
 
-    this_type& operator = ( const sc_signal_in_if<sc_dt::sc_logic>& a )
-	{ write( a.read() ); return *this; }
+    this_type& operator = (const this_type& a);
 
-    this_type& operator = (const this_type& a)
-	{ write( a.read() ); return *this; }
-
-
-    const sc_dt::sc_logic& get_new_value() const
-        { sc_deprecated_get_new_value();  return m_new_val; }
-
+    const sc_dt::sc_logic& get_new_value() const;
 
     void trace( sc_trace_file* tf ) const
 	{
@@ -574,8 +484,7 @@ public: // constructors and destructor:
     virtual void print( ::std::ostream& = ::std::cout ) const;
     virtual void dump( ::std::ostream& = ::std::cout ) const;
 
-    virtual const char* kind() const
-        { return "sc_signal"; }
+    virtual const char* kind() const;
 
 protected:
 

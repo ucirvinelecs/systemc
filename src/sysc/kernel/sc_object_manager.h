@@ -55,9 +55,8 @@ class sc_object_manager
 protected:
     struct table_entry
     {
-        table_entry() : m_event_p(NULL), m_object_p(NULL) {}
-
-	sc_event*  m_event_p;   // if non-null this is an sc_event.
+        table_entry();
+      	sc_event*  m_event_p;   // if non-null this is an sc_event.
         sc_object* m_object_p;  // if non-null this is an sc_object.
     };
 

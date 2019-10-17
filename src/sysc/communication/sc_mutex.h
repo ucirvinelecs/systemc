@@ -34,6 +34,8 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/communication/sc_mutex_if.h"
 
+#include "sysc/communication/sc_prim_channel.h" // 02/24/2015 GL: include the struct chnl_scoped_lock
+
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -66,20 +68,20 @@ public:
     // returns -1 if mutex was not locked by caller
     virtual int unlock();
 
-    virtual const char* kind() const
-        { return "sc_mutex"; }
+    virtual const char* kind() const;
 
 protected:
 
     // support methods
 
-    bool in_use() const
-	{ return ( m_owner != 0 ); }
+    bool in_use() const;
 
 protected:
 
     sc_process_b* m_owner;
     sc_event      m_free;
+
+    mutable CHNL_MTX_TYPE_ m_mutex; // 02/10/2015 GL: add a lock to protect concurrent communication through sc_mutex
 
 private:
 

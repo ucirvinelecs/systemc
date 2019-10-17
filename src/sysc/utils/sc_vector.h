@@ -118,12 +118,11 @@ public:
   typedef storage_type::size_type       size_type;
   typedef storage_type::difference_type difference_type;
 
-  const char * kind() const { return "sc_vector"; }
+  const char * kind() const;
 
   std::vector<sc_object*> const & get_elements() const;
 
-  size_type size() const
-    { return vec_.size(); }
+  size_type size() const;
 
 protected:
 
@@ -134,44 +133,34 @@ protected:
 
   sc_vector_base();
 
-  sc_vector_base( const char* prefix )
-    : sc_object( prefix )
-    , vec_()
-    , objs_vec_(0)
-  {}
+  sc_vector_base( const char* prefix );
 
-  ~sc_vector_base()
-    { delete objs_vec_; }
+  ~sc_vector_base();
 
-  void * & at( size_type i )
-    { return vec_[i]; }
+  void * & at( size_type i );
 
-  void const * at( size_type i ) const
-    { return vec_[i]; }
+  void const * at( size_type i ) const;
 
-  void reserve( size_type n )
-    { vec_.reserve(n); }
+  void reserve( size_type n );
 
-  void clear()
-    { vec_.clear(); }
+  void clear();
 
-  void push_back( void* item )
-    { vec_.push_back(item); }
+  void push_back( void* item );
 
   void check_index( size_type i ) const;
   bool check_init( size_type n )  const;
 
   static std::string make_name( const char* prefix, size_type index );
 
-  iterator begin() { return vec_.begin(); }
-  iterator end()   { return vec_.end();   }
+  iterator begin();
+  iterator end();
 
-  const_iterator begin() const { return vec_.begin(); }
-  const_iterator end()   const { return vec_.end();   }
+  const_iterator begin() const;
+  const_iterator end()   const;
 
   virtual sc_object* object_cast( void* ) const = 0;
 
-  sc_object* implicit_cast( sc_object* p ) const { return p; }
+  sc_object* implicit_cast( sc_object* p ) const;
   sc_object* implicit_cast( ... /* incompatible */ )  const;
 
 public: 
@@ -200,18 +189,16 @@ struct sc_direct_access
   typedef sc_direct_access< plain_type >       non_const_policy;
   typedef sc_direct_access< const plain_type > const_policy;
 
-  sc_direct_access(){}
-  sc_direct_access( const non_const_policy& ) {}
+  sc_direct_access();
+  sc_direct_access( const non_const_policy& );
   // convert from any policy to (const) direct policy
   template<typename U>
   sc_direct_access( const U&
     , SC_ENABLE_IF_((
         sc_meta::is_more_const<type,typename U::policy::element_type>
-    )) )
-  {}
+    )) );
 
-  type* get( type* this_ ) const
-    { return this_; }
+  type* get( type* this_ ) const;
 };
 
 // iterator access adapters
@@ -234,21 +221,17 @@ class sc_member_access
       non_const_policy;
     typedef sc_member_access< const plain_elem_type, const plain_type >
       const_policy;
-  
-    sc_member_access( member_type ptr )
-      : ptr_(ptr) {}
-  
-    sc_member_access( const non_const_policy& other )
-      : ptr_(other.ptr_)
-    {}
-  
-    access_type * get( element_type* this_ ) const
-      { return &(this_->*ptr_); }
-  
+
+    sc_member_access( member_type ptr );
+
+    sc_member_access( const non_const_policy& other );
+
+    access_type * get( element_type* this_ ) const;
+
   private:
     member_type ptr_;
 }; // sc_member_access
-  
+
 
 template< typename ElementType
         , typename AccessPolicy = sc_direct_access<ElementType> >
@@ -363,87 +346,66 @@ public:
   typedef sc_vector_iter< element_type >       iterator;
   typedef sc_vector_iter< const element_type > const_iterator;
 
-  sc_vector(){}
+  sc_vector();
 
-  explicit sc_vector( const char* prefix )
-    : base_type( prefix )
-  {}
+  explicit sc_vector( const char* prefix );
 
-  explicit sc_vector( const char* prefix, size_type n )
-    : base_type( prefix )
-    { init(n); }
+  explicit sc_vector( const char* prefix, size_type n );
 
   template< typename Creator >
-  sc_vector( const char* prefix, size_type n, Creator creator )
-    : base_type( prefix )
-  {
-    init( n, creator );
-  }
+  sc_vector( const char* prefix, size_type n, Creator creator );
 
   virtual ~sc_vector();
 
-  element_type& operator[]( size_type i )
-    { return *static_cast<element_type*>( base_type::at(i) ); }
+  element_type& operator[]( size_type i );
 
-  element_type& at( size_type i )
-    { check_index(i); return (*this)[i]; }
+  element_type& at( size_type i );
 
-  const element_type& operator[]( size_type i ) const
-    { return *static_cast<element_type const *>( base_type::at(i) ); }
+  const element_type& operator[]( size_type i ) const;
 
-  const element_type& at( size_type i ) const
-    { check_index(i); return (*this)[i]; }
+  const element_type& at( size_type i ) const;
 
-  void init( size_type n )
-    { init( n, &this_type::create_element ); }
+  void init( size_type n );
 
   template< typename Creator >
   void init( size_type n, Creator c );
 
   static element_type * create_element( const char* prefix, size_type index );
 
-  iterator begin() { return base_type::begin(); }
-  iterator end()   { return base_type::end();   }
+  iterator begin();
+  iterator end();
 
-  const_iterator begin()  const { return base_type::begin(); }
-  const_iterator end()    const { return base_type::end(); }
+  const_iterator begin()  const;
+  const_iterator end()    const;
 
-  const_iterator cbegin() const { return base_type::begin(); }
-  const_iterator cend()   const { return base_type::end(); }
+  const_iterator cbegin() const;
+  const_iterator cend()   const;
 
   template< typename ContainerType, typename ArgumentType >
-  iterator bind( sc_vector_assembly<ContainerType,ArgumentType> c )
-    { return bind( c.begin(), c.end() ); }
+  iterator bind( sc_vector_assembly<ContainerType,ArgumentType> c );
 
   template< typename BindableContainer >
-  iterator bind( BindableContainer & c )
-    { return bind( c.begin(), c.end() ); }
+  iterator bind( BindableContainer & c );
 
   template< typename BindableIterator >
-  iterator bind( BindableIterator first, BindableIterator last )
-    { return bind( first, last, this->begin() ); }
+  iterator bind( BindableIterator first, BindableIterator last );
 
   template< typename BindableIterator >
   iterator bind( BindableIterator first, BindableIterator last
-               , iterator from )
-    { return sc_vector_do_bind( *this, first, last, from ); }
+               , iterator from );
 
   template< typename ContainerType, typename ArgumentType >
-  iterator operator()( sc_vector_assembly<ContainerType,ArgumentType> c )
-    { return operator()( c.begin(), c.end() ); }
+  iterator operator()( sc_vector_assembly<ContainerType,ArgumentType> c );
 
   template< typename ArgumentContainer >
-  iterator operator()( ArgumentContainer & c )
-    { return operator()( c.begin(), c.end() ); }
+  iterator operator()( ArgumentContainer & c );
 
   template< typename ArgumentIterator >
-  iterator operator()( ArgumentIterator first, ArgumentIterator last )
-    { return operator()( first, last, this->begin() ); }
+  iterator operator()( ArgumentIterator first, ArgumentIterator last );
 
   template< typename ArgumentIterator >
   iterator operator()( ArgumentIterator first, ArgumentIterator last
-                     , iterator from )
-    { return sc_vector_do_operator_paren( *this, first, last, from ); }
+                     , iterator from );
 
   // member-wise access
 
@@ -455,8 +417,7 @@ protected:
 
   void clear();
 
-  virtual sc_object* object_cast( void* p ) const
-    { return implicit_cast( static_cast<element_type*>(p) ); }
+  virtual sc_object* object_cast( void* p ) const;
 
 };
 
@@ -486,116 +447,75 @@ public:
 
   typedef access_type (T::*member_type);
 
-  const char* name() const { return vec_->name(); }
-  const char* kind() const { return "sc_vector_assembly"; }
+  const char* name() const;
+  const char* kind() const;
 
-  iterator begin()
-    { return iterator( (*vec_).begin().it_, ptr_ ); }
-  iterator end()
-    { return iterator( (*vec_).end().it_, ptr_ ); }
+  iterator begin();
+  iterator end();
 
-  const_iterator cbegin() const
-    { return const_iterator( (*vec_).cbegin().it_, ptr_ ); }
-  const_iterator cend() const
-    { return const_iterator( (*vec_).cend().it_, ptr_ ); }
+  const_iterator cbegin() const;
+  const_iterator cend() const;
 
-  const_iterator begin() const
-    { return const_iterator( (*vec_).begin().it_, ptr_ ); }
-  const_iterator end()   const
-    { return const_iterator( (*vec_).end().it_, ptr_ ); }
+  const_iterator begin() const;
+  const_iterator end()   const;
 
-  size_type size() const { return vec_->size(); }
+  size_type size() const;
   const std::vector< sc_object* > & get_elements() const;
 
-  reference operator[]( size_type idx )
-    { return (*vec_)[idx].*ptr_; }
-  reference at( size_type idx )
-    { return vec_->at(idx).*ptr_; }
-  const_reference operator[]( size_type idx ) const
-    { return (*vec_)[idx].*ptr_; }
-  const_reference at( size_type idx ) const
-    { return vec_->at(idx).*ptr_; }
+  reference operator[]( size_type idx );
+  reference at( size_type idx );
+  const_reference operator[]( size_type idx ) const;
+  const_reference at( size_type idx ) const;
 
   template< typename ContainerType, typename ArgumentType >
-  iterator bind( sc_vector_assembly<ContainerType,ArgumentType> c )
-    { return bind( c.begin(), c.end() ); }
+  iterator bind( sc_vector_assembly<ContainerType,ArgumentType> c );
 
   template< typename BindableContainer >
-  iterator bind( BindableContainer & c )
-    { return bind( c.begin(), c.end() ); }
+  iterator bind( BindableContainer & c );
 
   template< typename BindableIterator >
-  iterator bind( BindableIterator first, BindableIterator last )
-    { return bind( first, last, this->begin() ); }
-
-  template< typename BindableIterator >
-  iterator bind( BindableIterator first, BindableIterator last
-               , iterator from )
-    { return sc_vector_do_bind( *this, first, last, from ); }
+  iterator bind( BindableIterator first, BindableIterator last );
 
   template< typename BindableIterator >
   iterator bind( BindableIterator first, BindableIterator last
-               , typename base_type::iterator from )
-    { return bind( first, last, iterator(from.it_, ptr_) ); }
+               , iterator from );
+
+  template< typename BindableIterator >
+  iterator bind( BindableIterator first, BindableIterator last
+               , typename base_type::iterator from );
 
   template< typename ContainerType, typename ArgumentType >
-  iterator operator()( sc_vector_assembly<ContainerType,ArgumentType> c )
-    { return operator()( c.begin(), c.end() ); }
+  iterator operator()( sc_vector_assembly<ContainerType,ArgumentType> c );
 
   template< typename ArgumentContainer >
-  iterator operator()( ArgumentContainer & c )
-    { return operator()( c.begin(), c.end() ); }
+  iterator operator()( ArgumentContainer & c );
 
   template< typename ArgumentIterator >
-  iterator operator()( ArgumentIterator first, ArgumentIterator last )
-    { return operator()( first, last, this->begin() ); }
+  iterator operator()( ArgumentIterator first, ArgumentIterator last );
 
   template< typename ArgumentIterator >
   iterator operator()( ArgumentIterator first, ArgumentIterator last
-                     , iterator from )
-    { return sc_vector_do_operator_paren( *this, first, last, from ); }
+                     , iterator from );
 
   template< typename ArgumentIterator >
   iterator operator()( ArgumentIterator first, ArgumentIterator last
-                     , typename base_type::iterator from )
-    { return operator()( first, last, iterator(from.it_, ptr_) ); }
+                     , typename base_type::iterator from );
 
-  sc_vector_assembly( const sc_vector_assembly & other )
-    : vec_( other.vec_ )
-    , ptr_( other.ptr_ )
-    , child_vec_(0)
-  {}
+  sc_vector_assembly( const sc_vector_assembly & other );
 
-  sc_vector_assembly& operator=( sc_vector_assembly other_copy )
-  {
-    swap( other_copy );
-    return *this;
-  }
+  sc_vector_assembly& operator=( sc_vector_assembly other_copy );
 
-  void swap( sc_vector_assembly & that )
-  {
-    using std::swap;
-    swap( vec_,       that.vec_ );
-    swap( ptr_,       that.ptr_ );
-    swap( child_vec_, that.child_vec_ );
-  }
+  void swap( sc_vector_assembly & that );
 
-  void report_empty_bind( const char* kind_, bool dst_empty_ ) const
-    { vec_->report_empty_bind( kind_, dst_empty_ ); }
+  void report_empty_bind( const char* kind_, bool dst_empty_ ) const;
 
-  ~sc_vector_assembly()
-    { delete child_vec_; }
+  ~sc_vector_assembly();
 
 private:
 
-  sc_vector_assembly( base_type & v, member_type ptr )
-    : vec_(&v)
-    , ptr_(ptr)
-    , child_vec_(0)
-  {}
+  sc_vector_assembly( base_type & v, member_type ptr );
 
-  sc_object* object_cast( pointer p ) const
-    { return vec_->implicit_cast( p ); }
+  sc_object* object_cast( pointer p ) const;
 
   base_type * vec_;
   member_type ptr_;

@@ -71,8 +71,541 @@
 #include <cstdio>
 #include <stdlib.h>
 #include <math.h>
+//-----------------------------------------------Farah is working here 
+    sc_dt::scfx_index::scfx_index( int wi_, int bi_ ) : m_wi( wi_ ), m_bi( bi_ ) {}
+
+    int sc_dt::scfx_index::wi() const { return m_wi; }
+    int sc_dt::scfx_index::bi() const { return m_bi; }
+
+    void sc_dt::scfx_index::wi( int wi_ ) { m_wi = wi_; }
 
 
+void
+sc_dt::scfx_rep::set_zero( int sign )
+{
+    m_mant.clear();
+    m_wp = m_msw = m_lsw = 0;
+    m_sign = sign;
+    m_state = normal;
+}
+
+
+void
+sc_dt::scfx_rep::set_nan()
+{
+    m_mant.resize_to( min_mant );
+    m_state = not_a_number;
+}
+
+
+void
+sc_dt::scfx_rep::set_inf( int sign )
+{
+    m_mant.resize_to( min_mant );
+    m_state = infinity;
+    m_sign = sign;
+}
+
+
+// constructors
+
+
+sc_dt::scfx_rep::scfx_rep( const char* s )
+: m_mant( min_mant ), m_wp( 2 ), m_sign( 1 ), m_state( normal ),
+  m_msw(0), m_lsw(0), m_r_flag( false )
+{
+    from_string( s, SC_DEFAULT_CTE_WL_ );
+}
+
+
+// destructor
+
+
+sc_dt::scfx_rep::~scfx_rep()
+{}
+
+
+// assignment operator
+
+
+void
+sc_dt::scfx_rep::operator = ( const scfx_rep& f )
+{
+    if( &f != this )
+    {
+        m_mant  = f.m_mant;
+	m_wp    = f.m_wp;
+	m_sign  = f.m_sign;
+	m_state = f.m_state;
+	m_msw   = f.m_msw;
+	m_lsw   = f.m_lsw;
+	round( SC_DEFAULT_MAX_WL_ );
+    }
+}
+
+
+sc_dt::scfx_rep*
+sc_dt::neg_scfx_rep( const scfx_rep& a )
+{
+    scfx_rep& c = *new scfx_rep( a );
+    c.m_sign = - c.m_sign;
+    return &c;
+}
+
+
+sc_dt::scfx_rep*
+sc_dt::mult_scfx_rep( const scfx_rep& a, const scfx_rep& b, int max_wl )
+{
+    scfx_rep& c = *new scfx_rep;
+    sc_dt::multiply( c, a, b, max_wl );
+    return &c;
+}
+
+
+sc_dt::scfx_rep*
+sc_dt::lsh_scfx_rep( const scfx_rep& a, int b )
+{
+    scfx_rep& c = *new scfx_rep( a );
+    c.lshift( b );
+    return &c;
+}
+
+
+sc_dt::scfx_rep*
+sc_dt::rsh_scfx_rep( const scfx_rep& a, int b )
+{
+    scfx_rep& c = *new scfx_rep( a );
+    c.rshift( b );
+    return &c;
+}
+
+
+int
+sc_dt::scfx_rep::size() const
+{
+    return m_mant.size();
+}
+
+
+bool
+sc_dt::scfx_rep::is_neg() const
+{
+    return ( m_sign == -1 );
+}
+
+
+bool
+sc_dt::scfx_rep::is_zero() const
+{
+    if( m_state != normal )
+        return false;
+
+    for( int i = 0; i < size(); i ++ )
+    {
+        if( m_mant[i] )
+	    return false;
+    }
+
+    return true;
+}
+
+
+bool
+sc_dt::scfx_rep::is_nan() const
+{
+    return ( m_state == not_a_number );
+}
+
+
+bool
+sc_dt::scfx_rep::is_inf() const
+{
+    return ( m_state == infinity );
+}
+
+
+bool
+sc_dt::scfx_rep::is_normal() const
+{
+    return ( m_state == normal );
+}
+
+
+
+
+bool
+sc_dt::scfx_rep::rounding_flag() const
+{
+    return m_r_flag;
+}
+
+
+void
+sc_dt::scfx_rep::resize_to( int new_size, int restore )
+{
+    if( restore == -1 )
+    {
+        int size_incr = new_size - size();
+	m_wp += size_incr;
+	m_msw += size_incr;
+	m_lsw += size_incr;
+    }
+    m_mant.resize_to( new_size, restore );
+}
+
+
+const sc_dt::scfx_index
+sc_dt::scfx_rep::calc_indices( int n ) const
+{
+    int wi = n / bits_in_word + m_wp;
+    int bi = n % bits_in_word;
+
+    if( bi < 0 )
+    {
+        bi += bits_in_word;
+	-- wi;
+    }
+
+    return scfx_index( wi, bi );
+}
+
+
+void
+sc_dt::scfx_rep::o_extend( const scfx_index& x, sc_enc enc )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+    
+    if( enc == SC_US_ || ( m_mant[wi] & ( ((word)1) << bi ) ) == 0 )
+    {
+        if( bi != bits_in_word - 1 )
+	    m_mant[wi] &= ~( ((word)-1) << ( bi + 1 ) );
+	for( int i = wi + 1; i < size(); ++ i )
+	    m_mant[i] = 0;
+	m_sign = 1;
+    }
+    else
+    {
+        if( bi != bits_in_word - 1 )
+	    m_mant[wi] |= ( ((word)-1) << ( bi + 1 ) );
+	for( int i = wi + 1; i < size(); ++ i )
+	    m_mant[i] = static_cast<word>( -1 );
+	m_sign = -1;
+    }
+}
+
+
+bool
+sc_dt::scfx_rep::o_bit_at( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+    
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    return ( m_mant[wi] & ( ((word)1) << bi ) ) != 0;
+}
+
+
+bool
+sc_dt::scfx_rep::o_zero_left( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    bool zero = true;
+    if( bi != bits_in_word - 1 )
+        zero = ( m_mant[wi] & ( ((word)-1) << ( bi + 1 ) ) ) == 0;
+    for( int i = wi + 1; i < size(); ++ i )
+	zero = zero && m_mant[i] == 0;
+
+    return zero;
+}
+
+
+bool
+sc_dt::scfx_rep::o_zero_right( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    bool zero = ( m_mant[wi] & ~( ((word)-1) << bi ) ) == 0;
+    for( int i = wi - 1; i >= 0; -- i )
+	zero = zero && m_mant[i] == 0;
+
+    return zero;
+}
+
+
+void
+sc_dt::scfx_rep::o_set_low( const scfx_index& x, sc_enc enc )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    m_mant.clear();
+
+    if( enc == SC_TC_ )
+    {
+	m_mant[wi] |= ( ((word)1) << bi );
+	m_sign = -1;
+    }
+    else
+	m_sign = 1;
+}
+
+
+void
+sc_dt::scfx_rep::o_set_high( const scfx_index& x, const scfx_index& x2,
+		      sc_enc enc, int sign )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+    int wi2 = x2.wi();
+    int bi2 = x2.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+    SC_ASSERT_( wi2 >= 0 && wi2 < size(), "word index out of range" );
+    
+    int i;
+
+    for( i = 0; i < size(); ++ i )
+	m_mant[i] = static_cast<word>( -1 );
+
+    m_mant[wi] &= ~( ((word)-1) << bi );
+    for( i = wi + 1; i < size(); ++ i )
+	m_mant[i] = 0;
+
+    m_mant[wi2] &= ( ((word)-1) << bi2 );
+    for( i = wi2 - 1; i >= 0; -- i )
+	m_mant[i] = 0;
+    
+    if( enc == SC_TC_ )
+	m_sign = sign;
+    else
+    {
+	m_mant[wi] |= ( ((word)1) << bi );
+	m_sign = 1;
+    }
+}
+
+
+void
+sc_dt::scfx_rep::o_set( const scfx_index& x, const scfx_index& x3,
+		 sc_enc enc, bool under )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+    int wi3 = x3.wi();
+    int bi3 = x3.bi();
+    
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+    SC_ASSERT_( wi3 >= 0 && wi3 < size(), "word index out of range" );
+
+    if( bi3 != bits_in_word - 1 )
+    {
+	if( under )
+	    m_mant[wi3] &= ~( ((word)-1) << ( bi3 + 1 ) );
+	else
+	    m_mant[wi3] |= ( ((word)-1) << ( bi3 + 1 ) );
+    }
+    for( int i = wi3 + 1; i < size(); ++ i )
+    {
+	if( under )
+	    m_mant[i] = 0;
+	else
+	    m_mant[i] = static_cast<word>( -1 );
+    }
+	
+    if( enc == SC_TC_ )
+    {
+	if( under )
+	    m_mant[wi] |= ( ((word)1) << bi );
+	else
+	    m_mant[wi] &= ~( ((word)1) << bi );
+    }
+}
+
+
+void
+sc_dt::scfx_rep::o_invert( const scfx_index& x2 )
+{
+    int wi2 = x2.wi();
+    int bi2 = x2.bi();
+
+    m_mant[wi2] ^= ( ((word)-1) << bi2 );
+    for( int i = wi2 + 1; i < size(); ++ i )
+	m_mant[i] = ~ m_mant[i];
+}
+
+
+bool
+sc_dt::scfx_rep::q_bit( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    if( bi != 0 )
+        return ( m_mant[wi] & ( ((word)1) << ( bi - 1 ) ) ) != 0;
+    else if( wi != 0 )
+        return ( m_mant[wi - 1] & ( ((word)1) << ( bits_in_word - 1 ) ) ) != 0;
+    else
+        return false;
+}
+
+
+void
+sc_dt::scfx_rep::q_clear( const scfx_index& x )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+    
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    m_mant[wi] &= ( ((word)-1) << bi );
+    for( int i = wi - 1; i >= 0; -- i )
+        m_mant[i] = 0;
+}
+
+
+void
+sc_dt::scfx_rep::q_incr( const scfx_index& x )
+{
+    int wi = x.wi();
+    int bi = x.bi();
+    
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    word old_val = m_mant[wi];
+    m_mant[wi] += ( ((word)1) << bi );
+    if( m_mant[wi] <= old_val )
+    {
+        if( wi + 1 == size() )
+          resize_to( size() + 1, 1 );
+
+        for( int i = wi + 1; i < size(); ++ i )
+	{
+	    if( ++ m_mant[i] != 0 )
+	        break;
+	}
+    }
+}
+
+
+bool
+sc_dt::scfx_rep::q_odd( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    return ( m_mant[wi] & ( ((word)1) << bi ) ) != 0;
+}
+
+
+bool
+sc_dt::scfx_rep::q_zero( const scfx_index& x ) const
+{
+    int wi = x.wi();
+    int bi = x.bi();
+
+    SC_ASSERT_( wi >= 0 && wi < size(), "word index out of range" );
+
+    bool zero;
+
+    if( bi != 0 )
+    {
+        zero = ( m_mant[wi] & ~( ((word)-1) << (bi - 1) ) ) == 0;
+	for( int i = wi - 1; i >= 0; -- i )
+	    zero = zero && m_mant[i] == 0;
+    }
+    else if( wi != 0 )
+    {
+        zero = ( m_mant[wi - 1] & ~( ((word)-1) << (bits_in_word - 1) ) ) == 0;
+	for( int i = wi - 2; i >= 0; -- i )
+	    zero = zero && m_mant[i] == 0;
+    }
+    else
+        zero = true;
+
+    return zero;
+}
+
+
+int
+sc_dt::scfx_rep::find_lsw() const
+{
+    for( int i = 0; i < size(); i ++ )
+    {
+        if( m_mant[i] )
+	    return i;
+    }
+    return 0;
+}
+
+
+int
+sc_dt::scfx_rep::find_msw() const
+{
+    for( int i = size() - 1; i >= 0; i -- )
+    {
+        if( m_mant[i] )
+	    return i;
+    }
+    return 0;
+}
+
+
+void
+sc_dt::scfx_rep::find_sw()
+{
+    m_lsw = find_lsw();
+    m_msw = find_msw();
+}
+
+
+void
+sc_dt::scfx_rep::toggle_tc()
+{
+    if( is_neg() )
+    {
+        complement( m_mant, m_mant, m_mant.size() );
+	inc( m_mant );
+    }
+}
+
+
+sc_dt::scfx_rep*
+sc_dt::quantization_scfx_rep( const scfx_rep& a,
+			const scfx_params& params,
+			bool& q_flag )
+{
+    scfx_rep& c = *new scfx_rep( a );
+    c.quantization( params, q_flag );
+    return &c;
+}
+
+sc_dt::scfx_rep*
+sc_dt::overflow_scfx_rep( const scfx_rep& a,
+		    const scfx_params& params,
+		    bool& o_flag )
+{
+    scfx_rep& c = *new scfx_rep( a );
+    c.overflow( params, o_flag );
+    return &c;
+}
+//---------------------------------------------Farah is done working here
 namespace sc_dt
 {
 
@@ -90,6 +623,49 @@ n_word( int x )
 {
     return ( x + bits_in_word - 1 ) / bits_in_word;
 }
+
+// 08/03/2015 GL: initialize scfx_rep_list_lock::m_mutex
+pthread_mutex_t scfx_rep_list_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_rep_list_lock
+scfx_rep_list_lock::scfx_rep_list_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_list_lock::~scfx_rep_list_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
+// 08/03/2015 GL: initialize scfx_rep_pow10_fx_lock::m_mutex
+pthread_mutex_t scfx_rep_pow10_fx_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_rep_pow10_fx_lock
+scfx_rep_pow10_fx_lock::scfx_rep_pow10_fx_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_pow10_fx_lock::~scfx_rep_pow10_fx_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
+// 08/04/2015 GL: initialize scfx_rep_scfx_string_lock::m_mutex
+pthread_mutex_t scfx_rep_scfx_string_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/04/2015 GL: constructor & destructor for scfx_rep_scfx_string_lock
+scfx_rep_scfx_string_lock::scfx_rep_scfx_string_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_rep_scfx_string_lock::~scfx_rep_scfx_string_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
+
 
 
 // ----------------------------------------------------------------------------
@@ -374,6 +950,10 @@ static scfx_rep_node* list = 0;
 void*
 scfx_rep::operator new( std::size_t size )
 {
+    // 08/03/2015 GL: to protect global data list
+    // 08/03/2015 GL: scfx_rep_list_lock constructor acquires the mutex
+    scfx_rep_list_lock m_scfx_rep_list_lock;
+
     const int ALLOC_SIZE = 1024;
 
     if( size != sizeof( scfx_rep ) )
@@ -391,11 +971,16 @@ scfx_rep::operator new( std::size_t size )
     list = list->next;
 
     return ptr;
+    // 08/03/2015 GL: scfx_rep_list_lock destructor releases the mutex
 }
 
 
 void scfx_rep::operator delete( void* ptr, std::size_t size )
 {
+    // 08/03/2015 GL: to protect global data list
+    // 08/03/2015 GL: scfx_rep_list_lock constructor acquires the mutex
+    scfx_rep_list_lock m_scfx_rep_list_lock; 
+
     if( size != sizeof( scfx_rep ) )
     {
 	::operator delete( ptr );
@@ -405,6 +990,7 @@ void scfx_rep::operator delete( void* ptr, std::size_t size )
     scfx_rep_node* node = static_cast<scfx_rep_node*>( ptr );
     node->next = list;
     list = node;
+    // 08/03/2015 GL: scfx_rep_list_lock destructor releases the mutex
 }
 
 
@@ -692,7 +1278,16 @@ scfx_rep::from_string( const char* s, int cte_wl )
 	    
 	    if( denominator )
 	    {
-		scfx_rep frac_num = pow10_fx( denominator );
+		// scfx_rep frac_num = pow10_fx( denominator );
+
+                scfx_rep frac_num; // 08/03/2015 GL: to protect global object pow10_fx
+                {
+                    // 08/03/2015 GL: scfx_rep_pow10_fx_lock constructor acquires the mutex
+                    scfx_rep_pow10_fx_lock m_scfx_rep_pow10_fx_lock;
+                    frac_num = pow10_fx( denominator );
+                    // 08/03/2015 GL: scfx_rep_pow10_fx_lock destructor releases the mutex
+                }
+
 		scfx_rep* temp_num =
 		    div_scfx_rep( const_cast<const scfx_rep&>( *this ),
 				   frac_num, cte_wl );
@@ -1004,7 +1599,17 @@ print_dec( scfx_string& s, const scfx_rep& num, int w_prefix, sc_fmt fmt )
 	frac_zeros = (int) floor( frac_wl * log10( 2. ) );
 
 	scfx_rep temp;
-	sc_dt::multiply( temp, frac_part, pow10_fx( frac_zeros ) );
+	// sc_dt::multiply( temp, frac_part, pow10_fx( frac_zeros ) );
+
+        scfx_rep frac_zeros_rep; // 08/03/2015 GL: to protect global object pow10_fx
+        {
+            // 08/03/2015 GL: scfx_rep_pow10_fx_lock constructor acquires the mutex
+            scfx_rep_pow10_fx_lock m_scfx_rep_pow10_fx_lock;
+            frac_zeros_rep = pow10_fx( frac_zeros );
+            // 08/03/2015 GL: scfx_rep_pow10_fx_lock destructor releases the mutex
+        }
+        sc_dt::multiply( temp, frac_part, frac_zeros_rep );
+
 	frac_part = temp;
 	if( frac_part.m_msw == frac_part.size() - 1 )
 	    frac_part.resize_to( frac_part.size() + 1, 1 );
@@ -1218,6 +1823,10 @@ const char*
 scfx_rep::to_string( sc_numrep numrep, int w_prefix,
 		     sc_fmt fmt, const scfx_params* params ) const
 {
+    // 08/04/2015 GL: to protect static variable scfx_string s
+    // 08/04/2015 GL: scfx_rep_scfx_string_lock constructor acquires the mutex
+    scfx_rep_scfx_string_lock m_scfx_rep_scfx_string_lock;
+
     static scfx_string s;
 
     s.clear();
@@ -1237,6 +1846,7 @@ scfx_rep::to_string( sc_numrep numrep, int w_prefix,
         sc_dt::print_other( s, *this, numrep, w_prefix, fmt, params );
 
     return s;
+    // 08/04/2015 GL: scfx_rep_scfx_string_lock destructor releases the mutex
 }
 
 

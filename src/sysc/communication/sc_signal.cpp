@@ -37,13 +37,230 @@
 
 #include <sstream>
 
-using sc_dt::sc_lv_base;
-using sc_dt::sc_signed;
-using sc_dt::sc_unsigned;
-using sc_dt::int64;
-using sc_dt::uint64;
+  using sc_dt::sc_lv_base;
+  using sc_dt::sc_signed;
+  using sc_dt::sc_unsigned;
+  using sc_dt::int64;
+  using sc_dt::uint64;
+  //---------------------------------------------Farah is working here
 
-namespace sc_core {
+  bool
+  sc_core::sc_writer_policy_check_write::check_write( sc_object* target, bool )
+  {
+    sc_object* writer_p = sc_get_curr_simcontext()->get_current_writer();
+    if( SC_UNLIKELY_(m_writer_p == 0) ) {
+         m_writer_p = writer_p;
+    } else if( SC_UNLIKELY_(m_writer_p != writer_p && writer_p != 0) ) {
+         sc_signal_invalid_writer( target, m_writer_p, writer_p, m_check_delta );
+         // error has been suppressed, ignore check as well
+         // return false;
+    }
+    return true;
+  }
+
+  template<sc_core::sc_writer_policy POL >
+  sc_core::sc_signal<bool,POL>::sc_signal()
+    : sc_prim_channel( sc_gen_unique_name( "signal" ) ),
+      m_change_event_p( 0 ),
+            m_cur_val( false ),
+            m_change_stamp( ~sc_dt::UINT64_ONE ),
+      m_negedge_event_p( 0 ),
+            m_new_val( false ),
+      m_posedge_event_p( 0 ),
+            m_reset_p( 0 )
+    {}
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<bool,POL>::sc_signal( const char* name_ )
+	: sc_prim_channel( name_ ),
+	  m_change_event_p( 0 ),
+          m_cur_val( false ),
+          m_change_stamp( ~sc_dt::UINT64_ONE ),
+	  m_negedge_event_p( 0 ),
+          m_new_val( false ),
+	  m_posedge_event_p( 0 ),
+          m_reset_p( 0 )
+	{}
+
+
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<bool,POL>::sc_signal( const char* name_, bool initial_value_ )
+      : sc_prim_channel( name_ )
+      , m_change_event_p( 0 )
+      , m_cur_val( initial_value_ )
+      , m_change_stamp( ~sc_dt::UINT64_ONE )
+      , m_negedge_event_p( 0 )
+      , m_new_val( initial_value_ )
+      , m_posedge_event_p( 0 )
+      , m_reset_p( 0 )
+    {}
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_writer_policy sc_core::sc_signal<bool,POL>::get_writer_policy() const
+        { return POL; }
+
+    template<sc_core::sc_writer_policy POL >
+    const sc_core::sc_event& sc_core::sc_signal<bool,POL>::default_event() const
+        { return value_changed_event(); }
+
+    template<sc_core::sc_writer_policy POL >
+    const bool& sc_core::sc_signal<bool,POL>::read() const
+	{ return m_cur_val; }
+
+  template<sc_core::sc_writer_policy POL >
+    const bool& sc_core::sc_signal<bool,POL>::get_data_ref() const
+        { sc_deprecated_get_data_ref(); return m_cur_val; }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<bool,POL>::event() const
+        { return simcontext()->event_occurred(m_change_stamp); }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<bool,POL>::posedge() const
+	{ return ( event() && m_cur_val ); }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<bool,POL>::negedge() const
+	{ return ( event() && ! m_cur_val ); }
+
+
+    template<sc_core::sc_writer_policy POL >
+    const bool& sc_core::sc_signal<bool,POL>::get_new_value() const
+	{ sc_deprecated_get_new_value(); return m_new_val; }
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<bool,POL>::operator const bool& () const
+	{ return read(); }
+
+    template<sc_core::sc_writer_policy POL >
+   typename sc_core::sc_signal<bool,POL>::this_type& sc_core::sc_signal<bool,POL>::operator = ( const bool& a )
+	{ write( a ); return *this; }
+
+    template<sc_core::sc_writer_policy POL >
+    typename sc_core::sc_signal<bool,POL>::this_type& sc_core::sc_signal<bool,POL>::operator = ( const sc_signal_in_if<bool>& a )
+	{ write( a.read() ); return *this; }
+
+    template<sc_core::sc_writer_policy POL >
+    typename sc_core::sc_signal<bool,POL>::this_type& sc_core::sc_signal<bool,POL>::operator = ( const this_type& a )
+	{ write( a.read() ); return *this; }
+
+  template<sc_core::sc_writer_policy POL >
+    const char* sc_core::sc_signal<bool,POL>::kind() const
+        { return "sc_signal"; }
+
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<bool,POL>::is_clock() const { return false; }
+
+
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::sc_signal()
+	: sc_prim_channel( sc_gen_unique_name( "signal" ) ),
+	  m_change_event_p( 0 ),
+	  m_cur_val(),
+          m_change_stamp( ~sc_dt::UINT64_ONE ),
+	  m_negedge_event_p( 0 ),
+	  m_new_val(),
+	  m_posedge_event_p( 0 )
+	{}
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::sc_signal( const char* name_ )
+	: sc_prim_channel( name_ ),
+	  m_change_event_p( 0 ),
+	  m_cur_val(),
+          m_change_stamp( ~sc_dt::UINT64_ONE ),
+	  m_negedge_event_p( 0 ),
+	  m_new_val(),
+	  m_posedge_event_p( 0 )
+	{}
+
+    template<sc_core::sc_writer_policy POL >
+     sc_core::sc_signal<sc_dt::sc_logic,POL>::sc_signal( const char* name_, sc_dt::sc_logic initial_value_ )
+      : sc_prim_channel( name_ )
+      , m_change_event_p( 0 )
+      , m_cur_val( initial_value_ )
+      , m_change_stamp( ~sc_dt::UINT64_ONE )
+      , m_negedge_event_p( 0 )
+      , m_new_val( initial_value_ )
+      , m_posedge_event_p( 0 )
+    {}
+
+    template<sc_core::sc_writer_policy POL >
+     sc_core::sc_signal<sc_dt::sc_logic,POL>::~sc_signal()
+	{
+	    delete m_change_event_p;
+	    delete m_negedge_event_p;
+	    delete m_posedge_event_p;
+	}
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_writer_policy sc_core::sc_signal<sc_dt::sc_logic,POL>::get_writer_policy() const
+        { return POL; }
+
+    template<sc_core::sc_writer_policy POL >
+    const sc_core::sc_event& sc_core::sc_signal<sc_dt::sc_logic,POL>::default_event() const
+        { return value_changed_event(); }
+
+    template<sc_core::sc_writer_policy POL >
+    const sc_dt::sc_logic& sc_core::sc_signal<sc_dt::sc_logic,POL>::read() const
+	{ return m_cur_val; }
+
+    template<sc_core::sc_writer_policy POL >
+    const sc_dt::sc_logic& sc_core::sc_signal<sc_dt::sc_logic,POL>::get_data_ref() const
+        { sc_deprecated_get_data_ref(); return m_cur_val; }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<sc_dt::sc_logic,POL>::event() const
+        { return simcontext()->event_occurred(m_change_stamp); }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<sc_dt::sc_logic,POL>::posedge() const
+	{ return ( event() && m_cur_val == sc_dt::SC_LOGIC_1 ); }
+
+    template<sc_core::sc_writer_policy POL >
+    bool sc_core::sc_signal<sc_dt::sc_logic,POL>::negedge() const
+	{ return ( event() && m_cur_val == sc_dt::SC_LOGIC_0 ); }
+
+    template<sc_core::sc_writer_policy POL >
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::operator const sc_dt::sc_logic& () const
+	{ return read(); }
+
+    template<sc_core::sc_writer_policy POL >
+    typename sc_core::sc_signal<sc_dt::sc_logic,POL>::this_type&
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::operator = ( const sc_dt::sc_logic& a )
+  	{ write( a ); return *this; }
+
+    template<sc_core::sc_writer_policy POL >
+    typename sc_core::sc_signal<sc_dt::sc_logic,POL>::this_type&
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::operator = ( const sc_signal_in_if<sc_dt::sc_logic>& a )
+	  { write( a.read() ); return *this; }
+
+    template<sc_core::sc_writer_policy POL >
+    typename sc_core::sc_signal<sc_dt::sc_logic,POL>::this_type&
+    sc_core::sc_signal<sc_dt::sc_logic,POL>::operator = (const this_type& a)
+  	{ write( a.read() ); return *this; }
+
+    template<sc_core::sc_writer_policy POL >
+    const sc_dt::sc_logic& sc_core::sc_signal<sc_dt::sc_logic,POL>::get_new_value() const
+        { sc_deprecated_get_new_value();  return m_new_val; }
+
+    template<sc_core::sc_writer_policy POL >
+    const char* sc_core::sc_signal<sc_dt::sc_logic,POL>::kind() const
+        { return "sc_signal"; }
+/*
+template< typename T, sc_core::sc_writer_policy POL >
+::std::ostream&
+sc_core::operator << ( ::std::ostream& os, const sc_signal<T,POL>& a )
+{
+    return ( os << a.read() );
+}
+*/
+
+ //---------------------------------------------Farah is done working here
+  namespace sc_core {
 
 // to avoid code bloat in sc_signal<T>
 
@@ -80,6 +297,7 @@ bool
 sc_writer_policy_check_port::
   check_port( sc_object* target, sc_port_base * port_, bool is_output )
 {
+    // 02/05/2015 GL: assume we have grabbed a lock here
     if ( is_output && sc_get_curr_simcontext()->write_check() )
     {
         // an out or inout port; only one can be connected
@@ -157,6 +375,7 @@ template< sc_writer_policy POL >
 void
 sc_signal<bool,POL>::write( const bool& value_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication, but sc_signal should have a single write port?!
     bool value_changed = !( m_cur_val == value_ );
     if ( !policy_type::check_write(this, value_changed) )
         return;
@@ -164,6 +383,7 @@ sc_signal<bool,POL>::write( const bool& value_ )
     if( value_changed ) {
         request_update();
     }
+    // 02/22/2015 GL: return release the lock
 }
 
 template< sc_writer_policy POL >
@@ -178,15 +398,17 @@ template< sc_writer_policy POL >
 void
 sc_signal<bool,POL>::dump( ::std::ostream& os ) const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     os << "     name = " << name() << ::std::endl;
     os << "    value = " << m_cur_val << ::std::endl;
     os << "new value = " << m_new_val << ::std::endl;
+    // 02/22/2015 GL: return releases the lock
 }
 
 
 template< sc_writer_policy POL >
 void
-sc_signal<bool,POL>::update()
+sc_signal<bool,POL>::update() // 02/08/2015 GL: only executed by the root thread in the evaluate-update phase
 {
     policy_type::update();
     if( !( m_new_val == m_cur_val ) ) {
@@ -220,21 +442,27 @@ template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::value_changed_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_change_event_p,"value_changed_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::posedge_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_posedge_event_p,"posedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<bool,POL>::negedge_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_negedge_event_p,"negedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 
@@ -255,6 +483,7 @@ sc_signal<bool,POL>::is_reset() const
 template< sc_writer_policy POL >
 sc_signal<bool,POL>::~sc_signal()
 {
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/22/2015 GL: destroy the mutex
     delete m_change_event_p;
     delete m_negedge_event_p;
     delete m_posedge_event_p;
@@ -281,6 +510,7 @@ inline
 void
 sc_signal<sc_dt::sc_logic,POL>::write( const sc_dt::sc_logic& value_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication, but sc_signal should have a single write port?!
     bool value_changed = !( m_cur_val == value_ );
     if ( !policy_type::check_write(this, value_changed) )
         return;
@@ -289,6 +519,7 @@ sc_signal<sc_dt::sc_logic,POL>::write( const sc_dt::sc_logic& value_ )
     if( value_changed ) {
         request_update();
     }
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
@@ -303,15 +534,17 @@ template< sc_writer_policy POL >
 void
 sc_signal<sc_dt::sc_logic,POL>::dump( ::std::ostream& os ) const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     os << "     name = " << name() << ::std::endl;
     os << "    value = " << m_cur_val << ::std::endl;
     os << "new value = " << m_new_val << ::std::endl;
+    // 02/22/2015 GL: return releases the lock
 }
 
 
 template< sc_writer_policy POL >
 void
-sc_signal<sc_dt::sc_logic,POL>::update()
+sc_signal<sc_dt::sc_logic,POL>::update() // 02/08/2015 GL: only executed by the root thread in the evaluate-update phase
 {
     policy_type::update();
     if( !( m_new_val == m_cur_val ) ) {
@@ -343,21 +576,27 @@ template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::value_changed_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_change_event_p,"value_changed_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::posedge_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_posedge_event_p,"posedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 template< sc_writer_policy POL >
 const sc_event&
 sc_signal<sc_dt::sc_logic,POL>::negedge_event() const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/22/2015 GL: add a lock to protect concurrent communication
     return *sc_lazy_kernel_event(&m_negedge_event_p,"negedge_event");
+    // 02/22/2015 GL: return releases the lock
 }
 
 

@@ -163,8 +163,7 @@ protected:
     virtual void cycle( bool delta_cycle ) = 0;
 
     // Flush results and close file
-    virtual ~sc_trace_file()
-	{ /* Intentionally blank */ }
+    virtual ~sc_trace_file();
 };
 
 /*****************************************************************************/
@@ -358,23 +357,13 @@ extern void sc_trace( sc_trace_file* tf,
 // Turn on/off delta cycle tracing on trace file `tf'.
 // Default is to turn on delta cycle tracing.
 
-inline
 void
-sc_trace_delta_cycles( sc_trace_file* tf, bool on = true )
-{
-    if( tf ) tf->delta_cycles( on );
-}
-
+sc_trace_delta_cycles( sc_trace_file* tf, bool on = true );
 
 // Output a comment to the trace file
 
-inline
 void
-sc_write_comment( sc_trace_file* tf, const std::string& comment )
-{
-    if( tf ) tf->write_comment( comment );
-}
-
+sc_write_comment( sc_trace_file* tf, const std::string& comment );
 
 // Equivalent of std::fprintf for trace files!
 

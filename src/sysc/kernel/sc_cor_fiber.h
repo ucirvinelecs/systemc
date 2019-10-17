@@ -64,13 +64,7 @@ class sc_cor_fiber
 public:
 
     // constructor
-    sc_cor_fiber()
-	: m_stack_size( 0 ), m_fiber( 0 ), m_pkg( 0 )
-       {
-#         if defined(__GNUC__) && __USING_SJLJ_EXCEPTIONS__
-              m_eh.prev = 0;
-#         endif
-       }
+    sc_cor_fiber();
 
     // destructor
     virtual ~sc_cor_fiber();

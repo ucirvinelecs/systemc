@@ -56,6 +56,8 @@
 #include "sysc/datatypes/fx/scfx_utils.h"
 #include "sysc/kernel/sc_macros.h"
 
+#include <pthread.h> // 08/03/2015 GL: to implement scfx_mant_lock
+
 
 namespace sc_dt
 {
@@ -67,6 +69,13 @@ class scfx_mant_ref;
 
 typedef unsigned int  word;       // Using int because of 64-bit machines.
 typedef unsigned short half_word;
+
+// 08/03/2015 GL: scoped mutex for static word_list* free_words
+struct scfx_mant_free_words_lock {
+    static pthread_mutex_t m_mutex;
+    explicit scfx_mant_free_words_lock();
+    ~scfx_mant_free_words_lock();
+};
 
 
 // ----------------------------------------------------------------------------
@@ -117,12 +126,6 @@ private:
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
-int
-scfx_mant::size() const
-{
-    return m_size;
-}
 
 
 inline
@@ -171,62 +174,6 @@ scfx_mant::operator[]( int i )
 #endif
 }
 
-inline
-scfx_mant::scfx_mant( std::size_t size )
-: m_array(0), m_size(size)
-{
-    m_array = alloc( size );
-}
-
-inline
-scfx_mant::scfx_mant( const scfx_mant& rhs )
-: m_array(0), m_size(rhs.m_size)
-{
-    m_array = alloc( m_size );
-    for( int i = 0; i < m_size; i ++ )
-    {
-        (*this)[i] = rhs[i];
-    }
-}
-
-inline
-scfx_mant&
-scfx_mant::operator = ( const scfx_mant& rhs )
-{
-    if( &rhs != this )
-    {
-        if( m_size != rhs.m_size )
-	{
-	    free( m_array, m_size );
-	    m_array = alloc( m_size = rhs.m_size );
-	}
-
-	for( int i = 0; i < m_size; i ++ )
-	{
-	    (*this)[i] = rhs[i];
-	}
-    }
-    return *this;
-}
-
-inline
-scfx_mant::~scfx_mant()
-{
-    if( m_array != 0 )
-    {
-        free( m_array, m_size );
-    }
-}
-
-inline
-void
-scfx_mant::clear()
-{
-    for( int i = 0; i < m_size; i ++ )
-    {
-        (*this)[i] = 0;
-    }
-}
 
 inline
 void
@@ -338,38 +285,22 @@ scfx_mant::half_addr( int i ) const
 #endif
 }
 
-
 // ----------------------------------------------------------------------------
 //  one's complement of a mantissa
 // ----------------------------------------------------------------------------
 
-inline
+
 void
-complement( scfx_mant& target, const scfx_mant& source, int size )
-{
-    for( int i = 0; i < size; i ++ )
-    {
-        target[i] = ~source[i];
-    }
-}
+complement( scfx_mant& target, const scfx_mant& source, int size );
 
 
 // ----------------------------------------------------------------------------
 //  increment mantissa
 // ----------------------------------------------------------------------------
 
-inline
+
 void
-inc( scfx_mant& mant )
-{
-    for( int i = 0; i < mant.size(); i ++ )
-    {
-        if( ++ mant[i] )
-	{
-	    break;
-	}
-    }
-}
+inc( scfx_mant& mant );
 
 
 // ----------------------------------------------------------------------------
@@ -406,81 +337,9 @@ private:
     scfx_mant_ref( const scfx_mant_ref& );
     scfx_mant_ref& operator = ( const scfx_mant_ref& );
 
-    void* operator new( std::size_t sz ) { return ::operator new( sz ); }
+    void* operator new( std::size_t sz );
 
 };
-
-
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-inline
-void
-scfx_mant_ref::remove_it()
-{
-    if( m_not_const )
-    {
-        delete m_mant;
-    }
-}
-
-inline
-scfx_mant_ref::scfx_mant_ref()
-: m_mant( 0 ), m_not_const( false )
-{}
-
-inline
-scfx_mant_ref::scfx_mant_ref( const scfx_mant& mant )
-: m_mant( const_cast<scfx_mant*>( &mant ) ), m_not_const( false )
-{}
-
-inline
-scfx_mant_ref::scfx_mant_ref( scfx_mant* mant )
-: m_mant( mant ), m_not_const( true )
-{}
-
-inline
-scfx_mant_ref&
-scfx_mant_ref::operator = ( const scfx_mant& mant )
-{
-    remove_it();
-
-    m_mant = const_cast<scfx_mant*>( &mant );
-    m_not_const = false;
-
-    return *this;
-}
-
-inline
-scfx_mant_ref&
-scfx_mant_ref::operator = ( scfx_mant* mant )
-{
-    remove_it();
-
-    m_mant = mant;
-    m_not_const = true;
-
-    return *this;
-}
-
-inline
-scfx_mant_ref::~scfx_mant_ref()
-{
-    remove_it();
-}
-
-inline
-scfx_mant_ref::operator scfx_mant&()
-{
-    // SC_ASSERT_( m_not_const, "not allowed to modify mant" );
-    return *m_mant;
-}
-
-inline
-word
-scfx_mant_ref::operator [] ( int i )
-{
-    return (*m_mant)[i];
-}
 
 } // namespace sc_dt
 

@@ -36,6 +36,8 @@
 #include "sysc/kernel/sc_time.h"
 #include "sysc/utils/sc_hash.h"
 #include "sysc/utils/sc_pq.h"
+#include <list>
+
 
 namespace sc_core {
 
@@ -68,14 +70,14 @@ class sc_thread_process;
 template< typename > class sc_plist;
 typedef sc_plist< sc_process_b* > sc_process_list;
 
-struct sc_curr_proc_info
+/*struct sc_curr_proc_info
 {
     sc_process_b*     process_handle;
     sc_curr_proc_kind kind;
     sc_curr_proc_info() : process_handle( 0 ), kind( SC_NO_PROC_ ) {}
 };
 
-typedef const sc_curr_proc_info* sc_curr_proc_handle;
+typedef const sc_curr_proc_info* sc_curr_proc_handle;*/
 
 enum sc_stop_mode {          // sc_stop modes:
     SC_STOP_FINISH_DELTA,
@@ -92,17 +94,11 @@ enum sc_starvation_policy
 extern void sc_start();
 extern void sc_start( const sc_time& duration, 
                       sc_starvation_policy p=SC_RUN_TO_TIME );
-inline void sc_start( int duration, sc_time_unit unit, 
-                      sc_starvation_policy p=SC_RUN_TO_TIME )
-{
-    sc_start( sc_time((double)duration,unit), p );
-}
+void sc_start( int duration, sc_time_unit unit, 
+                      sc_starvation_policy p=SC_RUN_TO_TIME );
 
-inline void sc_start( double duration, sc_time_unit unit, 
-                      sc_starvation_policy p=SC_RUN_TO_TIME )
-{
-    sc_start( sc_time(duration,unit), p );
-}
+void sc_start( double duration, sc_time_unit unit, 
+                      sc_starvation_policy p=SC_RUN_TO_TIME );
 
 extern void sc_stop();
 
@@ -128,6 +124,28 @@ sc_time sc_time_to_pending_activity( const sc_simcontext* );
 
 struct sc_invoke_method; 
 
+// 05/22/2015 GL: scoped mutex for the kernel lock
+struct sc_kernel_lock {
+    sc_simcontext* simc_p;
+    sc_cor* m_cor_p;
+    explicit sc_kernel_lock();
+    ~sc_kernel_lock(); 
+};
+
+/**************************************************************************//**
+ *  \class sc_segid
+ *
+ *  \brief segment id
+ *         currently only used for sc_fifo::read(...) as a bug fix
+ *****************************************************************************/
+class sc_segid{
+public:
+  int seg_id;
+  inline explicit sc_segid(int val):
+    seg_id(val)
+    {}
+};
+ 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_simcontext
 //
@@ -139,6 +157,7 @@ class sc_simcontext
     friend struct sc_invoke_method; 
     friend class sc_event;
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_object;
     friend class sc_time;
     friend class sc_clock;
@@ -163,6 +182,8 @@ class sc_simcontext
     friend sc_time sc_time_to_pending_activity( const sc_simcontext* );
     friend bool sc_pending_activity_at_current_time( const sc_simcontext* );
     friend bool sc_pending_activity_at_future_time( const sc_simcontext* );
+    friend struct sc_kernel_lock; // 05/25/2015 GL: a scoped mutex for the kernel lock
+    friend sc_cor* get_cor_pointer( sc_process_b* process_p ); // 05/26/2015 GL: get sc_cor pointer
 
 
     void init();
@@ -173,12 +194,20 @@ public:
     sc_simcontext();
     ~sc_simcontext();
 
+    /* begin TS dynamic analysis */
+    void traverse_design();
+    void traverse_objects(sc_object *object, FILE *file);
+    /* end TS dynamic analysis */
+
     void initialize( bool = false );
     void cycle( const sc_time& );
     void simulate( const sc_time& duration );
     void stop();
     void end();
     void reset();
+
+    //void mapper( sc_cor *cor ); // 11/05/2014 GL: thread mapping function used in parallel simulators
+    void schedule( sc_cor *cor ); // 05/18/2015 GL: scheduling function triggered by parallel threads
 
     int sim_status() const;
     bool elaboration_done() const;
@@ -221,7 +250,8 @@ public:
     const char* name_p, bool free_host, SC_ENTRY_FUNC method_p, 
     sc_process_host* host_p, const sc_spawn_options* opt_p );
 
-    sc_curr_proc_handle get_curr_proc_info();
+    //sc_curr_proc_handle get_curr_proc_info(); // 10/28/2014 GL: to be replaced by get_curr_proc
+    sc_process_b* get_curr_proc() const;
     sc_object* get_current_writer() const;
     bool write_check() const;
     void set_curr_proc( sc_process_b* );
@@ -250,9 +280,8 @@ public:
     bool get_error();
     void set_error( sc_report* );
 
-    sc_cor_pkg* cor_pkg()
-        { return m_cor_pkg; }
-    sc_cor* next_cor();
+    sc_cor_pkg* cor_pkg();
+    sc_cor* next_cor(); // 11/05/2014 GL: obsolete, to be removed in the future
 
     const ::std::vector<sc_object*>& get_child_objects() const;
 
@@ -260,7 +289,20 @@ public:
     void prepare_to_simulate();
     inline void initial_crunch( bool no_crunch );
     bool next_time( sc_time& t ) const; 
-    bool pending_activity_at_current_time() const;
+    bool pending_activity_at_current_time() const; 
+
+    // 11/05/2014 GL: add helper functions
+    void remove_running_process( sc_process_b* );
+    bool is_running_process( sc_process_b* );
+    void suspend_cor( sc_cor* );
+    void resume_cor( sc_cor* );
+
+    // 04/29/2015 GL: get the state of the kernel lock
+    bool is_locked();
+    bool is_unlocked();
+    bool is_lock_owner();
+    bool is_not_owner();
+    bool is_locked_and_owner();
 
 private:
 
@@ -269,7 +311,7 @@ private:
     void remove_child_event( sc_event* );
     void remove_child_object( sc_object* );
 
-    void crunch( bool once=false );
+    //void crunch( bool once=false );
 
     int add_delta_event( sc_event* );
     void remove_delta_event( sc_event* );
@@ -304,6 +346,11 @@ private:
     void do_sc_stop_action();
     void mark_to_collect_process( sc_process_b* zombie_p );
 
+    // 05/22/2015 GL: now these helper functions are prevented from public access
+    void acquire_sched_mutex();
+    void release_sched_mutex();
+
+
 private:
 
     enum execution_phases {
@@ -323,8 +370,10 @@ private:
     sc_name_gen*                m_name_gen;
 
     sc_process_table*           m_process_table;
-    sc_curr_proc_info           m_curr_proc_info;
-    sc_object*                  m_current_writer;
+    //sc_curr_proc_info           m_curr_proc_info; // 10/22/2014 GL: to be removed
+    std::list<sc_process_b*>    m_curr_proc_queue;
+    //int                         m_curr_proc_num; // 10/22/2014 GL: to be replaced by m_curr_proc_queue.size()
+    //sc_object*                  m_current_writer; // 02/06/2015 GL: to be removed
     bool                        m_write_check;
     int                         m_next_proc_id;
 
@@ -363,6 +412,11 @@ private:
     sc_cor_pkg*                 m_cor_pkg; // the simcontext's coroutine package
     sc_cor*                     m_cor;     // the simcontext's coroutine
 
+    // 05/19/2015 GL: the following variables are used in sc_simcontext::schedule
+    bool                        m_one_delta_cycle; 
+    bool                        m_one_timed_cycle;
+    sc_time                     m_finish_time;
+
 private:
 
     // disabled
@@ -390,194 +444,10 @@ sc_get_curr_simcontext()
 #else
     extern sc_simcontext* sc_get_curr_simcontext();
 #endif // 0
-inline sc_status sc_get_status()
-{
-    return sc_get_curr_simcontext()->get_status();
-}
+sc_status sc_get_status();
 
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-inline
-bool
-sc_simcontext::elaboration_done() const
-{
-    return m_elaboration_done;
-}
-
-
-inline sc_status sc_simcontext::get_status() const
-{
-    return m_simulation_status != SC_RUNNING ? 
-                  m_simulation_status :
-		  (m_in_simulator_control ? SC_RUNNING : SC_PAUSED);
-}
-
-inline
-int
-sc_simcontext::sim_status() const
-{
-    if( m_error ) {
-        return SC_SIM_ERROR;
-    }
-    if( m_forced_stop ) {
-        return SC_SIM_USER_STOP;
-    }
-    return SC_SIM_OK;
-}
-
-
-inline
-sc_object_manager*
-sc_simcontext::get_object_manager()
-{
-    return m_object_manager;
-}
-
-inline
-sc_module_registry*
-sc_simcontext::get_module_registry()
-{
-    return m_module_registry;
-}
-
-inline
-sc_port_registry*
-sc_simcontext::get_port_registry()
-{
-    return m_port_registry;
-}
-
-inline
-sc_export_registry*
-sc_simcontext::get_export_registry()
-{
-    return m_export_registry;
-}
-
-inline
-sc_prim_channel_registry*
-sc_simcontext::get_prim_channel_registry()
-{
-    return m_prim_channel_registry;
-}
-
-
-inline
-sc_curr_proc_handle
-sc_simcontext::get_curr_proc_info()
-{
-    return &m_curr_proc_info;
-}
-
-
-inline
-int
-sc_simcontext::next_proc_id()
-{
-    return ( ++ m_next_proc_id );
-}
-
-
-inline
-const sc_time&
-sc_simcontext::max_time() const
-{
-    if ( m_max_time == SC_ZERO_TIME )
-    {
-        m_max_time = sc_time::from_value( ~sc_dt::UINT64_ZERO );
-    }
-    return m_max_time;
-}
-
-inline
-sc_dt::uint64
-sc_simcontext::change_stamp() const
-{
-    return m_change_stamp;
-}
-
-inline
-const sc_time&
-sc_simcontext::time_stamp() const
-{
-    return m_curr_time;
-}
-
-
-inline 
-bool
-sc_simcontext::event_occurred(sc_dt::uint64 last_change_stamp) const
-{
-    return m_change_stamp == last_change_stamp;
-}
-
-inline
-bool
-sc_simcontext::evaluation_phase() const
-{
-    return (m_execution_phase == phase_evaluate) &&
-           m_ready_to_simulate;
-}
-
-inline
-bool
-sc_simcontext::update_phase() const
-{
-    return m_execution_phase == phase_update;
-}
-
-inline
-bool
-sc_simcontext::notify_phase() const
-{
-    return m_execution_phase == phase_notify;
-}
-
-inline
-void
-sc_simcontext::set_error( sc_report* err )
-{
-    delete m_error;
-    m_error = err;
-}
-
-
-inline
-bool
-sc_simcontext::get_error()
-{
-    return m_error != NULL;
-}
-
-inline
-int
-sc_simcontext::add_delta_event( sc_event* e )
-{
-    m_delta_events.push_back( e );
-    return ( m_delta_events.size() - 1 );
-}
-
-inline
-void
-sc_simcontext::add_timed_event( sc_event_timed* et )
-{
-    m_timed_events->insert( et );
-}
-
-inline sc_object* 
-sc_simcontext::get_current_writer() const
-{
-    return m_current_writer;
-}
-
-inline bool 
-sc_simcontext::write_check() const
-{
-    return m_write_check;
-}
-
-// ----------------------------------------------------------------------------
 
 class sc_process_handle;
 sc_process_handle sc_get_current_process_handle();
@@ -588,35 +458,17 @@ sc_process_handle sc_get_current_process_handle();
 // would become the parent object of a newly created element
 // of the SystemC object hierarchy, or NULL.
 //
-inline sc_object*
-sc_get_current_object()
-{
-  return sc_get_curr_simcontext()->active_object();
-}
+sc_object* sc_get_current_object();
 
-inline
 sc_process_b*
-sc_get_current_process_b()
-{
-    return sc_get_curr_simcontext()->get_curr_proc_info()->process_handle;
-}
+sc_get_current_process_b();
 
 // THE FOLLOWING FUNCTION IS DEPRECATED IN 2.1
 extern sc_process_b* sc_get_curr_process_handle();
 
-inline
 sc_curr_proc_kind
-sc_get_curr_process_kind()
-{
-    return sc_get_curr_simcontext()->get_curr_proc_info()->kind;
-}
-
-
-inline int sc_get_simulator_status()
-{
-    return sc_get_curr_simcontext()->sim_status();
-}
-
+sc_get_curr_process_kind();
+int sc_get_simulator_status();
 
 // Generates unique names within each module.
 extern
@@ -636,93 +488,40 @@ extern const sc_time& sc_max_time();    // Get maximum time value.
 extern const sc_time& sc_time_stamp();  // Current simulation time.
 extern double sc_simulation_time();     // Current time in default time units.
 
-inline
-const std::vector<sc_event*>& sc_get_top_level_events(
-    const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-    return simc_p->m_child_events;
-}
-
-inline
-const std::vector<sc_object*>& sc_get_top_level_objects(
-    const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-    return simc_p->m_child_objects;
-}
-
 extern sc_event* sc_find_event( const char* name );
 
 extern sc_object* sc_find_object( const char* name );
 
-inline
-sc_dt::uint64 sc_delta_count()
-{
-    return sc_get_curr_simcontext()->m_delta_count;
-}
-
-inline 
-bool sc_is_running( const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-    return simc_p->m_ready_to_simulate;
-}
+bool sc_is_running( const sc_simcontext* simc_p = sc_get_curr_simcontext() );
 
 bool sc_is_unwinding();
 
-inline void sc_pause()
-{
-    sc_get_curr_simcontext()->m_paused = true;
-}
+void sc_pause();
 
 // Return indication if there are more processes to execute in this delta phase
-
-inline bool sc_pending_activity_at_current_time
-  ( const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-  return simc_p->pending_activity_at_current_time();
-}
+bool sc_pending_activity_at_current_time
+( const sc_simcontext* simc_p = sc_get_curr_simcontext() );
 
 // Return indication if there are timed notifications in the future
 
-inline bool sc_pending_activity_at_future_time
-  ( const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-  sc_time ignored;
-  return simc_p->next_time( ignored );
-}
+bool sc_pending_activity_at_future_time
+  ( const sc_simcontext* simc_p = sc_get_curr_simcontext() );
 
 // Return indication if there are processes to run,
 // or notifications in the future
 
-inline bool sc_pending_activity
-  ( const sc_simcontext* simc_p = sc_get_curr_simcontext() )
-{
-  return sc_pending_activity_at_current_time( simc_p )
-      || sc_pending_activity_at_future_time( simc_p );
-}
+bool sc_pending_activity
+  ( const sc_simcontext* simc_p = sc_get_curr_simcontext() );
 
 sc_time
 sc_time_to_pending_activity
   ( const sc_simcontext* simc_p = sc_get_curr_simcontext() );
 
+bool sc_end_of_simulation_invoked();
 
-inline
-bool
-sc_end_of_simulation_invoked()
-{
-    return sc_get_curr_simcontext()->m_end_of_simulation_called;
-}
+bool sc_hierarchical_name_exists( const char* name );
 
-inline bool sc_hierarchical_name_exists( const char* name )
-{
-    return sc_find_object(name) || sc_find_event(name);
-}
-
-inline
-bool 
-sc_start_of_simulation_invoked()
-{
-    return sc_get_curr_simcontext()->m_start_of_simulation_called;
-}
+bool sc_start_of_simulation_invoked();
 
 // The following variable controls whether process control corners should
 // be considered errors or not. See sc_simcontext.cpp for details on what

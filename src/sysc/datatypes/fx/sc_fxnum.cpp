@@ -54,8 +54,1823 @@
 #include <math.h>
 
 #include "sysc/datatypes/fx/sc_fxnum.h"
+//--------------------------------------------------Farah is working here 
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_bitref
+//
+//  Proxy class for bit-selection in class sc_fxnum, behaves like sc_bit.
+// ----------------------------------------------------------------------------
+sc_dt::sc_fxnum_bitref::sc_fxnum_bitref( sc_fxnum& num_, int idx_ )
+	: m_num( num_ ), m_idx( idx_ )
+{}
+
+sc_dt::sc_fxnum_bitref::sc_fxnum_bitref( const sc_fxnum_bitref& a )
+	: m_num( a.m_num ), m_idx( a.m_idx )
+{}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator = ( const sc_fxnum_bitref& a )
+{
+    if( &a != this )
+    {
+	SC_FXNUM_OBSERVER_READ_( a.m_num )
+	set( a.get() );
+	SC_FXNUM_OBSERVER_WRITE_( m_num )
+    }
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator = ( const sc_fxnum_fast_bitref& a )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a.m_num )
+    set( a.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator = ( const sc_bit& a )
+{
+    set( static_cast<bool>( a ) );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator = ( bool a )
+{
+    set( a );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator &= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() && b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator &= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() && b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator &= ( const sc_bit& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() && static_cast<bool>( b ) );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator &= ( bool b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() && b );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator |= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() || b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator |= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() || b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator |= ( const sc_bit& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() || static_cast<bool>( b ) );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator |= ( bool b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() || b );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator ^= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() != b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator ^= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() != b.get() );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator ^= ( const sc_bit& b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() != static_cast<bool>( b ) );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref&
+sc_dt::sc_fxnum_bitref::operator ^= ( bool b )
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    set( get() != b );
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_bitref::operator bool() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    return get();
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum_bitref& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum_bitref& a )
+{
+    a.scan( is );
+    return is;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_fast_bitref
+//
+//  Proxy class for bit-selection in class sc_fxnum_fast, behaves like sc_bit.
+// ----------------------------------------------------------------------------
 
 
+sc_dt::sc_fxnum_fast_bitref::sc_fxnum_fast_bitref( sc_fxnum_fast& num_, int idx_ )
+    : m_num( num_ ), m_idx( idx_ )
+{}
+
+sc_dt::sc_fxnum_fast_bitref::sc_fxnum_fast_bitref( const sc_fxnum_fast_bitref& a )
+    : m_num( a.m_num ), m_idx( a.m_idx )
+{}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator = ( const sc_fxnum_bitref& a )
+{
+    SC_FXNUM_OBSERVER_READ_( a.m_num )
+    set( a.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator = ( const sc_fxnum_fast_bitref& a )
+{
+    if( &a != this )
+    {
+	SC_FXNUM_FAST_OBSERVER_READ_( a.m_num )
+	set( a.get() );
+	SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    }
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator = ( const sc_bit& a )
+{
+    set( static_cast<bool>( a ) );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator = ( bool a )
+{
+    set( a );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator &= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() && b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator &= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() && b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator &= ( const sc_bit& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() && static_cast<bool>( b ) );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator &= ( bool b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() && b );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator |= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() || b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator |= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() || b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator |= ( const sc_bit& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() || static_cast<bool>( b ) );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator |= ( bool b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() || b );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator ^= ( const sc_fxnum_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_OBSERVER_READ_( b.m_num )
+    set( get() != b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator ^= ( const sc_fxnum_fast_bitref& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
+    set( get() != b.get() );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator ^= ( const sc_bit& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() != static_cast<bool>( b ) );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref&
+sc_dt::sc_fxnum_fast_bitref::operator ^= ( bool b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    set( get() != b );
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_bitref::sc_fxnum_fast_bitref::operator bool() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    return get();
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum_fast_bitref& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum_fast_bitref& a )
+{
+    a.scan( is );
+    return is;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_subref
+//
+//  Proxy class for part-selection in class sc_fxnum,
+//  behaves like sc_bv_base.
+// ----------------------------------------------------------------------------
+sc_dt::sc_fxnum_subref::sc_fxnum_subref( sc_fxnum& num_, int from_, int to_ )
+    : m_num( num_ ), m_from( from_ ), m_to( to_ ),
+      m_bv( *new sc_bv_base( sc_max( m_from, m_to ) -
+			     sc_min( m_from, m_to ) + 1 ) )
+{}
+
+sc_dt::sc_fxnum_subref::sc_fxnum_subref( const sc_fxnum_subref& a )
+    : m_num( a.m_num ), m_from( a.m_from ), m_to( a.m_to ),
+      m_bv( *new sc_bv_base( a.m_bv ) )
+{}
+
+sc_dt::sc_fxnum_subref::~sc_fxnum_subref()
+{
+    delete &m_bv;
+}
+
+sc_dt::sc_fxnum_subref&
+sc_dt::sc_fxnum_subref::operator = ( const sc_fxnum_subref& a )
+{
+    if( &a != this )
+    {
+	m_bv = static_cast<sc_bv_base>( a );
+	set();
+	SC_FXNUM_OBSERVER_WRITE_( m_num )
+    }
+    return *this;
+}
+
+sc_dt::sc_fxnum_subref&
+sc_dt::sc_fxnum_subref::operator = ( const sc_fxnum_fast_subref& a )
+{
+    m_bv = static_cast<sc_bv_base>( a );
+    set();
+    SC_FXNUM_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+int
+sc_dt::sc_fxnum_subref::length() const
+{
+    return m_bv.length();
+}
+
+int
+sc_dt::sc_fxnum_subref::to_int() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_int();
+}
+
+sc_dt::int64
+sc_dt::sc_fxnum_subref::to_int64() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_int64();
+}
+
+unsigned int
+sc_dt::sc_fxnum_subref::to_uint() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_uint();
+}
+
+sc_dt::uint64
+sc_dt::sc_fxnum_subref::to_uint64() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_uint64();
+}
+
+long
+sc_dt::sc_fxnum_subref::to_long() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_long();
+}
+
+unsigned long
+sc_dt::sc_fxnum_subref::to_ulong() const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_ulong();
+}
+
+sc_dt::sc_fxnum_subref::operator sc_bv_base () const
+{
+    SC_FXNUM_OBSERVER_READ_( m_num )
+    get();
+    return m_bv;
+}
+
+const std::string
+sc_dt::sc_fxnum_subref::to_string() const
+{
+    get();
+    return m_bv.to_string();
+}
+
+const std::string
+sc_dt::sc_fxnum_subref::to_string( sc_numrep numrep ) const
+{
+    get();
+    return m_bv.to_string( numrep );
+}
+
+const std::string
+sc_dt::sc_fxnum_subref::to_string( sc_numrep numrep, bool w_prefix ) const
+{
+    get();
+    return m_bv.to_string( numrep, w_prefix );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum_subref& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum_subref& a )
+{
+    a.scan( is );
+    return is;
+}
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_fast_subref
+//
+//  Proxy class for part-selection in class sc_fxnum_fast,
+//  behaves like sc_bv_base.
+// ----------------------------------------------------------------------------
+
+sc_dt::sc_fxnum_fast_subref::sc_fxnum_fast_subref( sc_fxnum_fast& num_,
+					    int from_, int to_ )
+    : m_num( num_ ), m_from( from_ ), m_to( to_ ),
+      m_bv( *new sc_bv_base( sc_max( m_from, m_to ) -
+			     sc_min( m_from, m_to ) + 1 ) )
+{}
+
+  sc_dt::sc_fxnum_fast_subref::sc_fxnum_fast_subref( const sc_fxnum_fast_subref& a )
+    : m_num( a.m_num ), m_from( a.m_from ), m_to( a.m_to ),
+      m_bv( *new sc_bv_base( a.m_bv ) )
+{}
+
+sc_dt::sc_fxnum_fast_subref::~sc_fxnum_fast_subref()
+{
+    delete &m_bv;
+}
+
+sc_dt::sc_fxnum_fast_subref&
+sc_dt::sc_fxnum_fast_subref::operator = ( const sc_fxnum_subref& a )
+{
+    m_bv = static_cast<sc_bv_base>( a );
+    set();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast_subref&
+sc_dt::sc_fxnum_fast_subref::operator = ( const sc_fxnum_fast_subref& a )
+{
+    if( &a != this )
+    {
+	m_bv = static_cast<sc_bv_base>( a );
+	set();
+	SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
+    }
+    return *this;
+}
+
+int
+sc_dt::sc_fxnum_fast_subref::length() const
+{
+    return m_bv.length();
+}
+
+int
+sc_dt::sc_fxnum_fast_subref::to_int() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_int();
+}
+
+sc_dt::int64
+sc_dt::sc_fxnum_fast_subref::to_int64() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_int64();
+}
+
+unsigned int
+sc_dt::sc_fxnum_fast_subref::to_uint() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_uint();
+}
+
+sc_dt::uint64
+sc_dt::sc_fxnum_fast_subref::to_uint64() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_uint64();
+}
+
+long
+sc_dt::sc_fxnum_fast_subref::to_long() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_long();
+}
+
+unsigned long
+sc_dt::sc_fxnum_fast_subref::to_ulong() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv.to_ulong();
+}
+
+const std::string
+sc_dt::sc_fxnum_fast_subref::to_string() const
+{
+    get();
+    return m_bv.to_string();
+}
+
+const std::string
+sc_dt::sc_fxnum_fast_subref::to_string( sc_numrep numrep ) const
+{
+    get();
+    return m_bv.to_string( numrep );
+}
+
+const std::string
+sc_dt::sc_fxnum_fast_subref::to_string( sc_numrep numrep, bool w_prefix ) const
+{
+    get();
+    return m_bv.to_string( numrep, w_prefix );
+}
+
+sc_dt::sc_fxnum_fast_subref::operator sc_bv_base () const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
+    get();
+    return m_bv;
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum_fast_subref& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum_fast_subref& a )
+{
+    a.scan( is );
+    return is;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum
+//
+//  Base class for the fixed-point types; arbitrary precision.
+// ----------------------------------------------------------------------------
+
+// unary functions
+
+void
+sc_dt::neg( sc_fxval& c, const sc_fxnum& a )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    c.set_rep( sc_dt::neg_scfx_rep( *a.m_rep ) );
+}
+
+void
+sc_dt::neg( sc_fxnum& c, const sc_fxnum& a )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::neg_scfx_rep( *a.m_rep );
+    c.cast();
+    SC_FXNUM_OBSERVER_WRITE_( c )
+}
+
+sc_dt::sc_fxnum_observer*
+sc_dt::sc_fxnum::observer() const
+{
+    return m_observer;
+}
+
+void
+sc_dt::lshift( sc_fxval& c, const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    c.set_rep( sc_dt::lsh_scfx_rep( *a.m_rep, b ) );
+}
+
+void
+sc_dt::rshift( sc_fxval& c, const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    c.set_rep( sc_dt::rsh_scfx_rep( *a.m_rep, b ) );
+}
+
+void
+sc_dt::lshift( sc_fxnum& c, const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::lsh_scfx_rep( *a.m_rep, b );
+    c.cast();
+    SC_FXNUM_OBSERVER_WRITE_( c )
+}
+
+void
+sc_dt::rshift( sc_fxnum& c, const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::rsh_scfx_rep( *a.m_rep, b );
+    c.cast();
+    SC_FXNUM_OBSERVER_WRITE_( c )
+}
+
+void
+sc_dt::sc_fxnum::cast()
+{
+    SC_ERROR_IF_( ! m_rep->is_normal(), sc_core::SC_ID_INVALID_FX_VALUE_ );
+
+    if( m_params.cast_switch() == SC_ON )
+	m_rep->cast( m_params, m_q_flag, m_o_flag );
+}
+
+sc_dt::sc_fxnum::sc_fxnum( const sc_fxtype_params& type_params_,
+		    sc_enc enc_,
+		    const sc_fxcast_switch& cast_sw,
+		    sc_fxnum_observer* observer_ )
+: m_rep( new scfx_rep ),
+  m_params( type_params_, enc_, cast_sw ),
+  m_q_flag( false ),
+  m_o_flag( false ),
+  m_observer( observer_ )
+{
+    SC_FXNUM_OBSERVER_DEFAULT_
+    SC_FXNUM_OBSERVER_CONSTRUCT_( *this )
+}
+
+sc_dt::sc_fxnum::~sc_fxnum()
+{
+    SC_FXNUM_OBSERVER_DESTRUCT_( *this )
+    delete m_rep;
+}
+
+// internal use only;
+
+const sc_dt::scfx_rep*
+sc_dt::sc_fxnum::get_rep() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep;
+}
+
+// unary operators
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxnum::operator - () const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return sc_fxval( sc_dt::neg_scfx_rep( *m_rep ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxnum::operator + () const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return sc_fxval( new scfx_rep( *m_rep ) );
+}
+
+// assignment operators
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator = ( const sc_fxnum& a )
+{
+    if( &a != this )
+    {
+        SC_FXNUM_OBSERVER_READ_( a )
+	*m_rep = *a.m_rep;
+	cast();
+	SC_FXNUM_OBSERVER_WRITE_( *this )
+    }
+    return *this;
+}
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator = ( const sc_fxval& a )
+{
+    *m_rep = *a.get_rep();
+    cast();
+    SC_FXNUM_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator <<= ( int b )
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    m_rep->lshift( b );
+    cast();
+    SC_FXNUM_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator >>= ( int b )
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    m_rep->rshift( b );
+    cast();
+    SC_FXNUM_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+// auto-increment and auto-decrement
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxnum::operator ++ ( int )
+{
+    sc_fxval c( *this );
+    (*this) += 1;
+    return c;
+}
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxnum::operator -- ( int )
+{
+    sc_fxval c( *this );
+    (*this) -= 1;
+    return c;
+}
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator ++ ()
+{
+    (*this) += 1;
+    return *this;
+}
+
+sc_dt::sc_fxnum&
+sc_dt::sc_fxnum::operator -- ()
+{
+    (*this) -= 1;
+    return *this;
+}
+
+// bit selection
+
+const sc_dt::sc_fxnum_bitref
+sc_dt::sc_fxnum::operator [] ( int i ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_bitref( const_cast<sc_fxnum&>( *this ),
+			    i - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_bitref
+sc_dt::sc_fxnum::operator [] ( int i )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_bitref( *this, i - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_bitref
+sc_dt::sc_fxnum::bit( int i ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_bitref( const_cast<sc_fxnum&>( *this ),
+			    i - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_bitref
+sc_dt::sc_fxnum::bit( int i )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_bitref( *this, i - m_params.fwl() );
+}
+
+// part selection
+
+const sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::operator () ( int i, int j ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_subref( const_cast<sc_fxnum&>( *this ),
+			    i - m_params.fwl(), j - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::operator () ( int i, int j )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_subref( *this, i - m_params.fwl(), j - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::range( int i, int j ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_subref( const_cast<sc_fxnum&>( *this ),
+			    i - m_params.fwl(), j - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::range( int i, int j )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_subref( *this, i - m_params.fwl(), j - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::operator () () const
+{
+    return this->operator () ( m_params.wl() - 1, 0 );
+}
+
+sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::operator () ()
+{
+    return this->operator () ( m_params.wl() - 1, 0 );
+}
+
+const sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::range() const
+{
+    return this->range( m_params.wl() - 1, 0 );
+}
+
+sc_dt::sc_fxnum_subref
+sc_dt::sc_fxnum::range()
+{
+    return this->range( m_params.wl() - 1, 0 );
+}
+
+// implicit conversion
+
+sc_dt::sc_fxnum::operator double() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep->to_double();
+}
+
+// explicit conversion to primitive types
+
+short
+sc_dt::sc_fxnum::to_short() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<short>( m_rep->to_double() );
+}
+
+unsigned short
+sc_dt::sc_fxnum::to_ushort() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<unsigned short>( m_rep->to_double() );
+}
+
+int
+sc_dt::sc_fxnum::to_int() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<int>( m_rep->to_double() );
+}
+
+sc_dt::int64
+sc_dt::sc_fxnum::to_int64() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<int64>( m_rep->to_double() );
+}
+
+unsigned int
+sc_dt::sc_fxnum::to_uint() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<unsigned int>( m_rep->to_double() );
+}
+
+sc_dt::uint64
+sc_dt::sc_fxnum::to_uint64() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<uint64>( m_rep->to_double() );
+}
+
+long
+sc_dt::sc_fxnum::to_long() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<long>( m_rep->to_double() );
+}
+
+unsigned long
+sc_dt::sc_fxnum::to_ulong() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<unsigned long>( m_rep->to_double() );
+}
+
+float
+sc_dt::sc_fxnum::to_float() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return static_cast<float>( m_rep->to_double() );
+}
+
+double
+sc_dt::sc_fxnum::to_double() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep->to_double();
+}
+
+// query value
+
+bool
+sc_dt::sc_fxnum::is_neg() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep->is_neg();
+}
+
+bool
+sc_dt::sc_fxnum::is_zero() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep->is_zero();
+}
+
+// internal use only;
+
+bool
+sc_dt::sc_fxnum::is_normal() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return m_rep->is_normal();
+}
+
+bool
+sc_dt::sc_fxnum::quantization_flag() const
+{
+    return m_q_flag;
+}
+
+bool
+sc_dt::sc_fxnum::overflow_flag() const
+{
+    return m_o_flag;
+}
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxnum::value() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this )
+    return sc_fxval( new scfx_rep( *m_rep ) );
+}
+
+// query parameters
+
+int
+sc_dt::sc_fxnum::wl() const
+{
+    return m_params.wl();
+}
+
+int
+sc_dt::sc_fxnum::iwl() const
+{
+    return m_params.iwl();
+}
+
+sc_dt::sc_q_mode
+sc_dt::sc_fxnum::q_mode() const
+{
+    return m_params.q_mode();
+}
+
+sc_dt::sc_o_mode
+sc_dt::sc_fxnum::o_mode() const
+{
+    return m_params.o_mode();
+}
+
+int
+sc_dt::sc_fxnum::n_bits() const
+{
+    return m_params.n_bits();
+}
+
+const sc_dt::sc_fxtype_params&
+sc_dt::sc_fxnum::type_params() const
+{
+    return m_params.type_params();
+}
+
+const sc_dt::sc_fxcast_switch&
+sc_dt::sc_fxnum::cast_switch() const
+{
+    return m_params.cast_switch();
+}
+
+// internal use only;
+
+void
+sc_dt::sc_fxnum::observer_read() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this );
+}
+
+// internal use only;
+
+bool
+sc_dt::sc_fxnum::get_bit( int i ) const
+{
+    return m_rep->get_bit( i );
+}
+
+// protected methods and friend functions
+
+bool
+sc_dt::sc_fxnum::set_bit( int i, bool high )
+{
+    if( high )
+        return m_rep->set( i, m_params );
+    else
+        return m_rep->clear( i, m_params );
+}
+
+bool
+sc_dt::sc_fxnum::get_slice( int i, int j, sc_bv_base& bv ) const
+{
+    return m_rep->get_slice( i, j, m_params, bv );
+}
+
+bool
+sc_dt::sc_fxnum::set_slice( int i, int j, const sc_bv_base& bv )
+{
+    return m_rep->set_slice( i, j, m_params, bv );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator / ( const sc_fxnum& a, const sc_fxnum& b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    SC_FXNUM_OBSERVER_READ_( b )
+    return sc_fxval( sc_dt::div_scfx_rep( *a.m_rep, *b.m_rep ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator / ( const sc_fxnum& a, const sc_fxval& b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    return sc_fxval( sc_dt::div_scfx_rep( *a.m_rep, *b.get_rep() ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator / ( const sc_fxval& a, const sc_fxnum& b )
+{
+    SC_FXNUM_OBSERVER_READ_( b )
+    return sc_fxval( sc_dt::div_scfx_rep( *a.get_rep(), *b.m_rep ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator << ( const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    return sc_fxval( sc_dt::lsh_scfx_rep( *a.m_rep, b ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator >> ( const sc_fxnum& a, int b )
+{
+    SC_FXNUM_OBSERVER_READ_( a )
+    return sc_fxval( sc_dt::rsh_scfx_rep( *a.m_rep, b ) );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum& a )
+{
+    a.scan( is );
+    return is;
+}
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxnum_fast
+//
+//  Base class for the fixed-point types; limited precision.
+// ----------------------------------------------------------------------------
+
+sc_dt::sc_fxnum_fast_observer*
+sc_dt::sc_fxnum_fast::observer() const
+{
+    return m_observer;
+}
+
+// constructors
+
+sc_dt::sc_fxnum_fast::sc_fxnum_fast( const sc_fxtype_params& type_params_,
+			      sc_enc enc_,
+			      const sc_fxcast_switch& cast_sw,
+			      sc_fxnum_fast_observer* observer_ )
+: m_val( 0.0 ),
+  m_params( type_params_, enc_, cast_sw ),
+  m_q_flag( false ),
+  m_o_flag( false ),
+  m_observer( observer_ )
+{
+    SC_FXNUM_FAST_OBSERVER_DEFAULT_
+    SC_FXNUM_FAST_OBSERVER_CONSTRUCT_(*this)
+}
+
+sc_dt::sc_fxnum_fast::sc_fxnum_fast( const sc_fxnum_fast& a,
+			      const sc_fxtype_params& type_params_,
+			      sc_enc enc_,
+			      const sc_fxcast_switch& cast_sw,
+			      sc_fxnum_fast_observer* observer_ )
+: m_val( a.m_val ),
+  m_params( type_params_, enc_, cast_sw ),
+  m_q_flag( false ),
+  m_o_flag( false ),
+  m_observer( observer_ )
+{
+    SC_FXNUM_FAST_OBSERVER_DEFAULT_
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    cast();
+    SC_FXNUM_FAST_OBSERVER_CONSTRUCT_( *this )
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+}
+
+sc_dt::sc_fxnum_fast::~sc_fxnum_fast()
+{
+    SC_FXNUM_FAST_OBSERVER_DESTRUCT_( *this )
+}
+
+// internal use only;
+
+double
+sc_dt::sc_fxnum_fast::get_val() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+// unary operators
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxnum_fast::operator - () const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return sc_fxval_fast( - m_val );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxnum_fast::operator + () const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return sc_fxval_fast( m_val );
+}
+
+// unary functions
+
+void
+sc_dt::neg( sc_fxval_fast& c, const sc_fxnum_fast& a )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.set_val( - a.m_val );
+}
+
+void
+sc_dt::neg( sc_fxnum_fast& c, const sc_fxnum_fast& a )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.m_val = - a.m_val;
+    c.cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
+}
+
+void
+sc_dt::lshift( sc_fxval_fast& c, const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.set_val( a.m_val * scfx_pow2( b ) );
+}
+
+void
+sc_dt::rshift( sc_fxval_fast& c, const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.set_val( a.m_val * scfx_pow2( -b ) );
+}
+
+void
+sc_dt::lshift( sc_fxnum_fast& c, const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.m_val = a.m_val * scfx_pow2( b );
+    c.cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
+}
+
+void
+sc_dt::rshift( sc_fxnum_fast& c, const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    c.m_val = a.m_val * scfx_pow2( -b );
+    c.cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
+}
+
+// assignment operators
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator = ( const sc_fxnum_fast& a )
+{
+    if( &a != this )
+    {
+	SC_FXNUM_FAST_OBSERVER_READ_( a )
+	m_val = a.m_val;
+	cast();
+	SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    }
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator = ( const sc_fxval_fast& a )
+{
+    m_val = a.get_val();
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator <<= ( int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    m_val *= scfx_pow2( b );
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator >>= ( int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    m_val *= scfx_pow2( -b );
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+// auto-increment and auto-decrement
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxnum_fast::operator ++ ( int )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    double c = m_val;
+    m_val = m_val + 1;
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return sc_fxval_fast( c );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxnum_fast::operator -- ( int )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    double c = m_val;
+    m_val = m_val - 1;
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return sc_fxval_fast( c );
+}
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator ++ ()
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    m_val = m_val + 1;
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxnum_fast&
+sc_dt::sc_fxnum_fast::operator -- ()
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    m_val = m_val - 1;
+    cast();
+    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+// bit selection
+
+const sc_dt::sc_fxnum_fast_bitref
+sc_dt::sc_fxnum_fast::operator [] ( int i ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_fast_bitref( const_cast<sc_fxnum_fast&>( *this ),
+				 i - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_fast_bitref
+sc_dt::sc_fxnum_fast::operator [] ( int i )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_fast_bitref( *this, i - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_fast_bitref
+sc_dt::sc_fxnum_fast::bit( int i ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_fast_bitref( const_cast<sc_fxnum_fast&>( *this ),
+				 i - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_fast_bitref
+sc_dt::sc_fxnum_fast::bit( int i )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    return sc_fxnum_fast_bitref( *this, i - m_params.fwl() );
+}
+
+// part selection
+
+const sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::operator () ( int i, int j ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_fast_subref( const_cast<sc_fxnum_fast&>( *this ),
+				 i - m_params.fwl(), j - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::operator () ( int i, int j )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_fast_subref( *this,
+				 i - m_params.fwl(), j - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::range( int i, int j ) const
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_fast_subref( const_cast<sc_fxnum_fast&>( *this ),
+				 i - m_params.fwl(), j - m_params.fwl() );
+}
+
+sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::range( int i, int j )
+{
+    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
+
+    return sc_fxnum_fast_subref( *this,
+				 i - m_params.fwl(), j - m_params.fwl() );
+}
+
+const sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::operator () () const
+{
+    return this->operator () ( m_params.wl() - 1, 0 );
+}
+
+sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::operator () ()
+{
+    return this->operator () ( m_params.wl() - 1, 0 );
+}
+
+const sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::range() const
+{
+    return this->range( m_params.wl() - 1, 0 );
+}
+
+sc_dt::sc_fxnum_fast_subref
+sc_dt::sc_fxnum_fast::range()
+{
+    return this->range( m_params.wl() - 1, 0 );
+}
+
+// implicit conversion
+
+sc_dt::sc_fxnum_fast::operator double() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+// explicit conversion to primitive types
+
+short
+sc_dt::sc_fxnum_fast::to_short() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<short>( m_val );
+}
+
+unsigned short
+sc_dt::sc_fxnum_fast::to_ushort() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned short>( m_val );
+}
+
+int
+sc_dt::sc_fxnum_fast::to_int() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<int>( m_val );
+}
+
+sc_dt::int64
+sc_dt::sc_fxnum_fast::to_int64() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<int64>( m_val );
+}
+
+unsigned int
+sc_dt::sc_fxnum_fast::to_uint() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned int>( m_val );
+}
+
+sc_dt::uint64
+sc_dt::sc_fxnum_fast::to_uint64() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<uint64>( m_val );
+}
+
+long
+sc_dt::sc_fxnum_fast::to_long() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<long>( m_val );
+}
+
+unsigned long
+sc_dt::sc_fxnum_fast::to_ulong() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned long>( m_val );
+}
+
+float
+sc_dt::sc_fxnum_fast::to_float() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return static_cast<float>( m_val );
+}
+
+double
+sc_dt::sc_fxnum_fast::to_double() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+// query value
+
+bool
+sc_dt::sc_fxnum_fast::is_neg() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return ( id.negative() != 0 );
+}
+
+bool
+sc_dt::sc_fxnum_fast::is_zero() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return id.is_zero();
+}
+
+// internal use only;
+
+bool
+sc_dt::sc_fxnum_fast::is_normal() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return ( id.is_normal() || id.is_subnormal() || id.is_zero() );
+}
+
+bool
+sc_dt::sc_fxnum_fast::quantization_flag() const
+{
+    return m_q_flag;
+}
+
+bool
+sc_dt::sc_fxnum_fast::overflow_flag() const
+{
+    return m_o_flag;
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxnum_fast::value() const
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( *this )
+    return sc_fxval_fast( m_val );
+}
+
+// query parameters
+
+int
+sc_dt::sc_fxnum_fast::wl() const
+{
+    return m_params.wl();
+}
+
+int
+sc_dt::sc_fxnum_fast::iwl() const
+{
+    return m_params.iwl();
+}
+
+sc_dt::sc_q_mode
+sc_dt::sc_fxnum_fast::q_mode() const
+{
+    return m_params.q_mode();
+}
+
+sc_dt::sc_o_mode
+sc_dt::sc_fxnum_fast::o_mode() const
+{
+    return m_params.o_mode();
+}
+
+int
+sc_dt::sc_fxnum_fast::n_bits() const
+{
+    return m_params.n_bits();
+}
+
+
+const sc_dt::sc_fxtype_params&
+sc_dt::sc_fxnum_fast::type_params() const
+{
+    return m_params.type_params();
+}
+
+const sc_dt::sc_fxcast_switch&
+sc_dt::sc_fxnum_fast::cast_switch() const
+{
+    return m_params.cast_switch();
+}
+
+// internal use only;
+void
+sc_dt::sc_fxnum_fast::observer_read() const
+{
+    SC_FXNUM_OBSERVER_READ_( *this );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator / ( const sc_fxnum_fast& a, const sc_fxnum_fast& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    SC_FXNUM_FAST_OBSERVER_READ_( b )
+    return sc_fxval_fast( a.m_val / b.m_val );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator / ( const sc_fxnum_fast& a, const sc_fxval_fast& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    return sc_fxval_fast( a.m_val / b.get_val() );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator / ( const sc_fxval_fast& a, const sc_fxnum_fast& b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( b )
+    return sc_fxval_fast( a.get_val() / b.m_val );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator << ( const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    return sc_fxval_fast( a.m_val * scfx_pow2( b ) );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator >> ( const sc_fxnum_fast& a, int b )
+{
+    SC_FXNUM_FAST_OBSERVER_READ_( a )
+    return sc_fxval_fast( a.m_val * scfx_pow2( -b ) );
+}
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxnum_fast& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxnum_fast& a )
+{
+    a.scan( is );
+    return is;
+}
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxval
+//
+//  Fixed-point value type; arbitrary precision.
+// ----------------------------------------------------------------------------
+
+// public constructors
+
+sc_dt::sc_fxval::sc_fxval( const sc_fxnum& a,
+		    sc_fxval_observer* observer_ )
+: m_rep( new scfx_rep( *a.get_rep() ) ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_OBSERVER_DEFAULT_
+    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+}
+
+sc_dt::sc_fxval::sc_fxval( const sc_fxnum_fast& a,
+		    sc_fxval_observer* observer_ )
+: m_rep( new scfx_rep( a.to_double() ) ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_OBSERVER_DEFAULT_
+    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+}
+
+// assignment operators
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator = ( const sc_fxnum& a )
+{
+    *m_rep = *a.get_rep();
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxval_fast
+//
+//  Fixed-point value types; limited precision.
+// ----------------------------------------------------------------------------
+
+// public constructors
+
+sc_dt::sc_fxval_fast::sc_fxval_fast( const sc_fxnum& a,
+			      sc_fxval_fast_observer* observer_ )
+: m_val( a.to_double() ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_FAST_OBSERVER_DEFAULT_
+    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+}
+
+sc_dt::sc_fxval_fast::sc_fxval_fast( const sc_fxnum_fast& a,
+			      sc_fxval_fast_observer* observer_ )
+: m_val( a.get_val() ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_FAST_OBSERVER_DEFAULT_
+    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+}
+
+// assignment operators
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator = ( const sc_fxnum_fast& a )
+{
+    m_val = a.get_val();
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+//--------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

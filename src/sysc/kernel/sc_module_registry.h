@@ -54,8 +54,7 @@ public:
     void insert( sc_module& );
     void remove( sc_module& );
 
-    int size() const
-        { return m_module_vec.size(); }
+    int size() const;
 
 private:
 

@@ -92,14 +92,10 @@ public:
 
     // constructors
 
-    explicit sc_bv_base( int length_ = sc_length_param().len() )
-	: m_len( 0 ), m_size( 0 ), m_data( 0 )
-	{ init( length_ ); }
+    explicit sc_bv_base( int length_ = sc_length_param().len() );
 
     explicit sc_bv_base( bool a,
-			 int length_ = sc_length_param().len() )
-	: m_len( 0 ), m_size( 0 ), m_data( 0 )
-	{ init( length_, a ); }
+			 int length_ = sc_length_param().len() );
 
     sc_bv_base( const char* a );
 
@@ -135,9 +131,7 @@ public:
 
     // destructor
 
-    virtual ~sc_bv_base()
-	{ delete [] m_data; }
-
+    virtual ~sc_bv_base();
 
     // assignment operators
 
@@ -145,46 +139,33 @@ public:
     sc_bv_base& operator = ( const sc_proxy<X>& a )
 	{ assign_p_( *this, a ); return *this; }
 
-    sc_bv_base& operator = ( const sc_bv_base& a )
-	{ assign_p_( *this, a ); return *this; }
+    sc_bv_base& operator = ( const sc_bv_base& a );
 
     sc_bv_base& operator = ( const char* a );
 
-    sc_bv_base& operator = ( const bool* a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const bool* a );
 
-    sc_bv_base& operator = ( const sc_logic* a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const sc_logic* a );
 
-    sc_bv_base& operator = ( const sc_unsigned& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const sc_unsigned& a );
 
-    sc_bv_base& operator = ( const sc_signed& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const sc_signed& a );
 
-    sc_bv_base& operator = ( const sc_uint_base& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const sc_uint_base& a );
 
-    sc_bv_base& operator = ( const sc_int_base& a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( const sc_int_base& a );
 
-    sc_bv_base& operator = ( unsigned long a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( unsigned long a );
 
-    sc_bv_base& operator = ( long a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( long a );
 
-    sc_bv_base& operator = ( unsigned int a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( unsigned int a );
 
-    sc_bv_base& operator = ( int a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( int a );
 
-    sc_bv_base& operator = ( uint64 a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( uint64 a );
 
-    sc_bv_base& operator = ( int64 a )
-	{ base_type::assign_( a ); return *this; }
+    sc_bv_base& operator = ( int64 a );
 
 
 #if 0
@@ -227,23 +208,18 @@ public:
 
     // common methods
 
-    int length() const
-	{ return m_len; }
+    int length() const;
 
-    int size() const
-	{ return m_size; }
+    int size() const;
 
     sc_logic_value_t get_bit( int i ) const;
     void set_bit( int i, sc_logic_value_t value );
 
-    sc_digit get_word( int i ) const
-	{ return m_data[i]; }
+    sc_digit get_word( int i ) const;
 
-    void set_word( int i, sc_digit w )
-	{ m_data[i] = w; }
+    void set_word( int i, sc_digit w );
 
-    sc_digit get_cword( int /*i*/ ) const
-	{ return SC_DIGIT_ZERO; }
+    sc_digit get_cword( int /*i*/ ) const;
 
     void set_cword( int i, sc_digit w );
 
@@ -252,8 +228,7 @@ public:
 
     // other methods
 
-    bool is_01() const
-	{ return true; }
+    bool is_01() const;
 
 protected:
 
@@ -289,49 +264,6 @@ rrotate( const sc_bv_base& x, int n )
 }
 
 #endif
-
-
-// common methods
-
-inline
-sc_logic_value_t
-sc_bv_base::get_bit( int i ) const
-{
-    int wi = i / SC_DIGIT_SIZE;
-    int bi = i % SC_DIGIT_SIZE;
-    return sc_logic_value_t( (m_data[wi] >> bi) & SC_DIGIT_ONE );
-}
-
-inline
-void
-sc_bv_base::set_bit( int i, sc_logic_value_t value )
-{
-    int wi = i / SC_DIGIT_SIZE;
-    int bi = i % SC_DIGIT_SIZE;
-    sc_digit mask = SC_DIGIT_ONE << bi;
-    m_data[wi] |= mask; // set bit to 1
-    m_data[wi] &= value << bi | ~mask;
-}
-
-
-inline
-void
-sc_bv_base::set_cword( int /*i*/, sc_digit w )
-{
-    if( w ) {
-	SC_REPORT_WARNING( sc_core::SC_ID_SC_BV_CANNOT_CONTAIN_X_AND_Z_, 0 );
-    }
-}
-
-
-inline
-void
-sc_bv_base::clean_tail()
-{
-    int wi = m_size - 1;
-    int bi = m_len % SC_DIGIT_SIZE;
-	if ( bi != 0 ) m_data[wi] &= ~SC_DIGIT_ZERO >> (SC_DIGIT_SIZE - bi);
-}
 
 } // namespace sc_dt
 

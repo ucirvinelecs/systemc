@@ -34,6 +34,8 @@
 #include "sysc/kernel/sc_object.h"
 #include "sysc/communication/sc_semaphore_if.h"
 
+#include "sysc/communication/sc_prim_channel.h" // 02/24/2015 GL: include the struct chnl_scoped_lock
+
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -66,19 +68,15 @@ public:
     virtual int post();
 
     // get the value of the semaphore
-    virtual int get_value() const
-	{ return m_value; }
+    virtual int get_value() const;
 
-    virtual const char* kind() const
-        { return "sc_semaphore"; }
+    virtual const char* kind() const;
 
 protected:
 
     // support methods
 
-    bool in_use() const
-	{ return ( m_value <= 0 ); }
-
+    bool in_use() const;
 
     // error reporting
     void report_error( const char* id, const char* add_msg = 0 ) const;
@@ -87,6 +85,8 @@ protected:
 
     sc_event m_free;        // event to block on when m_value is negative
     int      m_value;       // current value of the semaphore
+
+    mutable CHNL_MTX_TYPE_ m_mutex; // 02/10/2015 GL: add a lock to protect concurrent communication through sc_semaphore
 
 private:
 

@@ -51,8 +51,21 @@ static bool use_default_new = false;
 #include <stdlib.h> // duplicate (c)stdlib.h headers for Solaris
 #include <cstdlib>
 #include "sysc/utils/sc_mempool.h"
+//---------------------------------------------------------------Farah is working here 
 
-namespace sc_core {
+    static void* sc_core::sc_mpobject::operator new( std::size_t sz )
+	{ return sc_mempool::allocate( sz ); }
+
+    static void sc_core::sc_mpobject::operator delete( void* p, std::size_t sz )
+	{ sc_mempool::release( p, sz ); }
+
+    static void* sc_core::sc_mpobject::operator new[]( std::size_t sz )
+	{ return sc_mempool::allocate( sz ); }
+
+    static void sc_core::sc_mpobject::operator delete[]( void* p, std::size_t sz )
+	{ sc_mempool::release( p, sz ); }
+//------------------------------------------------------------Farah is done working here
+  namespace sc_core {
 
 //  An allocator is one that handles a particular size.  It keeps a
 //  <free_list> from which a cell may be allocated quickly if there

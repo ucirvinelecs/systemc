@@ -49,22 +49,22 @@ class sc_user
 {
     /*EMPTY*/
 public:
-    sc_user() {}
-    sc_user( const sc_user& ) {}
+    sc_user();
+    sc_user( const sc_user& );
 };
 
 class sc_halt
 {
 public:
-    sc_halt() {}
-    sc_halt( const sc_halt& ) {}
+    sc_halt();
+    sc_halt( const sc_halt& );
 };
 
 class sc_kill
 {
 public:
-    sc_kill() {}
-    sc_kill( const sc_kill& ) {}
+    sc_kill();
+    sc_kill( const sc_kill& );
 };
 
 class sc_unwind_exception : public std::exception
@@ -74,9 +74,10 @@ class sc_unwind_exception : public std::exception
     friend class sc_method_process;
     friend class sc_thread_process;
     friend void sc_thread_cor_fn( void* arg );
+    friend void sc_method_cor_fn( void* arg );
 
   public:
-    virtual bool is_reset() const { return m_is_reset; }
+    virtual bool is_reset() const;
     virtual const char* what() const throw();
 
   public:
@@ -100,15 +101,6 @@ class sc_unwind_exception : public std::exception
     const   bool          m_is_reset; // true if this is an unwind of a reset
 
 };
-
-inline
-sc_unwind_exception::sc_unwind_exception( const sc_unwind_exception& that )
-  : std::exception( that )
-  , m_proc_p( that.m_proc_p )
-  , m_is_reset( that.m_is_reset )
-{
-    that.m_proc_p = 0; // move to new instance
-}
 
 //------------------------------------------------------------------------------
 // global exception handling

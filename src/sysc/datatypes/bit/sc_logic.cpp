@@ -48,8 +48,143 @@
 
 #include "sysc/datatypes/bit/sc_bit_ids.h"
 #include "sysc/datatypes/bit/sc_logic.h"
+//-------------------------------------------------------Farah is working here 
+sc_dt::sc_logic_value_t sc_dt::sc_logic::to_value( sc_logic_value_t v )
+	{
+	    if( v < Log_0 || v > Log_X ) {
+		invalid_value( v );
+	    }
+	    return v;
+	}
+
+sc_dt::sc_logic_value_t sc_dt::sc_logic::to_value( bool b )
+	{ return ( b ? Log_1 : Log_0 ); }
+
+    sc_dt::sc_logic_value_t sc_dt::sc_logic::to_value( char c )
+	{
+	    sc_logic_value_t v;
+	    unsigned int index = (int)c;
+	    if ( index > 127 )
+	    {
+	        invalid_value(c);
+		v = Log_X;
+	    }
+	    else
+	    {
+		v = char_to_logic[index];
+		if( v < Log_0 || v > Log_X ) {
+		    invalid_value( c );
+		}
+	    }
+	    return v;
+	}
+
+sc_dt::sc_logic_value_t sc_dt::sc_logic::to_value( int i )
+	{
+	    if( i < 0 || i > 3 ) {
+		invalid_value( i );
+	    }
+	    return sc_logic_value_t( i );
+	}
 
 
+sc_dt::sc_logic::sc_logic()
+	: m_val( Log_X )
+	{}
+
+sc_dt::sc_logic::sc_logic( const sc_logic& a )
+	: m_val( a.m_val )
+	{}
+
+sc_dt::sc_logic::sc_logic( sc_logic_value_t v )
+	: m_val( to_value( v ) )
+	{}
+
+sc_dt::sc_logic::sc_logic( bool a )
+	: m_val( to_value( a ) )
+	{}
+
+sc_dt::sc_logic::sc_logic( char a )
+	: m_val( to_value( a ) )
+	{}
+
+sc_dt::sc_logic::sc_logic( int a )
+	: m_val( to_value( a ) )
+	{}
+
+sc_dt::sc_logic::sc_logic( const sc_bit& a )
+	: m_val( to_value( a.to_bool() ) )
+	{}
+
+sc_dt::sc_logic::~sc_logic()
+	{}
+
+const sc_dt::sc_logic sc_dt::sc_logic::operator ~ () const
+	{ return sc_logic( not_table[m_val] ); }
+
+sc_dt::sc_logic& sc_dt::sc_logic::b_not()
+	{ m_val = not_table[m_val]; return *this; }
+
+sc_dt::sc_logic_value_t sc_dt::sc_logic::value() const
+	{ return m_val; }
+
+bool sc_dt::sc_logic::is_01() const
+	{ return ( (int) m_val == Log_0 || (int) m_val == Log_1 ); }
+
+bool sc_dt::sc_logic::to_bool() const
+	{ if( ! is_01() ) { invalid_01(); } return ( (int) m_val != Log_0 ); }
+
+char sc_dt::sc_logic::to_char() const
+	{ return logic_to_char[m_val]; }
+
+void sc_dt::sc_logic::print( ::std::ostream& os ) const
+	{ os << to_char(); }
+
+void* sc_dt::sc_logic::operator new( std::size_t, void* p ) // placement new
+	{ return p; }
+
+void* sc_dt::sc_logic::operator new( std::size_t sz )
+	{ return sc_core::sc_mempool::allocate( sz ); }
+
+void sc_dt::sc_logic::operator delete( void* p, std::size_t sz )
+	{ sc_core::sc_mempool::release( p, sz ); }
+
+void* sc_dt::sc_logic::operator new [] ( std::size_t sz )
+	{ return sc_core::sc_mempool::allocate( sz ); }
+
+void sc_dt::sc_logic::operator delete [] ( void* p, std::size_t sz )
+	{ sc_core::sc_mempool::release( p, sz ); }
+
+const sc_dt::sc_logic sc_dt::operator & ( const sc_logic& a, const sc_logic& b )
+  { return sc_logic( sc_logic::and_table[a.m_val][b.m_val] ); }
+
+const sc_dt::sc_logic sc_dt::operator | ( const sc_logic& a, const sc_logic& b )
+  { return sc_logic( sc_logic::or_table[a.m_val][b.m_val] ); }
+
+const sc_dt::sc_logic sc_dt::operator ^ ( const sc_logic& a, const sc_logic& b )
+  { return sc_logic( sc_logic::xor_table[a.m_val][b.m_val] ); }
+
+bool sc_dt::operator == ( const sc_logic& a, const sc_logic& b )
+  { return ( (int) a.m_val == b.m_val ); }
+
+bool sc_dt::operator != ( const sc_logic& a, const sc_logic& b )
+   { return ( (int) a.m_val != b.m_val ); }
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_logic& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_logic& a )
+{
+    a.scan( is );
+    return is;
+}
+
+//---------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

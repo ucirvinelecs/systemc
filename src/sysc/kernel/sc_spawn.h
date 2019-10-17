@@ -113,21 +113,27 @@ inline sc_process_handle sc_spawn(
     spawn_p = new sc_spawn_object<T>(object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object<T>,semantics), 
             spawn_p, opt_p 
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object<T>,semantics), 
             spawn_p, opt_p 
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 
@@ -216,21 +222,27 @@ inline sc_process_handle sc_spawn(
     spawn_p = new sc_spawn_object_v<T>(r_p, object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object_v<T>,semantics), 
             spawn_p, opt_p 
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             SC_MAKE_FUNC_PTR(sc_spawn_object_v<T>,semantics), 
             spawn_p, opt_p 
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 
@@ -269,23 +281,29 @@ inline sc_process_handle sc_spawn(
     spawn_p = new sc_spawn_object_v<T,R>(r_p, object);
     if ( !opt_p || !opt_p->is_method() )
     {
-            sc_process_handle thread_handle = context_p->create_thread_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle thread_handle = context_p->create_thread_process( 
             name_p, true,
             static_cast<sc_core::SC_ENTRY_FUNC>(
                 &sc_spawn_object_v<T,R>::semantics),
             spawn_p, opt_p 
         );
         return thread_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     else
     {
-            sc_process_handle method_handle = context_p->create_method_process( 
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+        // 05/27/2015 GL: we may or may not have acquired the kernel lock (static vs. dynamic spawn)
+        sc_process_handle method_handle = context_p->create_method_process( 
             name_p, true,
             static_cast<sc_core::SC_ENTRY_FUNC>(
                 &sc_spawn_object_v<T,R>::semantics), 
             spawn_p, opt_p 
         );
         return method_handle;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 }
 

@@ -64,19 +64,27 @@ class sc_cor_pthread : public sc_cor
     // destructor
     virtual ~sc_cor_pthread();
 
-	// module method invocator (starts thread execution)
-	static void* invoke_module_method( void* context_p );
+    // module method invocator (starts thread execution)
+    static void* invoke_module_method( void* context_p );
+
+    // increment, decrement and return the lock counter
+    virtual void increment_counter();
+
+    virtual void decrement_counter();
+
+    virtual unsigned int get_counter();
 
   public:
-	static sc_cor_pthread* m_active_cor_p;	   // Active coroutine.
+    static sc_cor_pthread* m_active_cor_p;	   // Active coroutine.
 
   public:
-	sc_cor_fn*          m_cor_fn;		// Core function.
-	void*               m_cor_fn_arg;	// Core function argument.
-	pthread_mutex_t     m_mutex;        // Mutex to suspend thread on.
+    sc_cor_fn*          m_cor_fn;	// Core function.
+    void*               m_cor_fn_arg;	// Core function argument.
+    pthread_mutex_t     m_mutex;        // Mutex to suspend thread on. 10/21/2014 GL: now we use central mutex to suspend thread
     sc_cor_pkg_pthread* m_pkg_p;        // the creating coroutine package
-	pthread_cond_t      m_pt_condition; // Condition waiting for.
-	pthread_t           m_thread;       // Our pthread storage.
+    pthread_cond_t      m_pt_condition; // Condition waiting for.
+    pthread_t           m_thread;       // Our pthread storage.
+    unsigned int        m_counter;      // the counter tracking the lock attempts of the kernel lock
 
 private:
 
@@ -109,11 +117,43 @@ public:
     // yield to the next coroutine
     virtual void yield( sc_cor* next_cor );
 
+    // suspend the current coroutine
+    virtual void wait( sc_cor* cur_cor );
+
+    // resume the next coroutine
+    virtual void go( sc_cor* next_cor );
+
     // abort the current coroutine (and resume the next coroutine)
     virtual void abort( sc_cor* next_cor );
 
+    // join another coroutine
+    virtual void join( sc_cor* join_cor );
+
     // get the main coroutine
     virtual sc_cor* get_main();
+
+    // acquire the scheduling mutex
+    virtual void acquire_sched_mutex();
+
+    // release the scheduling mutex
+    virtual void release_sched_mutex();
+
+    // set the thread specific data value
+    virtual void set_thread_specific( void* process_b );
+
+    // get the thread specific data value
+    virtual void* get_thread_specific();
+
+    // get the state of the kernel lock
+    virtual bool is_locked();
+
+    virtual bool is_unlocked();
+
+    virtual bool is_lock_owner();
+
+    virtual bool is_not_owner();
+
+    virtual bool is_locked_and_owner();
 
 private:
 

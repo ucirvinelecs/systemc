@@ -115,9 +115,9 @@ class sc_fxval_observer
 {
 
 protected:
-    
-    sc_fxval_observer() {}
-    virtual ~sc_fxval_observer() {}
+
+    sc_fxval_observer();
+    virtual ~sc_fxval_observer();
 
 public:
 
@@ -143,8 +143,8 @@ class sc_fxval_fast_observer
 
 protected:
     
-    sc_fxval_fast_observer() {}
-    virtual ~sc_fxval_fast_observer() {}
+    sc_fxval_fast_observer();
+    virtual ~sc_fxval_fast_observer();
 
 public:
 
@@ -156,64 +156,6 @@ public:
     static sc_fxval_fast_observer* (*default_observer) ();
 
 };
-
-
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fxval_observer
-//
-//  Abstract base class for fixed-point value type observers;
-//  arbitrary precision.
-// ----------------------------------------------------------------------------
-
-inline
-void
-sc_fxval_observer::construct( const sc_fxval& )
-{}
-
-inline
-void
-sc_fxval_observer::destruct( const sc_fxval& )
-{}
-
-inline
-void
-sc_fxval_observer::read( const sc_fxval& )
-{}
-
-inline
-void
-sc_fxval_observer::write( const sc_fxval& )
-{}
-
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fxval_fast_observer
-//
-//  Abstract base class for fixed-point value type observers;
-//  limited precision.
-// ----------------------------------------------------------------------------
-
-inline
-void
-sc_fxval_fast_observer::construct( const sc_fxval_fast& )
-{}
-
-inline
-void
-sc_fxval_fast_observer::destruct( const sc_fxval_fast& )
-{}
-
-inline
-void
-sc_fxval_fast_observer::read( const sc_fxval_fast& )
-{}
-
-inline
-void
-sc_fxval_fast_observer::write( const sc_fxval_fast& )
-{}
 
 } // namespace sc_dt
 

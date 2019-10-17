@@ -49,8 +49,78 @@
 //
 
 #include "sysc/datatypes/int/sc_length_param.h"
+//----------------------------------------------Farah is working here
+
+sc_dt::sc_length_param::sc_length_param() : m_len()
+{
+    *this = sc_length_context::default_value();
+}
 
 
+sc_dt::sc_length_param::sc_length_param( int len_ ) : m_len(len_)
+{
+    SC_CHECK_WL_( len_ );
+}
+
+
+sc_dt::sc_length_param::sc_length_param( const sc_length_param& a )
+    : m_len( a.m_len )
+{}
+
+
+sc_dt::sc_length_param::sc_length_param( sc_without_context )
+    : m_len( SC_DEFAULT_WL_ )
+{}
+
+
+sc_dt::sc_length_param&
+sc_dt::sc_length_param::operator = ( const sc_length_param& a )
+{
+    if( &a != this )
+    {
+	m_len = a.m_len;
+    }
+    return *this;
+}
+
+bool
+sc_dt::operator == ( const sc_length_param& a, const sc_length_param& b )
+{
+    return ( a.m_len == b.m_len );
+}
+
+
+bool
+sc_dt::operator != ( const sc_length_param& a, const sc_length_param& b )
+{
+    return ( a.m_len != b.m_len );
+}
+
+
+
+int
+sc_dt::sc_length_param::len() const
+{
+    return m_len;
+}
+
+
+void
+sc_dt::sc_length_param::len( int len_ )
+{
+    SC_CHECK_WL_( len_ );
+    m_len = len_;
+}
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_length_param& a )
+{
+    a.print( os );
+    return os;
+}
+
+//-----------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

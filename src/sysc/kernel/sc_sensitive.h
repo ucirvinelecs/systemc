@@ -61,6 +61,7 @@ template <class T> class sc_signal_in_if;
 class sc_sensitive
 {
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
 
 public:
 
@@ -139,6 +140,7 @@ private:
 class sc_sensitive_pos
 {
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
 
 public:
 
@@ -205,6 +207,7 @@ private:
 class sc_sensitive_neg
 {
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
 
 public:
 

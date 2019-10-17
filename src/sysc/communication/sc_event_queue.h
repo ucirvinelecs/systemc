@@ -86,7 +86,7 @@ class sc_event_queue:
     ~sc_event_queue();
 
     // API of sc_object
-    inline virtual const char* kind() const { return "sc_event_queue"; }
+     virtual const char* kind() const;
 
     //
     // API of sc_event_queue_if
@@ -129,17 +129,6 @@ class sc_event_queue:
     unsigned m_pending_delta;
 };
 
-inline
-void sc_event_queue::notify (double when, sc_time_unit base )
-{
-	notify( sc_time(when,base) );
-}
-    
-inline
-const sc_event& sc_event_queue::default_event() const
-{ 
-  return m_e; 
-}
 
 
 //

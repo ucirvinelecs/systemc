@@ -146,208 +146,41 @@ private:
 
 // print operator
 
-inline ::std::ostream& operator << ( ::std::ostream&, const sc_time& );
+::std::ostream& operator << ( ::std::ostream&, const sc_time& );
 
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-// constructors
-
-inline
-sc_time::sc_time()
-: m_value( 0 )
-{}
-
-inline
-sc_time::sc_time( const sc_time& t )
-: m_value( t.m_value )
-{}
-
-
-// assignment operator
-
-inline
-sc_time&
-sc_time::operator = ( const sc_time& t )
-{
-    m_value = t.m_value;
-    return *this;
-}
-
-
 // conversion functions
 
-inline
-sc_time::value_type
-sc_time::value() const  // relative to the time resolution
-{
-    return m_value;
-}
 
 
-inline
+
+const sc_time
+operator + ( const sc_time& t1, const sc_time& t2 );
+
+
+const sc_time
+operator - ( const sc_time& t1, const sc_time& t2 );
+
+const sc_time
+operator * ( const sc_time& t, double d );
+
+const sc_time
+operator * ( double d, const sc_time& t );
+
+const sc_time
+operator / ( const sc_time& t, double d );
+
 double
-sc_time::to_double() const  // relative to the time resolution
-{
-    return sc_dt::uint64_to_double( m_value );
-}
+operator / ( const sc_time& t1, const sc_time& t2 );
 
-
-// relational operators
-
-inline
-bool
-sc_time::operator == ( const sc_time& t ) const
-{
-    return ( m_value == t.m_value );
-}
-
-inline
-bool
-sc_time::operator != ( const sc_time& t ) const
-{
-    return ( m_value != t.m_value );
-}
-
-inline
-bool
-sc_time::operator < ( const sc_time& t ) const
-{
-    return ( m_value < t.m_value );
-}
-
-inline
-bool
-sc_time::operator <= ( const sc_time& t ) const
-{
-    return ( m_value <= t.m_value );
-}
-
-inline
-bool
-sc_time::operator > ( const sc_time& t ) const
-{
-    return ( m_value > t.m_value );
-}
-
-inline
-bool
-sc_time::operator >= ( const sc_time& t ) const
-{
-    return ( m_value >= t.m_value );
-}
-
-
-// arithmetic operators
-
-inline
-sc_time&
-sc_time::operator += ( const sc_time& t )
-{
-    m_value += t.m_value;
-    return *this;
-}
-
-inline
-sc_time&
-sc_time::operator -= ( const sc_time& t )
-{
-    m_value -= t.m_value;
-    return *this;
-}
-
-
-inline
 const sc_time
-operator + ( const sc_time& t1, const sc_time& t2 )
-{
-    return sc_time( t1 ) += t2;
-}
-
-inline
-const sc_time
-operator - ( const sc_time& t1, const sc_time& t2 )
-{
-    return sc_time( t1 ) -= t2;
-}
-
-
-inline
-sc_time&
-sc_time::operator *= ( double d )
-{
-    // linux bug workaround; don't change next two lines
-    volatile double tmp = sc_dt::uint64_to_double( m_value ) * d + 0.5;
-    m_value = SCAST<sc_dt::int64>( tmp );
-    return *this;
-}
-
-inline
-sc_time&
-sc_time::operator /= ( double d )
-{
-    // linux bug workaround; don't change next two lines
-    volatile double tmp = sc_dt::uint64_to_double( m_value ) / d + 0.5;
-    m_value = SCAST<sc_dt::int64>( tmp );
-    return *this;
-}
-
-inline
-sc_time&
-sc_time::operator %= ( const sc_time& t )
-{
-    m_value %= t.m_value;
-    return *this;
-}
-
-inline
-const sc_time
-operator * ( const sc_time& t, double d )
-{
-    sc_time tmp( t );
-    return tmp *= d;
-}
-
-inline
-const sc_time
-operator * ( double d, const sc_time& t )
-{
-    sc_time tmp( t );
-    return tmp *= d;
-}
-
-inline
-const sc_time
-operator / ( const sc_time& t, double d )
-{
-    sc_time tmp( t );
-    return tmp /= d;
-}
-
-inline
-double
-operator / ( const sc_time& t1, const sc_time& t2 )
-{
-    return ( t1.to_double() / t2.to_double() );
-}
-
-inline
-const sc_time
-operator % ( const sc_time& t1, const sc_time& t2 )
-{
-    sc_time tmp(t1);
-    return tmp %= t2;
-}
+operator % ( const sc_time& t1, const sc_time& t2 );
 
 // print operator
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_time& t )
-{
-    t.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_time& t );
 
 
 // ----------------------------------------------------------------------------

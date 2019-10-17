@@ -107,64 +107,14 @@ typedef sc_context<sc_fxcast_switch> sc_fxcast_context;
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
-sc_fxcast_switch::sc_fxcast_switch() 
-: m_sw()
-{
-    *this = sc_fxcast_context::default_value();
-}
-
-inline
-sc_fxcast_switch::sc_fxcast_switch( sc_switch sw_ )
-: m_sw( sw_ )
-{}
-
-inline
-sc_fxcast_switch::sc_fxcast_switch( const sc_fxcast_switch& a )
-: m_sw( a.m_sw )
-{}
-
-inline
-sc_fxcast_switch::sc_fxcast_switch( sc_without_context )
-: m_sw( SC_DEFAULT_CAST_SWITCH_ )
-{}
-
-
-inline
-sc_fxcast_switch&
-sc_fxcast_switch::operator = ( const sc_fxcast_switch& a )
-{
-    if( &a != this )
-    {
-        m_sw = a.m_sw;
-    }
-    return *this;
-}
-
-
-inline
 bool
-operator == ( const sc_fxcast_switch& a, const sc_fxcast_switch& b )
-{
-    return ( a.m_sw == b.m_sw );
-}
+operator == ( const sc_fxcast_switch& a, const sc_fxcast_switch& b );
 
-
-inline
 bool
-operator != ( const sc_fxcast_switch& a, const sc_fxcast_switch& b )
-{
-    return ( a.m_sw != b.m_sw );
-}
+operator != ( const sc_fxcast_switch& a, const sc_fxcast_switch& b );
 
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxcast_switch& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxcast_switch& a );
 
 } // namespace sc_dt
 

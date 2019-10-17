@@ -61,51 +61,29 @@ public:
 
     // constructors
 
-    sc_in_resolved()
-	: base_type()
-	{}
+    sc_in_resolved();
 
-    explicit sc_in_resolved( const char* name_ )
-	: base_type( name_ )
-	{}
+    explicit sc_in_resolved( const char* name_ );
 
-    explicit sc_in_resolved( const in_if_type& interface_ )
-	: base_type( interface_ )
-	{}
+    explicit sc_in_resolved( const in_if_type& interface_ );
 
-    sc_in_resolved( const char* name_, const in_if_type& interface_ )
-	: base_type( name_, interface_ )
-	{}
+    sc_in_resolved( const char* name_, const in_if_type& interface_ );
 
-    explicit sc_in_resolved( in_port_type& parent_ )
-	: base_type( parent_ )
-	{}
+    explicit sc_in_resolved( in_port_type& parent_ );
 
-    sc_in_resolved( const char* name_, in_port_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
+    sc_in_resolved( const char* name_, in_port_type& parent_ );
 
-    explicit sc_in_resolved( inout_port_type& parent_ )
-	: base_type( parent_ )
-	{}
+    explicit sc_in_resolved( inout_port_type& parent_ );
 
-    sc_in_resolved( const char* name_, inout_port_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
+    sc_in_resolved( const char* name_, inout_port_type& parent_ );
 
-    sc_in_resolved( this_type& parent_ )
-	: base_type( parent_ )
-	{}
+    sc_in_resolved( this_type& parent_ );
 
-    sc_in_resolved( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
-
+    sc_in_resolved( const char* name_, this_type& parent_ );
 
     // destructor (does nothing)
 
-    virtual ~sc_in_resolved()
-	{}
+    virtual ~sc_in_resolved();
 
 
     // called when elaboration is done
@@ -114,8 +92,7 @@ public:
 
     virtual void end_of_elaboration();
 
-    virtual const char* kind() const
-        { return "sc_in_resolved"; }
+    virtual const char* kind() const;
 
 private:
 
@@ -152,61 +129,37 @@ public:
 
     // constructors
 
-    sc_inout_resolved()
-	: base_type()
-	{}
+    sc_inout_resolved();
 
-    explicit sc_inout_resolved( const char* name_ )
-	: base_type( name_ )
-	{}
+    explicit sc_inout_resolved( const char* name_ );
 
-    explicit sc_inout_resolved( inout_if_type& interface_ )
-	: base_type( interface_ )
-	{}
+    explicit sc_inout_resolved( inout_if_type& interface_ );
 
-    sc_inout_resolved( const char* name_, inout_if_type& interface_ )
-	: base_type( name_, interface_ )
-	{}
+    sc_inout_resolved( const char* name_, inout_if_type& interface_ );
 
-    explicit sc_inout_resolved( inout_port_type& parent_ )
-	: base_type( parent_ )
-	{}
+    explicit sc_inout_resolved( inout_port_type& parent_ );
 
-    sc_inout_resolved( const char* name_, inout_port_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
+    sc_inout_resolved( const char* name_, inout_port_type& parent_ );
 
-    sc_inout_resolved( this_type& parent_ )
-	: base_type( parent_ )
-	{}
+    sc_inout_resolved( this_type& parent_ );
 
-    sc_inout_resolved( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
-
+    sc_inout_resolved( const char* name_, this_type& parent_ );
 
     // destructor (does nothing)
 
-    virtual ~sc_inout_resolved()
-	{}
-
+    virtual ~sc_inout_resolved();
 
     // write the new value
 
-    this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    this_type& operator = ( const data_type& value_ );
 
-    this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    this_type& operator = ( const in_if_type& interface_ );
 
-    this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const in_port_type& port_ );
 
-    this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const inout_port_type& port_ );
 
-    this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const this_type& port_ );
 
 
     // called when elaboration is done
@@ -215,8 +168,7 @@ public:
 
     virtual void end_of_elaboration();
 
-    virtual const char* kind() const
-        { return "sc_inout_resolved"; }
+    virtual const char* kind() const;
 
 private:
 
@@ -256,64 +208,39 @@ public:
 
     // constructors
 
-    sc_out_resolved()
-	: base_type()
-	{}
+    sc_out_resolved();
 
-    explicit sc_out_resolved( const char* name_ )
-	: base_type( name_ )
-	{}
+    explicit sc_out_resolved( const char* name_ );
 
-    explicit sc_out_resolved( inout_if_type& interface_ )
-	: base_type( interface_ )
-	{}
+    explicit sc_out_resolved( inout_if_type& interface_ );
 
-    sc_out_resolved( const char* name_, inout_if_type& interface_ )
-	: base_type( name_, interface_ )
-	{}
+    sc_out_resolved( const char* name_, inout_if_type& interface_ );
 
-    explicit sc_out_resolved( inout_port_type& parent_ )
-	: base_type( parent_ )
-	{}
+    explicit sc_out_resolved( inout_port_type& parent_ );
 
-    sc_out_resolved( const char* name_, inout_port_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
+    sc_out_resolved( const char* name_, inout_port_type& parent_ );
 
-    sc_out_resolved( this_type& parent_ )
-	: base_type( parent_ )
-	{}
+    sc_out_resolved( this_type& parent_ );
 
-    sc_out_resolved( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ )
-	{}
-
+    sc_out_resolved( const char* name_, this_type& parent_ );
 
     // destructor (does nothing)
 
-    virtual ~sc_out_resolved()
-	{}
-
+    virtual ~sc_out_resolved();
 
     // write the new value
 
-    this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    this_type& operator = ( const data_type& value_ );
 
-    this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    this_type& operator = ( const in_if_type& interface_ );
 
-    this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const in_port_type& port_ );
 
-    this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const inout_port_type& port_ );
 
-    this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const this_type& port_ );
 
-    virtual const char* kind() const
-        { return "sc_out_resolved"; }
+    virtual const char* kind() const;
 
 private:
 

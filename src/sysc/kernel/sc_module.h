@@ -83,19 +83,17 @@ class sc_module
     friend class sc_module_registry;
     friend class sc_object;
     friend class sc_port_registry;
-	friend class sc_process_b;
+  	friend class sc_process_b;
     friend class sc_simcontext;
 
 public:
 
-    sc_simcontext* sc_get_curr_simcontext()
-	{ return simcontext(); }
+    sc_simcontext* sc_get_curr_simcontext();
 
     // to generate unique names for objects in an MT-Safe way
     const char* gen_unique_name( const char* basename_, bool preserve_first );
 
-    virtual const char* kind() const
-        { return "sc_module"; }
+    virtual const char* kind() const;
 
 protected:
   
@@ -138,11 +136,9 @@ public:
     sc_module& operator << ( sc_interface& );
     sc_module& operator << ( sc_port_base& );
 
-    sc_module& operator , ( sc_interface& interface_ )
-        { return operator << ( interface_ ); }
+    sc_module& operator , ( sc_interface& interface_ );
 
-    sc_module& operator , ( sc_port_base& port_ )
-        { return operator << ( port_ ); }
+    sc_module& operator , ( sc_port_base& port_ );
 
     // operator() is declared at the end of the class.
 
@@ -216,79 +212,54 @@ protected:
 
     // static sensitivity for SC_METHODs
 
-    void next_trigger()
-	{ ::sc_core::next_trigger( simcontext() ); }
-
+    void next_trigger();
 
     // dynamic sensitivty for SC_METHODs
 
-    void next_trigger( const sc_event& e )
-        { ::sc_core::next_trigger( e, simcontext() ); }
+    void next_trigger( const sc_event& e );
 
-    void next_trigger( const sc_event_or_list& el )
-        { ::sc_core::next_trigger( el, simcontext() ); }
+    void next_trigger( const sc_event_or_list& el );
 
-    void next_trigger( const sc_event_and_list& el )
-        { ::sc_core::next_trigger( el, simcontext() ); }
+    void next_trigger( const sc_event_and_list& el );
 
-    void next_trigger( const sc_time& t )
-        { ::sc_core::next_trigger( t, simcontext() ); }
+    void next_trigger( const sc_time& t );
 
-    void next_trigger( double v, sc_time_unit tu )
-        { ::sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu );
 
-    void next_trigger( const sc_time& t, const sc_event& e )
-        { ::sc_core::next_trigger( t, e, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event& e );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event& e )
-        { ::sc_core::next_trigger( 
-		sc_time( v, tu, simcontext() ), e, simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu, const sc_event& e );
 
-    void next_trigger( const sc_time& t, const sc_event_or_list& el )
-        { ::sc_core::next_trigger( t, el, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event_or_list& el );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
-        { ::sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el );
 
-    void next_trigger( const sc_time& t, const sc_event_and_list& el )
-        { ::sc_core::next_trigger( t, el, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event_and_list& el );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
-        { ::sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el );
 
 
     // for SC_METHODs and SC_THREADs and SC_CTHREADs
 
-    bool timed_out()
-        { return ::sc_core::timed_out(); }
-
+    bool timed_out();
 
     // for SC_CTHREADs
 
-    void halt()
-        { ::sc_core::halt( simcontext() ); }
+    void halt();
 
     void wait( int n )
         { ::sc_core::wait( n, simcontext() ); }
 
-    void at_posedge( const sc_signal_in_if<bool>& s )
-	{ ::sc_core::at_posedge( s, simcontext() ); }
+    void at_posedge( const sc_signal_in_if<bool>& s );
 
-    void at_posedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
-	{ ::sc_core::at_posedge( s, simcontext() ); }
+    void at_posedge( const sc_signal_in_if<sc_dt::sc_logic>& s );
 
-    void at_negedge( const sc_signal_in_if<bool>& s )
-	{ ::sc_core::at_negedge( s, simcontext() ); }
+    void at_negedge( const sc_signal_in_if<bool>& s );
 
-    void at_negedge( const sc_signal_in_if<sc_dt::sc_logic>& s )
-	{ ::sc_core::at_negedge( s, simcontext() ); }
+    void at_negedge( const sc_signal_in_if<sc_dt::sc_logic>& s );
 
     // Catch uses of watching:
-    void watching( bool /* expr */ )
-        { SC_REPORT_ERROR(SC_ID_WATCHING_NOT_ALLOWED_,""); }
+    void watching( bool /* expr */ );
 
     // These are protected so that user derived classes can refer to them.
     sc_sensitive     sensitive;
@@ -296,9 +267,13 @@ protected:
     sc_sensitive_neg sensitive_neg;
 
     // Function to set the stack size of the current (c)thread process.
+    // 04/03/2015 GL: now it can set the stack size of the current (c)thread and method process.
     void set_stack_size( std::size_t );
 
     int append_port( sc_port_base* );
+
+    // 09/04/2015 GL: instance ID of this module
+    int m_instance_id;
 
 private:
     sc_module( const sc_module& );
@@ -314,7 +289,7 @@ private:
 
 public:
 
-    void defunct() { }
+    void defunct();
 
     // positional binding methods (cont'd)
 
@@ -396,6 +371,10 @@ extern sc_module* sc_module_dynalloc(sc_module*);
 #define SC_MODULE(user_module_name)                                           \
     struct user_module_name : ::sc_core::sc_module
 
+// 04/07/2015 GL: create a separate sc_channel class
+#define SC_CHANNEL(user_module_name)                                           \
+    struct user_module_name : ::sc_core::sc_channel
+
 #define SC_CTOR(user_module_name)                                             \
     typedef user_module_name SC_CURRENT_USER_MODULE;                          \
     user_module_name( ::sc_core::sc_module_name )
@@ -469,8 +448,54 @@ extern sc_module* sc_module_dynalloc(sc_module*);
 //  TYPEDEFS
 // ----------------------------------------------------------------------------
 
-typedef sc_module sc_channel;
+//typedef sc_module sc_channel; // 04/07/2015 GL: create a separate sc_channel class
 typedef sc_module sc_behavior;
+
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_channel
+//
+//  Base class for all hierarchical channels.
+//
+//  (04/07/2015 GL).
+// ----------------------------------------------------------------------------
+class sc_channel
+: public sc_module
+{
+    friend class sc_module_name;
+    friend class sc_module_registry;
+    friend class sc_object;
+    friend class sc_port_registry;
+    friend class sc_process_b;
+    friend class sc_simcontext;
+
+public:
+
+    virtual const char* kind() const
+        { return "sc_channel"; }
+
+protected:
+
+    // constructor
+    sc_channel();
+    sc_channel( const sc_module_name& nm ); /* for those used to old style */
+
+    /* DEPRECATED */ sc_channel( const char* nm ); 
+    /* DEPRECATED */ sc_channel( const std::string& nm );
+
+public:
+
+    // destructor
+    virtual ~sc_channel();
+
+private:
+    sc_channel( const sc_channel& );
+    const sc_channel& operator = ( const sc_channel& );
+
+protected:
+
+    mutable CHNL_MTX_TYPE_ m_mutex; // 04/08/2015 GL: add a mutex to protect concurrent communication
+};
 
 } // namespace sc_core
 

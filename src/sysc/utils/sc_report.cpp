@@ -41,7 +41,35 @@
 #include "sysc/utils/sc_report.h"
 #include "sysc/utils/sc_utils_ids.h"
 #include <algorithm> // std::swap
+//-----------------------------------------------------Farah is working here
+    const char * sc_core::sc_report::get_msg() const
+	{ return msg; }
 
+    sc_core::sc_severity sc_core::sc_report::get_severity() const
+	{ return severity; }
+
+    const char * sc_core::sc_report::get_file_name() const
+	{ return file; }
+
+    int sc_core::sc_report::get_line_number() const
+	{ return line; }
+
+    const sc_core::sc_time & sc_core::sc_report::get_time() const
+	{ return *timestamp; }
+
+    int sc_core::sc_report::get_verbosity() const { return m_verbosity_level; }
+
+    bool sc_core::sc_report::valid () const
+        {
+	    return process != 0;
+	}
+
+    const char* sc_core::sc_report::what() const throw()
+        {
+	    return m_what;
+	}
+
+//----------------------------------------------------Farah is done working here
 namespace sc_core {
 
 

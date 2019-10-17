@@ -36,7 +36,16 @@
 #include "sysc/communication/sc_event_finder.h"
 #include "sysc/communication/sc_port.h"
 #include "sysc/communication/sc_signal_ifs.h"
+//---------------------------------------------Farah is working here 
 
+const char* sc_core::sc_port_base::kind() const
+    { return "sc_port_base"; }
+
+
+int sc_core::sc_port_registry::size() const
+    { return m_port_vec.size(); }
+
+//---------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

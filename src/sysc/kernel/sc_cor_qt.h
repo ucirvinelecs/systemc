@@ -53,13 +53,10 @@ class sc_cor_qt
 public:
 
     // constructor
-    sc_cor_qt()
-	: m_stack_size( 0 ), m_stack( 0 ), m_sp( 0 ), m_pkg( 0 )
-	{}
+    sc_cor_qt();
 
     // destructor
-    virtual ~sc_cor_qt()
-        { delete[] (char*) m_stack; }
+    virtual ~sc_cor_qt();
 
     // switch stack protection on/off
     virtual void stack_protect( bool enable );

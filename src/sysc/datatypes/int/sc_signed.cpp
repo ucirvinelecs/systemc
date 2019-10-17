@@ -89,8 +89,614 @@
 #include "sysc/datatypes/misc/sc_concatref.h"
 #include "sysc/datatypes/fx/sc_fix.h"
 #include "sysc/datatypes/fx/scfx_other_defs.h"
+//----------------------------------------------------Farah is working here
+sc_dt::sc_signed_bitref_r::sc_signed_bitref_r() : sc_value_base(), m_index(0), m_obj_p(0)
+  {}
+
+void sc_dt::sc_signed_bitref_r::initialize( const sc_signed* obj_p, int index_ )
+        {
+	    m_index = index_;
+	    m_obj_p = ( CCAST<sc_signed*>( obj_p ) );
+	}
+
+sc_dt::sc_signed_bitref_r::~sc_signed_bitref_r()
+	{}
+
+// copy constructor
+
+sc_dt::sc_signed_bitref_r::sc_signed_bitref_r( const sc_signed_bitref_r& a )
+	: sc_value_base(a), m_index( a.m_index ), m_obj_p( a.m_obj_p )
+	{}
+
+// capacity
+
+int sc_dt::sc_signed_bitref_r::length() const
+	{ return 1; }
+
+// explicit conversions
+
+bool sc_dt::sc_signed_bitref_r::value() const
+	{ return operator uint64(); }
+
+bool sc_dt::sc_signed_bitref_r::to_bool() const
+	{ return operator uint64(); }
+
+// concatenation support
+
+int sc_dt::sc_signed_bitref_r::concat_length(bool* xz_present_p) const
+        { if ( xz_present_p ) *xz_present_p = false; return 1; }
+
+sc_dt::uint64 sc_dt::sc_signed_bitref_r::concat_get_uint64() const
+	{ return (uint64)operator uint64(); }
+
+bool sc_dt::sc_signed_bitref_r::concat_get_ctrl( sc_digit* dst_p, int low_i ) const
+	{
+	    int  bit_mask = 1 << (low_i % BITS_PER_DIGIT);
+	    int  word_i = low_i / BITS_PER_DIGIT;
+	    dst_p[word_i] &= ~bit_mask;
+	    return false;
+        }
+bool sc_dt::sc_signed_bitref_r::concat_get_data( sc_digit* dst_p, int low_i ) const
+	{
+	    int  bit_mask = 1 << (low_i % BITS_PER_DIGIT);
+	    bool result;	// True if non-zero.
+	    int  word_i = low_i / BITS_PER_DIGIT;
+	    if ( operator uint64() )
+	    {
+		dst_p[word_i] |= bit_mask;
+		result = true;
+	    }
+	    else
+	    {
+		dst_p[word_i] &= ~bit_mask;
+		result = false;
+	    }
+	    return result;
+        }
+
+// other methods
+
+void sc_dt::sc_signed_bitref_r::print( ::std::ostream& os ) const
+	{ os << to_bool(); }
+
+sc_dt::sc_signed_bitref::sc_signed_bitref() : sc_signed_bitref_r()
+	{}
+
+sc_dt::sc_signed_bitref::sc_signed_bitref( const sc_signed_bitref& a )
+	: sc_signed_bitref_r( a )
+	{}
 
 
+sc_dt::sc_signed_subref_r::sc_signed_subref_r() : sc_value_base(), m_left(0), m_obj_p(0), m_right(0)
+	{}
+
+void sc_dt::sc_signed_subref_r::initialize( const sc_signed* obj_p, int left_, int right_ )
+        {
+	    m_obj_p = ( CCAST<sc_signed*>( obj_p ));
+	    m_left = left_;
+	    m_right = right_;
+	}
+
+sc_dt::sc_signed_subref_r::~sc_signed_subref_r()
+	{}
+
+sc_dt::sc_signed_subref_r::sc_signed_subref_r( const sc_signed_subref_r& a )
+	: sc_value_base(a), m_left( a.m_left ), m_obj_p( a.m_obj_p ), 
+	  m_right( a.m_right )
+	{}
+
+int sc_dt::sc_signed_subref_r::length() const
+        { return m_left >= m_right ? (m_left-m_right+1) : (m_right-m_left+1 ); }
+
+int sc_dt::sc_signed_subref_r::concat_length(bool* xz_present_p) const
+        {
+	    if ( xz_present_p ) *xz_present_p = false;
+	    return m_left - m_right + 1;
+        }
+
+void sc_dt::sc_signed_subref_r::print( ::std::ostream& os ) const
+	{ os << to_string(sc_io_base(os,SC_DEC),sc_io_show_base(os)); }
+
+sc_dt::sc_signed_subref::sc_signed_subref() : sc_signed_subref_r()
+        {}
+
+sc_dt::sc_signed_subref::sc_signed_subref( const sc_signed_subref& a )
+	: sc_signed_subref_r( a )
+	{}
+
+const sc_dt::sc_signed_subref& sc_dt::sc_signed_subref::operator = ( unsigned int a )
+	{ return operator = ( (unsigned long) a ); }
+
+const sc_dt::sc_signed_subref& sc_dt::sc_signed_subref::operator = ( int a )
+	{ return operator = ( (long) a ); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator = (int                       v)
+	{ return operator=((long) v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator = (unsigned int              v)
+	{ return operator=((unsigned long) v); }
+  
+sc_dt::sc_digit* sc_dt::sc_signed::get_raw() const
+	{ return digit; }
+
+int sc_dt::sc_signed::concat_length(bool* xz_present_p) const
+	{ if ( xz_present_p ) *xz_present_p = false; return nbits; }
+
+
+sc_dt::sc_signed_bitref& sc_dt::sc_signed::operator [] ( int i )
+        {
+            check_index(i);
+	    sc_signed_bitref* result_p =
+	        sc_signed_bitref::m_pool.allocate();
+	    result_p->initialize( this, i );
+	    return *result_p;
+	}
+
+const sc_dt::sc_signed_bitref_r& sc_dt::sc_signed::operator [] ( int i ) const
+        {
+            check_index(i);
+	    sc_signed_bitref* result_p =
+	        sc_signed_bitref::m_pool.allocate();
+	    result_p->initialize( this, i );
+	    return *result_p;
+	}
+
+sc_dt::sc_signed_bitref& sc_dt::sc_signed::bit( int i )
+        {
+            check_index(i);
+	    sc_signed_bitref* result_p =
+	        sc_signed_bitref::m_pool.allocate();
+	    result_p->initialize( this, i );
+	    return *result_p;
+	}
+
+const sc_dt::sc_signed_bitref_r& sc_dt::sc_signed::bit( int i ) const
+        {
+            check_index(i);
+	    sc_signed_bitref* result_p =
+	        sc_signed_bitref::m_pool.allocate();
+	    result_p->initialize( this, i );
+	    return *result_p;
+	}
+
+sc_dt::sc_signed_subref& sc_dt::sc_signed::range( int i, int j )
+        {
+	    check_range( i, j );
+	    sc_signed_subref* result_p =
+	        sc_signed_subref::m_pool.allocate();
+	    result_p->initialize( this, i, j );
+	    return *result_p;
+	}
+
+const sc_dt::sc_signed_subref_r& sc_dt::sc_signed::range( int i, int j ) const
+        {
+	    check_range( i, j );
+	    sc_signed_subref* result_p =
+	        sc_signed_subref::m_pool.allocate();
+	    result_p->initialize( this, i, j );
+	    return *result_p;
+	}
+
+sc_dt::sc_signed_subref& sc_dt::sc_signed::operator () ( int i, int j )
+        {
+	    check_range( i, j );
+	    sc_signed_subref* result_p =
+	        sc_signed_subref::m_pool.allocate();
+	    result_p->initialize( this, i, j );
+	    return *result_p;
+	}
+
+const sc_dt::sc_signed_subref_r& sc_dt::sc_signed::operator () ( int i, int j ) const
+        {
+	    check_range( i, j );
+	    sc_signed_subref* result_p =
+	        sc_signed_subref::m_pool.allocate();
+	    result_p->initialize( this, i, j );
+	    return *result_p;
+	}
+
+void sc_dt::sc_signed::print( ::std::ostream& os ) const
+	{ os << to_string(sc_io_base(os,SC_DEC),sc_io_show_base(os)); }
+
+bool sc_dt::sc_signed::nand_reduce() const
+{ return ( ! and_reduce() ); }
+
+bool sc_dt::sc_signed::nor_reduce() const
+    { return ( ! or_reduce() ); }
+
+bool sc_dt::sc_signed::xnor_reduce() const
+    { return ( ! xor_reduce() ); }
+
+void sc_dt::sc_signed::set(int i, bool v)      // Set the ith bit to v.
+{ if (v) set(i); else clear(i);  }
+
+void sc_dt::sc_signed::invert(int i)           // Negate the ith bit.
+{ if (test(i)) clear(i); else set(i);  }
+
+sc_dt::sc_signed sc_dt::operator + (const sc_unsigned&  u, int                 v)
+  { return operator+(u, (long) v); }
+
+sc_dt::sc_signed sc_dt::operator + (int                 u, const sc_unsigned&  v)
+  { return operator+((long) u, v); }
+
+sc_dt::sc_signed sc_dt::operator + (const sc_signed&    u, int                 v)
+  { return operator+(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator + (const sc_signed&    u, unsigned int        v)
+  { return operator+(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator + (int                 u, const sc_signed&    v)
+  { return operator+((long) u, v); }
+sc_dt::sc_signed sc_dt::operator + (unsigned int        u, const sc_signed&    v)
+  { return operator+((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator += (int                 v)
+  { return operator+=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator += (unsigned int        v)
+  { return operator+=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator - (const sc_unsigned&  u, int                v)
+  { return operator-(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator - (const sc_unsigned&  u, unsigned int       v)
+  { return operator-(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator - (int                 u, const sc_unsigned&  v)
+  { return operator-((long) u, v); }
+sc_dt::sc_signed sc_dt::operator - (unsigned int        u, const sc_unsigned& v)
+  { return operator-((unsigned long) u, v); }
+sc_dt::sc_signed sc_dt::operator - (const sc_signed&    u, int                 v)
+  { return operator-(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator - (const sc_signed&    u, unsigned int        v)
+  { return operator-(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator - (int                 u, const sc_signed&    v)
+  { return operator-((long) u, v); }
+sc_dt::sc_signed sc_dt::operator - (unsigned int        u, const sc_signed&    v)
+  { return operator-((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator -= (int                 v)
+  { return operator -= ((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator -= (unsigned int        v)
+  { return operator -= ((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator * (const sc_unsigned&  u, int                 v)
+  { return operator*(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator * (int                 u, const sc_unsigned&  v)
+  { return operator*((long) u, v); }
+sc_dt::sc_signed sc_dt::operator * (const sc_signed&  u, int               v)
+  { return operator*(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator * (const sc_signed&  u, unsigned int      v)
+  { return operator*(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator * (int               u, const sc_signed&  v)
+  { return operator*((long) u, v); }
+sc_dt::sc_signed sc_dt::operator * (unsigned int      u, const sc_signed&  v)
+  { return operator*((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator *= (int                 v)
+  { return operator*=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator *= (unsigned int        v)
+  { return operator*=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator / (const sc_unsigned&  u, int                 v)
+  { return operator/(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator / (int                 u, const sc_unsigned&  v)
+  { return operator/((long) u, v); }
+sc_dt::sc_signed sc_dt::operator / (const sc_signed&    u, int                 v)
+  { return operator/(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator / (const sc_signed&    u, unsigned int        v)
+  { return operator/(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator / (int                 u, const sc_signed&    v)
+  { return operator/((long) u, v); }
+sc_dt::sc_signed sc_dt::operator / (unsigned int        u, const sc_signed&    v)
+  { return operator/((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator /= (int                 v)
+  { return operator/=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator /= (unsigned int        v)
+  { return operator/=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator % (const sc_unsigned&  u, int                 v)
+  { return operator%(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator % (int                 u, const sc_unsigned&  v)
+  { return operator%((long) u, v); }
+sc_dt::sc_signed sc_dt::operator % (const sc_signed&    u, int                 v)
+  { return operator%(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator % (const sc_signed&    u, unsigned int        v)
+  { return operator%(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator % (int                 u, const sc_signed&    v)
+  { return operator%((long) u, v); }
+sc_dt::sc_signed sc_dt::operator % (unsigned int        u, const sc_signed&    v)
+  { return operator%((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator %= (int                 v)
+  { return operator%=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator %= (unsigned int        v)
+  { return operator%=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator & (const sc_unsigned&  u, int                 v)
+  { return operator&(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator & (int                 u, const sc_unsigned&  v)
+  { return operator&((long) u, v); }
+sc_dt::sc_signed sc_dt::operator & (const sc_signed&    u, int                 v)
+  { return operator&(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator & (const sc_signed&    u, unsigned int        v)
+  { return operator&(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator & (int               u, const sc_signed&  v)
+  { return operator&((long) u, v); }
+sc_dt::sc_signed sc_dt::operator & (unsigned int      u, const sc_signed&  v)
+  { return operator&((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator &= (int                 v)
+  { return operator&=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator &= (unsigned int        v)
+  { return operator&=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator | (const sc_unsigned&  u, int                 v)
+  { return operator|(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator | (int                 u, const sc_unsigned&  v)
+  { return operator|((long) u, v); }
+sc_dt::sc_signed sc_dt::operator | (const sc_signed&    u, int                 v)
+  { return operator|(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator | (const sc_signed&    u, unsigned int        v)
+  { return operator|(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator | (int               u, const sc_signed&  v)
+  { return operator|((long) u, v); }
+sc_dt::sc_signed sc_dt::operator | (unsigned int      u, const sc_signed&  v)
+  { return operator|((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator |= (int                 v)
+  { return operator|=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator |= (unsigned int        v)
+  { return operator|=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator ^ (const sc_unsigned&  u, int                 v)
+  { return operator^(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator ^ (int                 u, const sc_unsigned&  v)
+  { return operator^((long) u, v); }
+sc_dt::sc_signed sc_dt::operator ^ (const sc_signed&    u, int                 v)
+  { return operator^(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator ^ (const sc_signed&    u, unsigned int        v)
+  { return operator^(u, (unsigned long) v); }
+sc_dt::sc_signed sc_dt::operator ^ (int               u, const sc_signed&  v)
+  { return operator^((long) u, v); }
+sc_dt::sc_signed sc_dt::operator ^ (unsigned int      u, const sc_signed&  v)
+  { return operator^((unsigned long) u, v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator ^= (int                 v)
+  { return operator^=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator ^= (unsigned int        v)
+  { return operator^=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator << (const sc_signed&    u, int                 v)
+  { return operator<<(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator << (const sc_signed&    u, unsigned int        v)
+  { return operator<<(u, (unsigned long) v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator <<= (int                 v)
+  { return operator<<=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator <<= (unsigned int        v)
+  { return operator<<=((unsigned long) v); }
+
+sc_dt::sc_signed sc_dt::operator >> (const sc_signed&    u, int                 v)
+  { return operator>>(u, (long) v); }
+sc_dt::sc_signed sc_dt::operator >> (const sc_signed&    u, unsigned int        v)
+  { return operator>>(u, (unsigned long) v); }
+
+const sc_dt::sc_signed& sc_dt::sc_signed::operator >>= (int                 v)
+  { return operator>>=((long) v); }
+const sc_dt::sc_signed& sc_dt::sc_signed::operator >>= (unsigned int        v)
+  { return operator>>=((unsigned long) v); }
+
+bool sc_dt::operator == (const sc_signed&    u, int                 v)
+  { return operator==(u, (long) v); }
+bool sc_dt::operator == (const sc_signed&    u, unsigned int        v)
+  { return operator==(u, (unsigned long) v); }
+bool sc_dt::operator == (int                 u, const sc_signed&    v)
+  { return operator==((long) u, v); }
+bool sc_dt::operator == (unsigned int        u, const sc_signed&    v)
+  { return operator==((unsigned long) u, v); }
+
+bool sc_dt::operator != (const sc_signed&    u, int                 v)
+  { return operator!=(u, (long) v); }
+bool sc_dt::operator != (const sc_signed&    u, unsigned int        v)
+  { return operator!=(u, (unsigned long) v); }
+bool sc_dt::operator != (int                 u, const sc_signed&    v)
+  { return operator!=((long) u, v); }
+bool sc_dt::operator != (unsigned int        u, const sc_signed&    v)
+  { return operator!=((unsigned long) u, v); }
+
+bool sc_dt::operator < (const sc_signed&    u, int                 v)
+  { return operator<(u, (long) v); }
+bool sc_dt::operator < (const sc_signed&    u, unsigned int        v)
+  { return operator<(u, (unsigned long) v); }
+bool sc_dt::operator < (int                 u, const sc_signed&    v)
+  { return operator<((long) u, v); }
+bool sc_dt::operator < (unsigned int        u, const sc_signed&    v)
+  { return operator<((unsigned long) u, v); }
+
+bool sc_dt::operator <= (const sc_signed&    u, int                 v)
+  { return operator<=(u, (long) v); }
+bool sc_dt::operator <= (const sc_signed&    u, unsigned int        v)
+  { return operator<=(u, (unsigned long) v); }
+
+bool sc_dt::operator <= (int                 u, const sc_signed&    v)
+  { return operator<=((long) u, v); }
+bool sc_dt::operator <= (unsigned int        u, const sc_signed&    v)
+  { return operator<=((unsigned long) u, v); }
+
+bool sc_dt::operator > (const sc_signed&    u, int                 v)
+  { return operator>(u, (long) v); }
+bool sc_dt::operator > (const sc_signed&    u, unsigned int        v)
+  { return operator>(u, (unsigned long) v); }
+
+bool sc_dt::operator > (int                 u, const sc_signed&    v)
+  { return operator>((long) u, v); }
+bool sc_dt::operator > (unsigned int        u, const sc_signed&    v)
+  { return operator>((unsigned long) u, v); }
+
+bool sc_dt::operator >= (const sc_signed&    u, int                 v)
+  { return operator>=(u, (long) v); }
+bool sc_dt::operator >= (const sc_signed&    u, unsigned int        v)
+  { return operator>=(u, (unsigned long) v); }
+bool sc_dt::operator >= (int                 u, const sc_signed&    v)
+  { return operator>=((long) u, v); }
+bool sc_dt::operator >= (unsigned int        u, const sc_signed&    v)
+  { return operator>=((unsigned long) u, v); }
+
+  sc_dt::small_type sc_dt::sc_signed::default_sign() const
+    { return SC_NOSIGN; }
+
+  int sc_dt::sc_signed::num_bits(int nb) const { return nb; }
+
+  void sc_dt::sc_signed::copy_digits(int nb, int nd, const sc_digit *d)
+    { copy_digits_signed(sgn, nbits, ndigits, digit, nb, nd, d); }
+
+  void sc_dt::sc_signed::makezero()
+    { sgn = make_zero(ndigits, digit); }
+
+  void sc_dt::sc_signed::convert_2C_to_SM()
+    { sgn = convert_signed_2C_to_SM(nbits, ndigits, digit); }
+
+  void sc_dt::sc_signed::convert_SM_to_2C_to_SM()
+    { sgn = convert_signed_SM_to_2C_to_SM(sgn, nbits, ndigits, digit); }
+
+  void sc_dt::sc_signed::convert_SM_to_2C()
+    { convert_signed_SM_to_2C(sgn, ndigits, digit); }
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_signed_bitref_r& a )
+{
+    a.print( os );
+    return os;
+}
+
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_signed_bitref& a )
+{
+    a.scan( is );
+    return is;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_signed_subref_r
+//
+//  Proxy class for sc_signed part selection (r-value only).
+// ----------------------------------------------------------------------------
+
+// reduce methods
+
+bool sc_dt::sc_signed_subref_r::and_reduce() const
+{
+   const sc_signed* target_p = m_obj_p;
+   for ( int i = m_right; i <= m_left; i++ )
+	if ( !target_p->test(i) ) return false;
+   return true;
+}
+
+bool sc_dt::sc_signed_subref_r::nand_reduce() const
+{
+    return !and_reduce();
+}
+
+bool sc_dt::sc_signed_subref_r::or_reduce() const
+{
+   const sc_signed* target_p = m_obj_p;
+   for ( int i = m_right; i <= m_left; i++ )
+	if ( target_p->test(i) ) return true;
+   return false;
+}
+
+bool sc_dt::sc_signed_subref_r::nor_reduce() const
+{
+    return !or_reduce();
+}
+
+bool sc_dt::sc_signed_subref_r::xor_reduce() const
+{
+   int                odd;
+   const sc_signed* target_p = m_obj_p;
+   odd = 0;
+   for ( int i = m_right; i <= m_left; i++ )
+	if ( target_p->test(i) ) odd = ~odd;
+   return odd ? true : false;
+}
+
+bool sc_dt::sc_signed_subref_r::xnor_reduce() const
+{
+    return !xor_reduce();
+}
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_signed_subref_r& a )
+{
+    a.print( os );
+    return os;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_signed_subref
+//
+//  Proxy class for sc_signed part selection (r-value and l-value).
+// ----------------------------------------------------------------------------
+
+// assignment operators
+
+
+const sc_dt::sc_signed_subref&
+sc_dt::sc_signed_subref::operator = ( const char* a )
+{
+    sc_signed aa( length() );
+    return ( *this = aa = a );
+}
+
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_signed_subref& a )
+{
+    a.scan( is );
+    return is;
+}
+
+
+
+/*
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_signed& a )
+{
+    a.print( os );
+    return os;
+}
+*/
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_signed& a )
+{
+    a.scan( is );
+    return is;
+}
+
+
+void sc_dt::sc_signed::check_index( int i ) const
+    { if ( i < 0 || i >= nbits ) invalid_index(i); }
+
+
+void sc_dt::sc_signed::check_range( int l, int r ) const
+    {
+        if ( l < r )
+        {
+            if ( l < 0 || r >= nbits ) invalid_range(l,r);
+        }
+        else
+        {
+            if ( r < 0 || l >= nbits ) invalid_range(l,r);
+        }
+    }
+
+
+
+
+
+
+//------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

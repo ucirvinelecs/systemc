@@ -57,15 +57,8 @@ class sc_reset_target {
     sc_process_b* m_process_p; // process this reset entry is for.
 };
 
-inline std::ostream& operator << ( std::ostream& os, 
-                                   const sc_reset_target& target )
-{
-    os << "[";
-    os << target.m_async << ",";
-    os << target.m_level << ",";
-    os << target.m_process_p << ",";
-    return os;
-}
+std::ostream& operator << ( std::ostream& os, 
+                                   const sc_reset_target& target );
 
 //==============================================================================
 // CLASS sc_reset - RESET INFORMATION FOR A RESET SIGNAL
@@ -77,6 +70,7 @@ class sc_reset {
     friend class sc_cthread_process;
     friend class sc_method_process; 
     friend class sc_module; 
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_process_b;
     friend class sc_signal<bool, SC_ONE_WRITER>;
     friend class sc_signal<bool, SC_MANY_WRITERS>;
@@ -98,8 +92,7 @@ class sc_reset {
 	reset_signal_is( bool async, const sc_out<bool>& iface, bool level);
 
   protected:
-    sc_reset( const sc_signal_in_if<bool>* iface_p ) :
-        m_iface_p(iface_p), m_targets() {}
+    sc_reset( const sc_signal_in_if<bool>* iface_p );
     void notify_processes();
     void remove_process( sc_process_b* );
 

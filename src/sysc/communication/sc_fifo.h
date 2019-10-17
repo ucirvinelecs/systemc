@@ -85,7 +85,13 @@ public:
 
 
     // blocking read
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     virtual void read( T& );
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC read conflict-free looped-wait event
     virtual T read();
 
     // non-blocking read
@@ -95,7 +101,11 @@ public:
     // get the number of available samples
 
     virtual int num_available() const
-	{ return ( m_num_readable - m_num_read ); }
+    {
+        chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect m_num_readable & m_num_read
+        return ( m_num_readable - m_num_read );
+        // 02/24/2015 GL: return releases the lock
+    }
 
 
     // get the data written event
@@ -105,6 +115,9 @@ public:
 
 
     // blocking write
+
+    // 06/13/2016 GL: function annotation
+    #pragma RISC write conflict-free looped-wait event
     virtual void write( const T& );
 
     // non-blocking write
@@ -114,7 +127,11 @@ public:
     // get the number of free spaces
 
     virtual int num_free() const
-	{ return ( m_size - m_num_readable - m_num_written ); }
+    {
+        chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect m_num_readable & m_num_written
+        return ( m_size - m_num_readable - m_num_written );
+        // 02/24/2015 GL: return releases the lock
+    }
 
 
     // get the data read event
@@ -221,18 +238,20 @@ inline
 void
 sc_fifo<T>::read( T& val_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect concurrent communication
     while( num_available() == 0 ) {
 	sc_core::wait( m_data_written_event );
     }
     m_num_read ++;
     buf_read( val_ );
     request_update();
+    // 02/24/2015 GL: return releases the lock
 }
 
 template <class T>
 inline
 T
-sc_fifo<T>::read()
+sc_fifo<T>::read() // 02/24/2015 GL: protected by sc_fifo<T>::read(T&)
 {
     T tmp;
     read( tmp );
@@ -246,6 +265,7 @@ inline
 bool
 sc_fifo<T>::nb_read( T& val_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect concurrent communication
     if( num_available() == 0 ) {
 	return false;
     }
@@ -253,6 +273,7 @@ sc_fifo<T>::nb_read( T& val_ )
     buf_read( val_ );
     request_update();
     return true;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
@@ -263,12 +284,14 @@ inline
 void
 sc_fifo<T>::write( const T& val_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect concurrent communication
     while( num_free() == 0 ) {
 	sc_core::wait( m_data_read_event );
     }
     m_num_written ++;
     buf_write( val_ );
     request_update();
+    // 02/24/2015 GL: return releases the lock
 }
 
 // non-blocking write
@@ -278,6 +301,7 @@ inline
 bool
 sc_fifo<T>::nb_write( const T& val_ )
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect concurrent communication
     if( num_free() == 0 ) {
 	return false;
     }
@@ -285,13 +309,14 @@ sc_fifo<T>::nb_write( const T& val_ )
     buf_write( val_ );
     request_update();
     return true;
+    // 02/24/2015 GL: return releases the lock
 }
 
 
 template <class T>
 inline
 void
-sc_fifo<T>::trace( sc_trace_file* tf ) const
+sc_fifo<T>::trace( sc_trace_file* tf ) const // 02/24/2015 GL: take care of tracing in the future
 {
 #if defined(DEBUG_SYSTEMC)
     char buf[32];
@@ -309,6 +334,7 @@ inline
 void
 sc_fifo<T>::print( ::std::ostream& os ) const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect member variables
     if( m_free != m_size ) {
         int i = m_ri;
         do {
@@ -316,6 +342,7 @@ sc_fifo<T>::print( ::std::ostream& os ) const
             i = ( i + 1 ) % m_size;
         } while( i != m_wi );
     }
+    // 02/24/2015 GL: return releases the lock
 }
 
 template <class T>
@@ -323,6 +350,7 @@ inline
 void
 sc_fifo<T>::dump( ::std::ostream& os ) const
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire a lock to protect member variables
     os << "name = " << name() << ::std::endl;
     if( m_free != m_size ) {
         int i = m_ri;
@@ -333,13 +361,14 @@ sc_fifo<T>::dump( ::std::ostream& os ) const
 	    j ++;
         } while( i != m_wi );
     }
+    // 02/24/2015 GL: return releases the lock
 }
 
 
 template <class T>
 inline
 void
-sc_fifo<T>::update()
+sc_fifo<T>::update() // 02/24/2015 GL: only executed in the update phase
 {
     if( m_num_read > 0 ) {
 	m_data_read_event.notify(SC_ZERO_TIME);
@@ -360,7 +389,7 @@ sc_fifo<T>::update()
 template <class T>
 inline
 void
-sc_fifo<T>::init( int size_ )
+sc_fifo<T>::init( int size_ ) // 02/24/2015 GL: already protected in public methods
 {
     buf_init( size_ );
 
@@ -376,7 +405,7 @@ sc_fifo<T>::init( int size_ )
 template <class T>
 inline
 void
-sc_fifo<T>::buf_init( int size_ )
+sc_fifo<T>::buf_init( int size_ ) // 02/24/2015 GL: already protected in public methods
 {
     if( size_ <= 0 ) {
 	SC_REPORT_ERROR( SC_ID_INVALID_FIFO_SIZE_, 0 );
@@ -391,7 +420,7 @@ sc_fifo<T>::buf_init( int size_ )
 template <class T>
 inline
 bool
-sc_fifo<T>::buf_write( const T& val_ )
+sc_fifo<T>::buf_write( const T& val_ ) // 02/24/2015 GL: already protected in public methods
 {
     if( m_free == 0 ) {
 	return false;
@@ -405,7 +434,7 @@ sc_fifo<T>::buf_write( const T& val_ )
 template <class T>
 inline
 bool
-sc_fifo<T>::buf_read( T& val_ )
+sc_fifo<T>::buf_read( T& val_ ) // 02/24/2015 GL: already protected in public methods
 {
     if( m_free == m_size ) {
 	return false;

@@ -108,11 +108,14 @@ inline
 void
 sc_buffer<T,POL>::write( const T& value_ )
 {
+    chnl_scoped_lock lock( this->m_mutex ); // 02/23/2015 GL: acquire a lock to protect concurrent communication, but sc_signal should have a single write port?!
+                                            // 02/24/2015 GL: the reason to add "this->" before m_mutex: http://www.parashift.com/c++-faq-lite/nondependent-name-lookup-members.html
     if( !base_type::policy_type::check_write(this,true) )
       return;
 
     this->m_new_val = value_;
     this->request_update();
+    // 02/23/2015 GL: return releases the lock
 }
 
 

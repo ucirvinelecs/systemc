@@ -40,9 +40,24 @@ namespace sc_core {
 //  (Provided for backward compatibility reasons.)
 // ----------------------------------------------------------------------------
 
-typedef sc_in<bool>    sc_in_clk;
-typedef sc_inout<bool> sc_inout_clk;
-typedef sc_out<bool>   sc_out_clk;
+// 03/31/2015 GL: to handle typedef in future
+// TODO: Patched 03/31/15 by RD, TS:
+//typedef sc_in<bool>    sc_in_clk;
+// TODO: This is only a work around (by Tim!). Rose cannot process this otherwise...
+class sc_in_clk: public sc_in<bool>
+{ };
+
+// TODO: Patched 03/31/15 by RD, TS:
+//typedef sc_inout<bool> sc_inout_clk;
+// TODO: This is only a work around (by Tim!). Rose cannot process this otherwise...
+class sc_inout_clk: public sc_inout<bool>
+{ };
+
+// TODO: Patched 03/31/15 by RD, TS:
+//typedef sc_out<bool>   sc_out_clk;
+// TODO: This is only a work around (by Tim!). Rose cannot process this otherwise...
+class sc_out_clk: public sc_out<bool>
+{ };
 
 } // namespace sc_core
 

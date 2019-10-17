@@ -52,6 +52,7 @@ class sc_simcontext;
 class sc_module_name
 {
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_object_manager;
 
 public:
@@ -64,8 +65,8 @@ public:
     operator const char*() const;
 
 protected:
-    inline void clear_module( sc_module* module_p );
-    inline void set_module( sc_module* module_p );
+    void clear_module( sc_module* module_p );
+    void set_module( sc_module* module_p );
 
 private:
 
@@ -82,16 +83,6 @@ private:
     sc_module_name& operator = ( const sc_module_name& );
 };
 
-inline void sc_module_name::clear_module( sc_module* module_p )
-{
-    assert( m_module_p == module_p );
-    m_module_p = 0;
-}
-
-inline void sc_module_name::set_module( sc_module* module_p )
-{
-    m_module_p = module_p;
-}
 
 } // namespace sc_core
 

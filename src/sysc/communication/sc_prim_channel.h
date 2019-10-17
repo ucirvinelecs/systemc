@@ -33,7 +33,33 @@
 #include "sysc/kernel/sc_wait.h"
 #include "sysc/kernel/sc_wait_cthread.h"
 
+#include "sysc/kernel/sc_process.h" // 02/22/2015 GL: include the definition of CHNL_MTX_TYPE_
+
 namespace sc_core {
+
+
+// ----------------------------------------------------------------------------
+//  STRUCT : chnl_scoped_lock
+//
+//  The chnl_scoped_lock class to lock (and automatically release) a mutex.
+//  (02/22/2015 GL)
+// ----------------------------------------------------------------------------
+
+struct chnl_scoped_lock {
+    CHNL_MTX_TYPE_& m_ref;
+    explicit chnl_scoped_lock( CHNL_MTX_TYPE_& mtx ): m_ref( mtx )
+    { 
+        sc_process_b* cp = sc_get_current_process_b();
+        if (cp) // not the root thread
+            cp->lock_and_push( &m_ref ); 
+    }
+    ~chnl_scoped_lock()
+    {
+        sc_process_b* cp = sc_get_current_process_b();
+        if (cp) // not the root thread
+            cp->pop_and_unlock( &m_ref ); 
+    }
+};
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_prim_channel
@@ -49,14 +75,12 @@ class sc_prim_channel
 public:
     enum { list_end = 0xdb };
 public:
-    virtual const char* kind() const
-        { return "sc_prim_channel"; }
+    virtual const char* kind() const;
 
-    inline bool update_requested() 
-	{ return m_update_next_p != (sc_prim_channel*)list_end; }
+    bool update_requested();
 
     // request the update method to be executed during the update phase
-    inline void request_update();
+    void request_update();
 
     // request the update method to be executed during the update phase
     // from a process external to the simulator.
@@ -92,98 +116,66 @@ protected:
 
     // static sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait()
-        { sc_core::wait( simcontext() ); }
-
+    void wait();
 
     // dynamic sensitivity for SC_THREADs and SC_CTHREADs
 
-    void wait( const sc_event& e )
-        { sc_core::wait( e, simcontext() ); }
+    void wait( const sc_event& e );
 
-    void wait( const sc_event_or_list& el )
-	{ sc_core::wait( el, simcontext() ); }
+    void wait( const sc_event_or_list& el );
 
-    void wait( const sc_event_and_list& el )
-	{ sc_core::wait( el, simcontext() ); }
+    void wait( const sc_event_and_list& el );
 
-    void wait( const sc_time& t )
-        { sc_core::wait( t, simcontext() ); }
+    void wait( const sc_time& t );
 
-    void wait( double v, sc_time_unit tu )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), simcontext() ); }
+    void wait( double v, sc_time_unit tu );
 
-    void wait( const sc_time& t, const sc_event& e )
-        { sc_core::wait( t, e, simcontext() ); }
+    void wait( const sc_time& t, const sc_event& e );
 
-    void wait( double v, sc_time_unit tu, const sc_event& e )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), e, simcontext() ); }
+    void wait( double v, sc_time_unit tu, const sc_event& e );
 
-    void wait( const sc_time& t, const sc_event_or_list& el )
-        { sc_core::wait( t, el, simcontext() ); }
+    void wait( const sc_time& t, const sc_event_or_list& el );
 
-    void wait( double v, sc_time_unit tu, const sc_event_or_list& el )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    void wait( double v, sc_time_unit tu, const sc_event_or_list& el );
 
-    void wait( const sc_time& t, const sc_event_and_list& el )
-        { sc_core::wait( t, el, simcontext() ); }
+    void wait( const sc_time& t, const sc_event_and_list& el );
 
-    void wait( double v, sc_time_unit tu, const sc_event_and_list& el )
-        { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    void wait( double v, sc_time_unit tu, const sc_event_and_list& el );
 
-    void wait( int n )
-        { sc_core::wait( n, simcontext() ); }
+    void wait( int n );
 
 
     // static sensitivity for SC_METHODs
 
-    void next_trigger()
-	{ sc_core::next_trigger( simcontext() ); }
-
+    void next_trigger();
 
     // dynamic sensitivity for SC_METHODs
 
-    void next_trigger( const sc_event& e )
-        { sc_core::next_trigger( e, simcontext() ); }
+    void next_trigger( const sc_event& e );
 
-    void next_trigger( const sc_event_or_list& el )
-        { sc_core::next_trigger( el, simcontext() ); }
+    void next_trigger( const sc_event_or_list& el );
 
-    void next_trigger( const sc_event_and_list& el )
-        { sc_core::next_trigger( el, simcontext() ); }
+    void next_trigger( const sc_event_and_list& el );
 
-    void next_trigger( const sc_time& t )
-        { sc_core::next_trigger( t, simcontext() ); }
+    void next_trigger( const sc_time& t );
 
-    void next_trigger( double v, sc_time_unit tu )
-        {sc_core::next_trigger( sc_time( v, tu, simcontext() ), simcontext() );}
+    void next_trigger( double v, sc_time_unit tu );
 
-    void next_trigger( const sc_time& t, const sc_event& e )
-        { sc_core::next_trigger( t, e, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event& e );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event& e )
-        { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), e, simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu, const sc_event& e );
 
-    void next_trigger( const sc_time& t, const sc_event_or_list& el )
-        { sc_core::next_trigger( t, el, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event_or_list& el );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
-        { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
+    void next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el );
 
-    void next_trigger( const sc_time& t, const sc_event_and_list& el )
-        { sc_core::next_trigger( t, el, simcontext() ); }
+    void next_trigger( const sc_time& t, const sc_event_and_list& el );
 
-    void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
-        { sc_core::next_trigger( 
-	    sc_time( v, tu, simcontext() ), el, simcontext() ); }
-
+    void next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el );
 
     // for SC_METHODs and SC_THREADs and SC_CTHREADs
 
-    bool timed_out()
-	{ return sc_core::timed_out( simcontext() ); }
+    bool timed_out();
 
 
 #if 0 // @@@@####
@@ -217,6 +209,10 @@ private:
 
     sc_prim_channel_registry* m_registry;          // Update list manager.
     sc_prim_channel*          m_update_next_p;     // Next entry in update list.
+
+protected:
+
+    mutable CHNL_MTX_TYPE_ m_mutex; // 02/25/2015 GL: add a mutex to protect concurrent communication
 };
 
 
@@ -237,17 +233,12 @@ public:
     void remove( sc_prim_channel& );
 
 
-    int size() const
-        { return m_prim_channel_vec.size(); }
+    int size() const;
 
-    inline void request_update( sc_prim_channel& );
+    void request_update( sc_prim_channel& );
     void async_request_update( sc_prim_channel& );
 
-    bool pending_updates() const
-    { 
-        return m_update_list_p != (sc_prim_channel*)sc_prim_channel::list_end 
-               || pending_async_updates();
-    }   
+    bool pending_updates() const;
 
     bool pending_async_updates() const;
 
@@ -287,64 +278,12 @@ private:
     std::vector<sc_prim_channel*> m_prim_channel_vec;    // existing channels.
     sc_simcontext*                m_simc;                // simulator context.
     sc_prim_channel*              m_update_list_p;       // internal updates.
+
+    CHNL_MTX_TYPE_ m_mutex; // 02/25/2015 GL: add a mutex to protect concurrent requests
 };
 
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_prim_channel_registry
-//
-//  Registry for all primitive channels.
-//  FOR INTERNAL USE ONLY!
-// ----------------------------------------------------------------------------
-
-inline
-void
-sc_prim_channel_registry::request_update( sc_prim_channel& prim_channel_ )
-{
-    prim_channel_.m_update_next_p = m_update_list_p;
-    m_update_list_p = &prim_channel_;
-}
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_prim_channel
-//
-//  Abstract base class of all primitive channel classes.
-// ----------------------------------------------------------------------------
-
-// request the update method (to be executed during the update phase)
-
-inline
-void
-sc_prim_channel::request_update()
-{
-    if( ! m_update_next_p ) {
-	m_registry->request_update( *this );
-    }
-}
-
-// request the update method from external to the simulator (to be executed 
-// during the update phase)
-
-inline
-void
-sc_prim_channel::async_request_update()
-{
-    m_registry->async_request_update(*this);
-}
-
-
-// called during the update phase of a delta cycle (if requested)
-
-inline
-void
-sc_prim_channel::perform_update()
-{
-    update();
-    m_update_next_p = 0;
-}
-
 
 } // namespace sc_core
 

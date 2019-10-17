@@ -47,10 +47,181 @@
 //
 
 #include "sysc/datatypes/fx/scfx_mant.h"
+//------------------------------------------------Farah is working here 
+int
+sc_dt::scfx_mant::size() const
+{
+    return m_size;
+}
 
 
+sc_dt::scfx_mant::scfx_mant( std::size_t size )
+: m_array(0), m_size(size)
+{
+    m_array = alloc( size );
+}
+
+
+sc_dt::scfx_mant::scfx_mant( const scfx_mant& rhs )
+: m_array(0), m_size(rhs.m_size)
+{
+    m_array = alloc( m_size );
+    for( int i = 0; i < m_size; i ++ )
+    {
+        (*this)[i] = rhs[i];
+    }
+}
+
+
+sc_dt::scfx_mant&
+sc_dt::scfx_mant::operator = ( const scfx_mant& rhs )
+{
+    if( &rhs != this )
+    {
+        if( m_size != rhs.m_size )
+	{
+	    free( m_array, m_size );
+	    m_array = alloc( m_size = rhs.m_size );
+	}
+
+	for( int i = 0; i < m_size; i ++ )
+	{
+	    (*this)[i] = rhs[i];
+	}
+    }
+    return *this;
+}
+
+
+sc_dt::scfx_mant::~scfx_mant()
+{
+    if( m_array != 0 )
+    {
+        free( m_array, m_size );
+    }
+}
+
+
+void
+sc_dt::scfx_mant::clear()
+{
+    for( int i = 0; i < m_size; i ++ )
+    {
+        (*this)[i] = 0;
+    }
+}
+
+
+void
+sc_dt::complement( scfx_mant& target, const scfx_mant& source, int size )
+{
+    for( int i = 0; i < size; i ++ )
+    {
+        target[i] = ~source[i];
+    }
+}
+
+
+void
+sc_dt::inc( scfx_mant& mant )
+{
+    for( int i = 0; i < mant.size(); i ++ )
+    {
+        if( ++ mant[i] )
+	{
+	    break;
+	}
+    }
+}
+
+void* sc_dt::scfx_mant_ref::operator new( std::size_t sz ) { return ::operator new( sz ); }
+
+
+void
+sc_dt::scfx_mant_ref::remove_it()
+{
+    if( m_not_const )
+    {
+        delete m_mant;
+    }
+}
+
+
+sc_dt::scfx_mant_ref::scfx_mant_ref()
+: m_mant( 0 ), m_not_const( false )
+{}
+
+
+sc_dt::scfx_mant_ref::scfx_mant_ref( const scfx_mant& mant )
+: m_mant( const_cast<scfx_mant*>( &mant ) ), m_not_const( false )
+{}
+
+
+sc_dt::scfx_mant_ref::scfx_mant_ref( scfx_mant* mant )
+: m_mant( mant ), m_not_const( true )
+{}
+
+
+sc_dt::scfx_mant_ref&
+sc_dt::scfx_mant_ref::operator = ( const scfx_mant& mant )
+{
+    remove_it();
+
+    m_mant = const_cast<scfx_mant*>( &mant );
+    m_not_const = false;
+
+    return *this;
+}
+
+
+sc_dt::scfx_mant_ref&
+sc_dt::scfx_mant_ref::operator = ( scfx_mant* mant )
+{
+    remove_it();
+
+    m_mant = mant;
+    m_not_const = true;
+
+    return *this;
+}
+
+
+sc_dt::scfx_mant_ref::~scfx_mant_ref()
+{
+    remove_it();
+}
+
+
+sc_dt::scfx_mant_ref::operator scfx_mant&()
+{
+    // SC_ASSERT_( m_not_const, "not allowed to modify mant" );
+    return *m_mant;
+}
+
+
+  sc_dt::word
+sc_dt::scfx_mant_ref::operator [] ( int i )
+{
+    return (*m_mant)[i];
+}
+
+//---------------------------------------------Farah is done working here
 namespace sc_dt
 {
+
+// 08/03/2015 GL: initialize scfx_mant_lock::m_mutex
+pthread_mutex_t scfx_mant_free_words_lock::m_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// 08/03/2015 GL: constructor & destructor for scfx_mant_lock
+scfx_mant_free_words_lock::scfx_mant_free_words_lock()
+{
+    pthread_mutex_lock( &m_mutex );
+}
+
+scfx_mant_free_words_lock::~scfx_mant_free_words_lock()
+{
+    pthread_mutex_unlock( &m_mutex );
+}
 
 // ----------------------------------------------------------------------------
 //  word memory management
@@ -82,6 +253,10 @@ static word_list* free_words[32] = { 0 };
 word*
 scfx_mant::alloc_word( std::size_t size )
 {
+    // 08/03/2015 GL: to protect global array free_words
+    // 08/03/2015 GL: scfx_mant_free_words_lock constructor acquires the mutex
+    scfx_mant_free_words_lock m_scfx_mant_free_words_lock; 
+
     const int ALLOC_SIZE = 128;
 
     int slot_index = next_pow2_index( size );
@@ -104,11 +279,16 @@ scfx_mant::alloc_word( std::size_t size )
     word* result = (word*)slot;
     free_words[slot_index] = slot[0].m_next_p;
     return result;
+    // 08/03/2015 GL: scfx_mant_free_words_lock destructor releases the mutex
 }
 
 void
 scfx_mant::free_word( word* array, std::size_t size )
 {
+    // 08/03/2015 GL: to protect global array free_words
+    // 08/03/2015 GL: scfx_mant_free_words_lock constructor acquires the mutex
+    scfx_mant_free_words_lock m_scfx_mant_free_words_lock; 
+
     if( array && size )
     {
         int slot_index = next_pow2_index( size );
@@ -117,6 +297,7 @@ scfx_mant::free_word( word* array, std::size_t size )
 	wl_p->m_next_p = free_words[slot_index];
 	free_words[slot_index] = wl_p;
     }
+    // 08/03/2015 GL: scfx_mant_free_words_lock destructor releases the mutex
 }
 
 } // namespace sc_dt

@@ -223,8 +223,7 @@ public:
     void insert( sc_export_base* );
     void remove( sc_export_base* );
 
-    int size() const
-        { return m_export_vec.size(); }
+    int size() const;
 
 private:
 

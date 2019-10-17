@@ -71,13 +71,10 @@ void
 wait( const sc_time&,
       sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 wait( double v, sc_time_unit tu,
-      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    wait( sc_time( v, tu, simc ), simc );
-}
+      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -85,14 +82,11 @@ wait( const sc_time&,
       const sc_event&,
       sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 wait( double v, sc_time_unit tu,
       const sc_event& e,
-      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    wait( sc_time( v, tu, simc ), e, simc );
-}
+      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -100,14 +94,11 @@ wait( const sc_time&,
       const sc_event_or_list&,
       sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 wait( double v, sc_time_unit tu,
       const sc_event_or_list& el,
-      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    wait( sc_time( v, tu, simc ), el, simc );
-}
+      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -115,14 +106,11 @@ wait( const sc_time&,
       const sc_event_and_list&,
       sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 wait( double v, sc_time_unit tu,
       const sc_event_and_list& el,
-      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    wait( sc_time( v, tu, simc ), el, simc );
-}
+      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 
 // static sensitivity for SC_METHODs
@@ -154,13 +142,10 @@ void
 next_trigger( const sc_time&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 next_trigger( double v, sc_time_unit tu,
-	      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    next_trigger( sc_time( v, tu, simc ), simc );
-}
+	      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -168,14 +153,11 @@ next_trigger( const sc_time&,
 	      const sc_event&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 next_trigger( double v, sc_time_unit tu,
 	      const sc_event& e,
-	      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    next_trigger( sc_time( v, tu, simc ), e, simc );
-}
+	      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -183,14 +165,11 @@ next_trigger( const sc_time&,
 	      const sc_event_or_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 next_trigger( double v, sc_time_unit tu,
 	      const sc_event_or_list& el,
-	      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    next_trigger( sc_time( v, tu, simc ), el, simc );
-}
+	      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 extern
 void
@@ -198,14 +177,11 @@ next_trigger( const sc_time&,
 	      const sc_event_and_list&,
 	      sc_simcontext* = sc_get_curr_simcontext() );
 
-inline
+
 void
 next_trigger( double v, sc_time_unit tu,
 	      const sc_event_and_list& el,
-	      sc_simcontext* simc = sc_get_curr_simcontext() )
-{
-    next_trigger( sc_time( v, tu, simc ), el, simc );
-}
+	      sc_simcontext* simc = sc_get_curr_simcontext() );
 
 
 // for SC_METHODs and SC_THREADs and SC_CTHREADs

@@ -37,7 +37,414 @@
 #include "sysc/kernel/sc_simcontext_int.h"
 #include "sysc/kernel/sc_object_manager.h"
 #include "sysc/utils/sc_utils_ids.h"
+//----------------------------------------------Farah is working here
+template< typename T >
+sc_core::sc_event_expr<T>::sc_event_expr()
+       : m_expr( new T(true) )
+    {}
 
+template< typename T >
+sc_core::sc_event_expr<T>:: sc_event_expr( sc_event_expr const & e) // move semantics
+  : m_expr(e.m_expr)
+{
+    e.m_expr = 0;
+}
+
+template< typename T >
+T const & sc_core::sc_event_expr<T>::release() const
+{
+    sc_assert( m_expr );
+    T* expr = m_expr;
+    m_expr=0;
+    return *expr;
+}
+
+template< typename T >
+void sc_core::sc_event_expr<T>::push_back( sc_event const & e) const
+{
+    sc_assert( m_expr );
+    m_expr->push_back(e);
+}
+
+template< typename T >
+void sc_core::sc_event_expr<T>::push_back( type const & el) const
+{
+    sc_assert( m_expr );
+    m_expr->push_back(el);
+}
+
+template< typename T >
+sc_core::sc_event_expr<T>::operator T const &() const
+{
+    return release();
+}
+
+template< typename T >
+sc_core::sc_event_expr<T>::~sc_event_expr()
+{
+    delete m_expr;
+}
+
+const char* sc_core::sc_event::name() const
+{ return m_name.c_str(); }
+
+sc_core::sc_object* sc_core::sc_event::get_parent_object() const
+{ return m_parent_p; }
+
+bool sc_core::sc_event::in_hierarchy() const
+{ return m_name.length() != 0; }
+
+
+sc_core::sc_event_timed::sc_event_timed( sc_event* e, const sc_time& t )
+    : m_event( e ), m_notify_time( t )
+{}
+
+sc_core::sc_event_timed::~sc_event_timed()
+{ if( m_event != 0 ) { m_event->m_timed = 0; } }
+
+sc_core::sc_event* sc_core::sc_event_timed::event() const
+{ return m_event; }
+
+const sc_core::sc_time& sc_core::sc_event_timed::notify_time() const
+    { return m_notify_time; }
+ 
+static void* sc_core::sc_event_timed::operator new( std::size_t )
+    { return allocate(); }
+
+static void sc_core::sc_event_timed:: operator delete( void* p, std::size_t )
+    { deallocate( p ); }
+
+
+void sc_core::sc_event::notify( double v, sc_time_unit tu )
+{
+    notify( sc_time( v, tu, m_simc ) );
+}
+
+void sc_core::sc_event::notify_internal( const sc_time& t )
+{
+    if( t == SC_ZERO_TIME ) {
+        // add this event to the delta events set
+        m_delta_event_index = m_simc->add_delta_event( this );
+        m_notify_type = DELTA;
+    } else {
+        sc_event_timed* et =
+		new sc_event_timed( this, m_simc->time_stamp() + t );
+        m_simc->add_timed_event( et );
+        m_timed = et;
+        m_notify_type = TIMED;
+    }
+}
+
+
+void sc_core::sc_event::notify_next_delta()
+{
+    if( m_notify_type != NONE ) {
+        SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
+    }
+    // add this event to the delta events set
+    m_delta_event_index = m_simc->add_delta_event( this );
+    m_notify_type = DELTA;
+}
+
+
+void sc_core::sc_event::notify_delayed( double v, sc_time_unit tu )
+{
+    notify_delayed( sc_time( v, tu, m_simc ) );
+}
+
+
+void sc_core::sc_event::add_static( sc_method_handle method_h ) const
+{
+    m_methods_static.push_back( method_h );
+}
+
+void sc_core::sc_event::add_static( sc_thread_handle thread_h ) const
+{
+    m_threads_static.push_back( thread_h );
+}
+
+void sc_core::sc_event::add_dynamic( sc_method_handle method_h ) const
+{
+    m_methods_dynamic.push_back( method_h );
+}
+
+void sc_core::sc_event::add_dynamic( sc_thread_handle thread_h ) const
+{
+    m_threads_dynamic.push_back( thread_h );
+}
+
+
+
+  sc_core::sc_event_list::sc_event_list( bool and_list_, bool auto_delete_ ) 
+  : m_events() 
+  , m_and_list( and_list_ ) 
+  , m_auto_delete( auto_delete_ ) 
+  , m_busy( 0 )
+{
+}
+ sc_core::sc_event_list::sc_event_list( const sc_event& e,
+                              bool and_list_,
+                              bool auto_delete_ )
+  : m_events()
+  , m_and_list( and_list_ )
+  , m_auto_delete( auto_delete_ )
+  , m_busy(0)
+{
+    m_events.push_back( &e );
+}
+
+ sc_core::sc_event_list::sc_event_list( sc_event_list const & that )
+  : m_events()
+  , m_and_list( that.m_and_list )
+  , m_auto_delete( false )
+  , m_busy( 0 )
+{
+    move_from( that );
+    that.auto_delete(); // free automatic lists
+}
+
+sc_core::sc_event_list& sc_core::sc_event_list::operator=( sc_event_list const & that )
+{
+    if( m_busy )
+        report_invalid_modification();
+
+    move_from( that );
+    that.auto_delete(); // free automatic lists
+
+    return *this;
+}
+ sc_core::sc_event_list::~sc_event_list()
+{
+    if( m_busy )
+        report_premature_destruction();
+}
+
+void sc_core::sc_event_list::swap( sc_event_list& that )
+{
+    if( busy() || that.busy() )
+        report_invalid_modification();
+    m_events.swap( that.m_events );
+}
+
+void sc_core::sc_event_list::move_from( sc_event_list const&  that )
+{
+    if( that.temporary() ) {
+        swap( const_cast<sc_event_list&>(that) ); // move from source
+    } else {
+        m_events = that.m_events;                 // copy from source
+    }
+}
+
+int sc_core::sc_event_list::size() const
+{
+    return m_events.size();
+}
+
+bool sc_core::sc_event_list::and_list() const
+{
+    return m_and_list;
+}
+
+
+bool sc_core::sc_event_list::busy() const
+{
+    return m_busy != 0;
+}
+
+
+bool sc_core::sc_event_list::temporary() const
+{
+    return m_auto_delete && ! m_busy;
+}
+
+void sc_core::sc_event_list::auto_delete() const
+{
+    if( m_busy ) {
+        --m_busy;
+    }
+    if( ! m_busy && m_auto_delete ) {
+        delete this;
+    }
+}
+
+
+
+
+
+sc_core::sc_event_or_list::sc_event_or_list()
+  : sc_event_list( false )
+{}
+
+sc_core::sc_event_or_list::sc_event_or_list( const sc_event& e )
+: sc_event_list( false )
+{
+  push_back( e );
+}
+
+sc_core::sc_event_or_list::sc_event_or_list( bool auto_delete_ )
+: sc_event_list( false, auto_delete_ )
+{}
+
+  sc_core::sc_event_or_list& sc_core::sc_event_or_list::operator |= ( const sc_event& e )
+{
+    if( busy() )
+        report_invalid_modification();
+
+    push_back( e );
+    return *this;
+}
+
+sc_core::sc_event_or_list& sc_core::sc_event_or_list::operator |= ( const sc_event_or_list& el )
+{
+    if( busy() )
+        report_invalid_modification();
+
+    push_back( el );
+    return *this;
+}
+
+sc_core::sc_event_or_expr sc_core::sc_event_or_list::operator | ( const sc_event& e2 ) const
+{
+    sc_event_or_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+sc_core::sc_event_or_expr sc_core::sc_event_or_list::operator | ( const sc_event_or_list& e2 ) const
+{
+    sc_event_or_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+
+// sc_event
+
+sc_core::sc_event_or_expr sc_core::sc_event::operator | ( const sc_event& e2 ) const
+{
+    sc_event_or_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+sc_core::sc_event_or_expr sc_core::sc_event::operator | ( const sc_event_or_list& e2 ) const
+{
+    sc_event_or_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+
+void sc_core::sc_event_or_list::swap( sc_event_or_list & that )
+{
+  sc_event_list::swap( that );
+}
+
+
+
+sc_core::sc_event_and_list::sc_event_and_list()
+  : sc_event_list( true )
+{}
+
+sc_core::sc_event_and_list::sc_event_and_list( const sc_event& e )
+: sc_event_list( true )
+{
+  push_back( e );
+}
+
+sc_core::sc_event_and_list::sc_event_and_list( bool auto_delete_ )
+: sc_event_list( true, auto_delete_ )
+{}
+
+void sc_core::sc_event_and_list::swap( sc_event_and_list & that )
+{
+  sc_event_list::swap( that );
+}
+
+sc_core::sc_event_and_list& sc_core::sc_event_and_list::operator &= ( const sc_event& e )
+{
+    if( busy() )
+        report_invalid_modification();
+
+    push_back( e );
+    return *this;
+}
+
+sc_core::sc_event_and_list& sc_core::sc_event_and_list::operator &= ( const sc_event_and_list& el )
+{
+    if( busy() )
+        report_invalid_modification();
+
+    push_back( el );
+    return *this;
+}
+
+sc_core::sc_event_and_expr sc_core::sc_event_and_list::operator & ( const sc_event& e )
+{
+    sc_event_and_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e );
+    return expr;
+}
+
+sc_core::sc_event_and_expr sc_core::sc_event_and_list::operator & ( const sc_event_and_list& el )
+{
+    sc_event_and_expr expr;
+    expr.push_back( *this );
+    expr.push_back( el );
+    return expr;
+}
+
+// sc_event
+
+sc_core::sc_event_and_expr sc_core::sc_event::operator & ( const sc_event& e2 ) const
+{
+    sc_event_and_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+sc_core::sc_event_and_expr sc_core::sc_event::operator & ( const sc_event_and_list& e2 ) const
+{
+    sc_event_and_expr expr;
+    expr.push_back( *this );
+    expr.push_back( e2 );
+    return expr;
+}
+
+
+namespace sc_core{
+sc_event_or_expr operator | ( sc_event_or_expr expr, sc_event const & e )
+{
+    expr.push_back( e );
+    return expr;
+}
+
+sc_event_or_expr operator | ( sc_event_or_expr expr, sc_event_or_list const & el )
+{
+    expr.push_back( el );
+    return expr;
+}
+
+
+sc_event_and_expr operator & ( sc_event_and_expr expr, sc_event const & e )
+{
+    expr.push_back( e );
+    return expr;
+}
+
+sc_event_and_expr operator & ( sc_event_and_expr expr, sc_event_and_list const & el )
+{
+    expr.push_back( el );
+    return expr;
+}
+}
+//----------------------------------------------Farah is done working here 
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -78,9 +485,41 @@ sc_event::cancel()
 }
 
 
+//------------------------------------------------------------------------------
+//"sc_event::notify"
+//
+// Notes:
+//   (1) The correct order to lock and unlock channel locks (to avoid deadlocks
+//       and races) for SystemC functions without context switch:
+//
+//       outer_channel.lock_and_push
+//           [outer channel work]
+//           inner_channel.lock_and_push
+//               [inner channel work]
+//   +---------------------------------NOTIFY---------------------------------+
+//   |   +------------------------Simulation Kernel------------------------+  |
+//   |   |       acquire kernel lock                                       |  |
+//   |   |           [kernel work]                                         |  |
+//   |   |       release kernel lock                                       |  |
+//   |   +-----------------------------------------------------------------+  |
+//   +------------------------------------------------------------------------+
+//               [inner channel work]
+//           inner_channel.pop_and_unlock
+//           [outer channel work]
+//       outer_channel.pop_and_unlock
+//
+//   (2) For more information, please refer to sc_thread_process.h: 272
+//
+// (02/20/2015 GL)
+//------------------------------------------------------------------------------
 void
 sc_event::notify()
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     // immediate notification
     if(
         // coming from sc_prim_channel::update
@@ -93,16 +532,24 @@ sc_event::notify()
     {
         SC_REPORT_ERROR( SC_ID_IMMEDIATE_NOTIFICATION_, "" );
         return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     cancel();
     trigger();
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 void
 sc_event::notify( const sc_time& t )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     if( m_notify_type == DELTA ) {
         return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
     if( t == SC_ZERO_TIME ) {
 #       if SC_HAS_PHASE_CALLBACKS_
@@ -116,6 +563,7 @@ sc_event::notify( const sc_time& t )
                 SC_REPORT_WARNING( SC_ID_PHASE_CALLBACK_FORBIDDEN_
                                  , msg.str().c_str() );
                 return;
+                // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
             }
 #       endif
         if( m_notify_type == TIMED ) {
@@ -128,6 +576,7 @@ sc_event::notify( const sc_time& t )
         m_delta_event_index = m_simc->add_delta_event( this );
         m_notify_type = DELTA;
         return;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
 #   if SC_HAS_PHASE_CALLBACKS_
         if( SC_UNLIKELY_( m_simc->get_status()
@@ -140,12 +589,14 @@ sc_event::notify( const sc_time& t )
             SC_REPORT_WARNING( SC_ID_PHASE_CALLBACK_FORBIDDEN_
                              , msg.str().c_str() );
             return;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
         }
 #   endif
     if( m_notify_type == TIMED ) {
         sc_assert( m_timed != 0 );
         if( m_timed->m_notify_time <= m_simc->time_stamp() + t ) {
             return;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
         }
         // remove this event from the timed events set
         m_timed->m_event = 0;
@@ -156,6 +607,7 @@ sc_event::notify( const sc_time& t )
     m_simc->add_timed_event( et );
     m_timed = et;
     m_notify_type = TIMED;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 static void sc_warn_notify_delayed()
@@ -172,6 +624,10 @@ static void sc_warn_notify_delayed()
 void
 sc_event::notify_delayed()
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     sc_warn_notify_delayed();
     if( m_notify_type != NONE ) {
         SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
@@ -179,11 +635,16 @@ sc_event::notify_delayed()
     // add this event to the delta events set
     m_delta_event_index = m_simc->add_delta_event( this );
     m_notify_type = DELTA;
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 void
 sc_event::notify_delayed( const sc_time& t )
 {
+    sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
     sc_warn_notify_delayed();
     if( m_notify_type != NONE ) {
         SC_REPORT_ERROR( SC_ID_NOTIFY_DELAYED_, 0 );
@@ -200,6 +661,7 @@ sc_event::notify_delayed( const sc_time& t )
         m_timed = et;
         m_notify_type = TIMED;
     }
+    // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
 }
 
 // +----------------------------------------------------------------------------
@@ -334,6 +796,11 @@ sc_event::~sc_event()
 void
 sc_event::trigger()
 {
+    // 05/05/2015 GL: we may or may not have acquired the kernel lock upon here
+    // 1) this function is invoked in sc_simcontext::prepare_to_simulate(), 
+    //    where the kernel lock is not acquired as it is in the initialization phase
+    // 2) this function is also invoked in sc_event::notify(), where the kernel lock is acquired
+
     int       last_i; // index of last element in vector now accessing.
     int       size;   // size of vector now accessing.
 
@@ -411,6 +878,11 @@ sc_event::trigger()
 bool
 sc_event::remove_static( sc_method_handle method_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_methods_static.size() ) != 0 ) {
       sc_method_handle* l_methods_static = &m_methods_static[0];
@@ -428,6 +900,11 @@ sc_event::remove_static( sc_method_handle method_h_ ) const
 bool
 sc_event::remove_static( sc_thread_handle thread_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_threads_static.size() ) != 0 ) {
       sc_thread_handle* l_threads_static = &m_threads_static[0];
@@ -445,6 +922,11 @@ sc_event::remove_static( sc_thread_handle thread_h_ ) const
 bool
 sc_event::remove_dynamic( sc_method_handle method_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size = m_methods_dynamic.size() ) != 0 ) {
       sc_method_handle* l_methods_dynamic = &m_methods_dynamic[0];
@@ -462,6 +944,11 @@ sc_event::remove_dynamic( sc_method_handle method_h_ ) const
 bool
 sc_event::remove_dynamic( sc_thread_handle thread_h_ ) const
 {
+    // 05/06/2015 GL: assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( sc_get_curr_simcontext()->is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
     int size;
     if ( ( size= m_threads_dynamic.size() ) != 0 ) {
       sc_thread_handle* l_threads_dynamic = &m_threads_dynamic[0];

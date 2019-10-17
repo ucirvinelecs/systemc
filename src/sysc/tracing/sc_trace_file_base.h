@@ -63,11 +63,9 @@ class sc_trace_file_base
 #endif
 {
 public:
-    const char* filename() const
-      { return filename_.c_str(); }
+    const char* filename() const;
 
-    bool delta_cycles() const
-      { return trace_delta_cycles_; }
+    bool delta_cycles() const;
 
     // Also trace transitions between delta cycles if flag is true.
     virtual void delta_cycles(bool flag);

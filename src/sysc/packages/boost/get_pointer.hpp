@@ -18,11 +18,13 @@ template<class T> T * get_pointer(T * p)
 
 // get_pointer(shared_ptr<T> const & p) has been moved to shared_ptr.hpp
 
+#if 0	// auto_ptr conflicts with modern C++, skip (08/07/19, RD)
+	// (see also BOOST_NO_AUTO_PTR in SystemC 2.3.2 files)
 template<class T> T * get_pointer(std::auto_ptr<T> const& p)
 {
     return p.get();
 }
-
+#endif
 
 } // namespace sc_boost
 

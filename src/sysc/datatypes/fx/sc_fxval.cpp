@@ -51,8 +51,798 @@
 #include <float.h>
 
 #include "sysc/datatypes/fx/sc_fxval.h"
+//-------------------------------------------------Farah is working here
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxval
+//
+//  Fixed-point value type; arbitrary precision.
+// ----------------------------------------------------------------------------
+
+// protected method
 
 
+sc_dt::sc_fxval_observer*
+sc_dt::sc_fxval::observer() const
+{
+    return m_observer;
+}
+
+
+// internal use only;
+
+sc_dt::sc_fxval::sc_fxval( scfx_rep* a )
+: m_rep( a != 0 ? a : new scfx_rep ),
+  m_observer( 0 )
+{}
+
+
+// public constructors
+
+
+sc_dt::sc_fxval::sc_fxval( sc_fxval_observer* observer_ )
+: m_rep( new scfx_rep ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_OBSERVER_DEFAULT_
+    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
+}
+
+
+sc_dt::sc_fxval::sc_fxval( const sc_fxval& a,
+		    sc_fxval_observer* observer_ )
+: m_rep( new scfx_rep( *a.m_rep ) ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_OBSERVER_DEFAULT_
+    SC_FXVAL_OBSERVER_READ_( a )
+    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+}
+
+
+sc_dt::sc_fxval::~sc_fxval()
+{
+    SC_FXVAL_OBSERVER_DESTRUCT_( *this )
+    delete m_rep;
+}
+
+
+// internal use only;
+
+const sc_dt::scfx_rep*
+sc_dt::sc_fxval::get_rep() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep;
+}
+
+// internal use only;
+
+void
+sc_dt::sc_fxval::set_rep( scfx_rep* rep_ )
+{
+    delete m_rep;
+    m_rep = rep_;
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+}
+
+
+// unary operators
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxval::operator - () const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return sc_fxval( sc_dt::neg_scfx_rep( *m_rep ) );
+}
+
+
+const sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator + () const
+{
+    // SC_FXVAL_OBSERVER_READ_( *this )
+    return *this;
+}
+
+// unary functions
+void
+sc_dt::neg( sc_fxval& c, const sc_fxval& a )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::neg_scfx_rep( *a.m_rep );
+    SC_FXVAL_OBSERVER_WRITE_( c )
+}
+
+//Operator functions
+
+const sc_dt::sc_fxval
+sc_dt::operator / ( const sc_fxval& a, const sc_fxval& b )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    SC_FXVAL_OBSERVER_READ_( b )
+    return sc_fxval( sc_dt::div_scfx_rep( *a.m_rep, *b.m_rep ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::operator << ( const sc_fxval& a, int b )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    return sc_fxval( sc_dt::lsh_scfx_rep( *a.m_rep, b ) );
+}
+
+
+const sc_dt::sc_fxval
+sc_dt::operator >> ( const sc_fxval& a, int b )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    return sc_fxval( sc_dt::rsh_scfx_rep( *a.m_rep, b ) );
+}
+
+
+void
+sc_dt::lshift( sc_fxval& c, const sc_fxval& a, int b )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::lsh_scfx_rep( *a.m_rep, b );
+    SC_FXVAL_OBSERVER_WRITE_( c )
+}
+
+
+void
+sc_dt::rshift( sc_fxval& c, const sc_fxval& a, int b )
+{
+    SC_FXVAL_OBSERVER_READ_( a )
+    delete c.m_rep;
+    c.m_rep = sc_dt::rsh_scfx_rep( *a.m_rep, b );
+    SC_FXVAL_OBSERVER_WRITE_( c )
+}
+
+
+// assignment operators
+
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator = ( const sc_fxval& a )
+{
+    if( &a != this )
+    {
+	SC_FXVAL_OBSERVER_READ_( a )
+	*m_rep = *a.m_rep;
+	SC_FXVAL_OBSERVER_WRITE_( *this )
+    }
+    return *this;
+}
+
+
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator <<= ( int b )
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    m_rep->lshift( b );
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator >>= ( int b )
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    m_rep->rshift( b );
+    SC_FXVAL_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+
+// auto-increment and auto-decrement
+
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxval::operator ++ ( int )
+{
+    sc_fxval c = *this;
+    (*this) += 1;
+    return c;
+}
+
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxval::operator -- ( int )
+{
+    sc_fxval c = *this;
+    (*this) -= 1;
+    return c;
+}
+
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator ++ ()
+{
+    (*this) += 1;
+    return *this;
+}
+
+
+sc_dt::sc_fxval&
+sc_dt::sc_fxval::operator -- ()
+{
+    (*this) -= 1;
+    return *this;
+}
+
+
+// implicit conversion
+
+
+sc_dt::sc_fxval::operator double() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->to_double();
+}
+
+
+// explicit conversion to primitive types
+
+short
+sc_dt::sc_fxval::to_short() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<short>( m_rep->to_double() );
+}
+
+
+unsigned short
+sc_dt::sc_fxval::to_ushort() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<unsigned short>( m_rep->to_double() );
+}
+
+
+int
+sc_dt::sc_fxval::to_int() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<int>( m_rep->to_double() );
+}
+
+
+long
+sc_dt::sc_fxval::to_long() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<long>( m_rep->to_double() );
+}
+
+
+unsigned int
+sc_dt::sc_fxval::to_uint() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<unsigned int>( m_rep->to_double() );
+}
+
+
+unsigned long
+sc_dt::sc_fxval::to_ulong() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<unsigned long>( m_rep->to_double() );
+}
+
+
+float
+sc_dt::sc_fxval::to_float() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<float>( m_rep->to_double() );
+}
+
+
+double
+sc_dt::sc_fxval::to_double() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->to_double();
+}
+
+
+// query value
+
+
+bool
+sc_dt::sc_fxval::is_neg() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->is_neg();
+}
+
+
+bool
+sc_dt::sc_fxval::is_zero() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->is_zero();
+}
+
+
+bool
+sc_dt::sc_fxval::is_nan() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->is_nan();
+}
+
+
+bool
+sc_dt::sc_fxval::is_inf() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->is_inf();
+}
+
+
+bool
+sc_dt::sc_fxval::is_normal() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return m_rep->is_normal();
+}
+
+
+
+bool
+sc_dt::sc_fxval::rounding_flag() const
+{
+    return m_rep->rounding_flag();
+}
+
+
+// internal use only;
+
+bool
+sc_dt::sc_fxval::get_bit( int i ) const
+{
+    return m_rep->get_bit( i );
+}
+
+
+// protected methods and friend functions
+
+
+void
+sc_dt::sc_fxval::get_type( int& wl, int& iwl, sc_enc& enc ) const
+{
+    m_rep->get_type( wl, iwl, enc );
+}
+
+
+sc_dt::int64
+sc_dt::sc_fxval::to_int64() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<int64>( m_rep->to_double() );
+}
+
+sc_dt::uint64
+sc_dt::sc_fxval::to_uint64() const
+{
+    SC_FXVAL_OBSERVER_READ_( *this )
+    return static_cast<uint64>( m_rep->to_double() );
+}
+
+
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxval::quantization( const scfx_params& params, bool& q_flag ) const
+{
+    return sc_fxval( sc_dt::quantization_scfx_rep( *m_rep, params, q_flag ) );
+}
+
+const sc_dt::sc_fxval
+sc_dt::sc_fxval::overflow( const scfx_params& params, bool& o_flag ) const
+{
+    return sc_fxval( sc_dt::overflow_scfx_rep( *m_rep, params, o_flag ) );
+}
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxval& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxval& a )
+{
+    a.scan( is );
+    return is;
+}
+// ----------------------------------------------------------------------------
+//  CLASS : sc_fxval_fast
+//
+//  Fixed-point value type; limited precision.
+// ----------------------------------------------------------------------------
+
+// protected method
+
+
+sc_dt::sc_fxval_fast_observer*
+sc_dt::sc_fxval_fast::observer() const
+{
+    return m_observer;
+}
+
+
+// public constructors
+
+
+sc_dt::sc_fxval_fast::sc_fxval_fast( sc_fxval_fast_observer* observer_ )
+: m_val( 0.0 ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_FAST_OBSERVER_DEFAULT_
+    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
+}
+
+
+sc_dt::sc_fxval_fast::sc_fxval_fast( const sc_fxval_fast& a,
+			      sc_fxval_fast_observer* observer_ )
+: m_val( a.m_val ),
+  m_observer( observer_ )
+{
+    SC_FXVAL_FAST_OBSERVER_DEFAULT_
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+}
+
+
+
+sc_dt::sc_fxval_fast::~sc_fxval_fast()
+{
+    SC_FXVAL_FAST_OBSERVER_DESTRUCT_( *this )
+}
+
+
+// internal use only;
+
+double
+sc_dt::sc_fxval_fast::get_val() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+// internal use only;
+
+void
+sc_dt::sc_fxval_fast::set_val( double val_ )
+{
+    m_val = val_;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+}
+
+
+// unary operators
+
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxval_fast::operator - () const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return sc_fxval_fast( - m_val );
+}
+
+
+const sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator + () const
+{
+    // SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return *this;
+}
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator = ( const sc_fxval_fast& a )
+{
+    if( &a != this )
+    {
+	SC_FXVAL_FAST_OBSERVER_READ_( a )
+	m_val = a.m_val;
+	SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    }
+    return *this;
+}
+
+
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator <<= ( int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    m_val *= scfx_pow2( b );
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator >>= ( int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    m_val *= scfx_pow2( -b );
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+
+// auto-increment and auto-decrement
+
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxval_fast::operator ++ ( int )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    double c = m_val;
+    m_val = m_val + 1;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return sc_fxval_fast( c );
+}
+
+
+const sc_dt::sc_fxval_fast
+sc_dt::sc_fxval_fast::operator -- ( int )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    double c = m_val;
+    m_val = m_val - 1;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return sc_fxval_fast( c );
+}
+
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator ++ ()
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    m_val = m_val + 1;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+
+sc_dt::sc_fxval_fast&
+sc_dt::sc_fxval_fast::operator -- ()
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    m_val = m_val - 1;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
+    return *this;
+}
+
+// unary functions
+
+void
+sc_dt::neg( sc_fxval_fast& c, const sc_fxval_fast& a )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    c.m_val = - a.m_val;
+    SC_FXVAL_FAST_OBSERVER_WRITE_( c )
+}
+//Operator functions
+
+
+
+
+void
+sc_dt::lshift( sc_fxval_fast& c, const sc_fxval_fast& a, int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    c.m_val = a.m_val * scfx_pow2( b );
+    SC_FXVAL_FAST_OBSERVER_WRITE_( c )
+}
+
+
+void
+sc_dt::rshift( sc_fxval_fast& c, const sc_fxval_fast& a, int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    c.m_val = a.m_val * scfx_pow2( -b );
+    SC_FXVAL_FAST_OBSERVER_WRITE_( c )
+}
+
+
+// implicit conversion
+
+
+sc_dt::sc_fxval_fast::operator double() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+
+// explicit conversion to primitive types
+
+
+short
+sc_dt::sc_fxval_fast::to_short() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<short>( m_val );
+}
+
+
+unsigned short
+sc_dt::sc_fxval_fast::to_ushort() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned short>( m_val );
+}
+
+int
+sc_dt::sc_fxval_fast::to_int() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<int>( m_val );
+}
+
+
+unsigned int
+sc_dt::sc_fxval_fast::to_uint() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned int>( m_val );
+}
+
+
+long
+sc_dt::sc_fxval_fast::to_long() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<long>( m_val );
+}
+
+
+unsigned long
+sc_dt::sc_fxval_fast::to_ulong() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<unsigned long>( m_val );
+}
+
+
+float
+sc_dt::sc_fxval_fast::to_float() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<float>( m_val );
+}
+
+
+double
+sc_dt::sc_fxval_fast::to_double() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return m_val;
+}
+
+
+// query value
+
+
+bool
+sc_dt::sc_fxval_fast::is_neg() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return ( id.negative() != 0 );
+}
+
+
+bool
+sc_dt::sc_fxval_fast::is_zero() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return id.is_zero();
+}
+
+
+bool
+sc_dt::sc_fxval_fast::is_nan() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return id.is_nan();
+}
+
+
+bool
+sc_dt::sc_fxval_fast::is_inf() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return id.is_inf();
+}
+
+
+bool
+sc_dt::sc_fxval_fast::is_normal() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    scfx_ieee_double id( m_val );
+    return ( id.is_normal() || id.is_subnormal() || id.is_zero() );
+}
+
+
+
+bool
+sc_dt::sc_fxval_fast::rounding_flag() const
+{
+    // does not apply to sc_fxval_fast; included for API compatibility
+    return false;
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator / ( const sc_fxval_fast& a, const sc_fxval_fast& b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    SC_FXVAL_FAST_OBSERVER_READ_( b )
+    return sc_fxval_fast( a.m_val / b.m_val );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator << ( const sc_fxval_fast& a, int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    return sc_fxval_fast( a.m_val * scfx_pow2( b ) );
+}
+
+const sc_dt::sc_fxval_fast
+sc_dt::operator >> ( const sc_fxval_fast& a, int b )
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( a )
+    return sc_fxval_fast( a.m_val * scfx_pow2( -b ) );
+}
+
+sc_dt::int64
+sc_dt::sc_fxval_fast::to_int64() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<int64>( m_val );
+}
+
+
+sc_dt::uint64
+sc_dt::sc_fxval_fast::to_uint64() const
+{
+    SC_FXVAL_FAST_OBSERVER_READ_( *this )
+    return static_cast<uint64>( m_val );
+}
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxval_fast& a )
+{
+    a.print( os );
+    return os;
+}
+
+::std::istream&
+sc_dt::operator >> ( ::std::istream& is, sc_fxval_fast& a )
+{
+    a.scan( is );
+    return is;
+}
+//---------------------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

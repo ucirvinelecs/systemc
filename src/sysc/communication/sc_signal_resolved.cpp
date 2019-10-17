@@ -29,7 +29,38 @@
 #include "sysc/kernel/sc_simcontext.h"
 #include "sysc/kernel/sc_process_handle.h"
 #include "sysc/communication/sc_signal_resolved.h"
+//--------------------------------------------------Farah is working here 
+sc_core::sc_signal_resolved::sc_signal_resolved() :
+        base_type( sc_gen_unique_name( "signal_resolved" ) ), m_proc_vec(), 
+	m_val_vec()
+  {}
 
+sc_core::sc_signal_resolved::sc_signal_resolved( const char* name_ ): 
+        base_type( name_ ), m_proc_vec(), m_val_vec()
+	{}
+
+sc_core::sc_signal_resolved::sc_signal_resolved( const char* name_, const data_type & initial_value_ )
+      : base_type( name_, initial_value_ )
+      , m_proc_vec()
+      , m_val_vec()
+  {}
+
+void sc_core::sc_signal_resolved::register_port( sc_port_base&, const char* )
+	{}
+
+sc_core::sc_signal_resolved::this_type& sc_core::sc_signal_resolved::operator = ( const data_type& a )
+   { write( a ); return *this; }
+
+
+sc_core::sc_signal_resolved::this_type& sc_core::sc_signal_resolved::operator = ( const this_type& a )
+   { write( a.read() ); return *this; }
+
+const char* sc_core::sc_signal_resolved::kind() const
+   { return "sc_signal_resolved"; }
+
+
+
+//-----------------------------------------------Farah is done working here
 namespace sc_core {
 
 // Note that we assume that two drivers driving the resolved signal to a 1 or

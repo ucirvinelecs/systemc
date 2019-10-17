@@ -70,20 +70,12 @@ protected:
     cmpr_fn_t cmpr;
 
     void rehash();
-    unsigned do_hash(const void* key) const { return (*hash)(key) % num_bins; }
+    unsigned do_hash(const void* key) const;
 
     sc_phash_elem* add_direct(void* key, void* contents, unsigned hash_val);
     sc_phash_elem* find_entry_c(unsigned hv, const void* k, sc_phash_elem*** plast);
     sc_phash_elem* find_entry_q(unsigned hv, const void* k, sc_phash_elem*** plast);
-    sc_phash_elem* find_entry(unsigned hv, const void* k, sc_phash_elem*** plast=0) const
-    {
-      /* Got rid of member func. pointer and replaced with if-else  */
-      /* Amit (5/14/99)                                             */
-      if( cmpr == 0 )
-        return ((sc_phash_base*)this)->find_entry_q( hv, k, plast );
-      else 
-	return ((sc_phash_base*)this)->find_entry_c( hv, k, plast );
-    }
+    sc_phash_elem* find_entry(unsigned hv, const void* k, sc_phash_elem*** plast) const;
 
 public:
     sc_phash_base( void* def       = 0,
@@ -98,19 +90,19 @@ public:
     void set_cmpr_fn(cmpr_fn_t);
     void set_hash_fn(hash_fn_t);
 
-    bool empty() const { return (num_entries == 0); }
-    unsigned count() const { return num_entries; }
+    bool empty() const;
+    unsigned count() const;
 
     void erase();
     void erase(void (*kfree)(void*));
     void copy( const sc_phash_base* );
-    void copy( const sc_phash_base& b ) { copy(&b); }
+    void copy( const sc_phash_base& b );
     void copy( const sc_phash_base& b, void* (*kdup)(const void*), void (*kfree)(void*));
     int insert( void* k, void* c );
-    int insert( void* k ) { return insert(k, default_value); }
+    int insert( void* k );
     int insert( void* k, void* c, void* (*kdup)(const void*) );
     int insert_if_not_exists(void* k, void* c);
-    int insert_if_not_exists(void* k) { return insert_if_not_exists(k, default_value); }
+    int insert_if_not_exists(void* k);
     int insert_if_not_exists(void* k, void* c, void* (*kdup)(const void*));
     int remove(const void* k);
     int remove(const void* k, void** pk, void** pc);
@@ -120,7 +112,7 @@ public:
     int remove_by_contents(const void* c, void (*kfree)(void*));
     int remove_by_contents(bool (*predicate)(const void*, void*), void* arg, void (*kfree)(void*));
     int lookup(const void* k, void** pc) const;
-    bool contains(const void* k) const { return (lookup(k, 0) != 0); }
+    bool contains(const void* k) const;
     void* operator[](const void* key) const;
 };
 
@@ -134,19 +126,15 @@ protected:
 
 public:
     void reset(sc_phash_base* t);
-    void reset(sc_phash_base& t) { reset(&t); }
+    void reset(sc_phash_base& t);
 
-    sc_phash_base_iter(sc_phash_base* t)
-    : table(t), entry(0), next(0), last(0), index(0)
-        { reset(t); }
-    sc_phash_base_iter(sc_phash_base& t)
-    : table(&t), entry(0), next(0), last(0), index(0)
-        { reset(t); }
-    ~sc_phash_base_iter() { }
+    sc_phash_base_iter(sc_phash_base* t);
+    sc_phash_base_iter(sc_phash_base& t);
+    ~sc_phash_base_iter();
 
     bool empty() const;
     void step();
-    void operator++(int) { step(); }
+    void operator++(int);
     void remove();
     void remove(void (*kfree)(void*));
     void* key() const;

@@ -46,7 +46,14 @@
 #if SC_TRACING_PHASE_CALLBACKS_
 #  include "sysc/kernel/sc_object_int.h"
 #endif
+//-------------------------------------------------Farah is working here
 
+const char* sc_core::sc_trace_file_base::filename() const
+  { return filename_.c_str(); }
+
+bool sc_core::sc_trace_file_base::delta_cycles() const
+  { return trace_delta_cycles_; }
+//---------------------------------------------Farah is done working here
 namespace sc_core {
 
 bool sc_trace_file_base::tracing_initialized_ = false;

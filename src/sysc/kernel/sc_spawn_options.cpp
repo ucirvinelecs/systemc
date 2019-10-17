@@ -31,11 +31,46 @@
 
 #include "sysc/kernel/sc_spawn_options.h"
 #include "sysc/kernel/sc_reset.h"
+//-------------------------------------------------Farah is working here
 
+sc_core::sc_spawn_options::sc_spawn_options() :
+        m_dont_initialize(false), m_resets(), m_sensitive_events(),
+        m_sensitive_event_finders(), m_sensitive_interfaces(),
+        m_sensitive_port_bases(), m_spawn_method(false), m_stack_size(0)
+        { }
+
+
+void sc_core::sc_spawn_options::dont_initialize()   { m_dont_initialize = true; }
+
+bool sc_core::sc_spawn_options::is_method() const   { return m_spawn_method; }
+
+void sc_core::sc_spawn_options::set_stack_size(int stack_size) { m_stack_size = stack_size; }
+
+void sc_core::sc_spawn_options::set_sensitivity(const sc_event* event)
+    { m_sensitive_events.push_back(event); }
+
+void sc_core::sc_spawn_options::set_sensitivity(sc_port_base* port_base)
+    { m_sensitive_port_bases.push_back(port_base); }
+
+void sc_core::sc_spawn_options::set_sensitivity(sc_interface* interface_p)
+    { m_sensitive_interfaces.push_back(interface_p); }
+
+void sc_core::sc_spawn_options::set_sensitivity(sc_export_base* export_base)
+    { m_sensitive_interfaces.push_back(export_base->get_interface()); }
+
+void sc_core::sc_spawn_options::set_sensitivity(sc_event_finder* event_finder)
+    { m_sensitive_event_finders.push_back(event_finder); }
+
+void sc_core::sc_spawn_options::spawn_method() { m_spawn_method = true; }
+
+
+
+
+//-------------------------------------------------Farah is done working here
 namespace sc_core {
 
 // +======================================================================
-// | CLASS sc_spawn_reset_base - Class to do a generic access to an 
+// | CLASS sc_spawn_reset_base - Class to do a generic access to an
 // |                             sc_spawn_rest object instance
 // +======================================================================
 class sc_spawn_reset_base

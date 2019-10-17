@@ -108,44 +108,13 @@ private:
     static void invalid_value( char );
     static void invalid_value( int );
 
-    static sc_logic_value_t to_value( sc_logic_value_t v )
-	{
-	    if( v < Log_0 || v > Log_X ) {
-		invalid_value( v );
-	    }
-	    return v;
-	}
+    static sc_logic_value_t to_value( sc_logic_value_t v );
 
-    static sc_logic_value_t to_value( bool b )
-	{ return ( b ? Log_1 : Log_0 ); }
+    static sc_logic_value_t to_value( bool b );
 
-    static sc_logic_value_t to_value( char c )
-	{
-	    sc_logic_value_t v;
-	    unsigned int index = (int)c;
-	    if ( index > 127 )
-	    {
-	        invalid_value(c);
-		v = Log_X;
-	    }
-	    else
-	    {
-		v = char_to_logic[index];
-		if( v < Log_0 || v > Log_X ) {
-		    invalid_value( c );
-		}
-	    }
-	    return v;
-	}
+    static sc_logic_value_t to_value( char c );
 
-    static sc_logic_value_t to_value( int i )
-	{
-	    if( i < 0 || i > 3 ) {
-		invalid_value( i );
-	    }
-	    return sc_logic_value_t( i );
-	}
-
+    static sc_logic_value_t to_value( int i );
 
     void invalid_01() const;
 
@@ -163,40 +132,23 @@ public:
 
     // constructors
 
-    sc_logic()
-	: m_val( Log_X )
-	{}
+    sc_logic();
 
-    sc_logic( const sc_logic& a )
-	: m_val( a.m_val )
-	{}
+    sc_logic( const sc_logic& a );
 
-    sc_logic( sc_logic_value_t v )
-	: m_val( to_value( v ) )
-	{}
+    sc_logic( sc_logic_value_t v );
 
-    explicit sc_logic( bool a )
-	: m_val( to_value( a ) )
-	{}
+    explicit sc_logic( bool a );
 
-    explicit sc_logic( char a )
-	: m_val( to_value( a ) )
-	{}
+    explicit sc_logic( char a );
 
-    explicit sc_logic( int a )
-	: m_val( to_value( a ) )
-	{}
+    explicit sc_logic( int a );
 
-    explicit sc_logic( const sc_bit& a )
-	: m_val( to_value( a.to_bool() ) )
-	{}
-
+    explicit sc_logic( const sc_bit& a );
 
     // destructor
 
-    ~sc_logic()
-	{}
-
+    ~sc_logic();
 
     // (bitwise) assignment operators
 
@@ -246,53 +198,38 @@ public:
 
     // bitwise complement
 
-    const sc_logic operator ~ () const
-	{ return sc_logic( not_table[m_val] ); }
+    const sc_logic operator ~ () const;
 
-    sc_logic& b_not()
-	{ m_val = not_table[m_val]; return *this; }
-
+    sc_logic& b_not();
 
     // explicit conversions
 
-    sc_logic_value_t value() const
-	{ return m_val; }
+    sc_logic_value_t value() const;
 
+    bool is_01() const;
 
-    bool is_01() const
-	{ return ( (int) m_val == Log_0 || (int) m_val == Log_1 ); }
+    bool to_bool() const;
 
-    bool to_bool() const
-	{ if( ! is_01() ) { invalid_01(); } return ( (int) m_val != Log_0 ); }
-
-    char to_char() const
-	{ return logic_to_char[m_val]; }
-
+    char to_char() const;
 
     // other methods
 
-    void print( ::std::ostream& os = ::std::cout ) const
-	{ os << to_char(); }
+    void print( ::std::ostream& os = ::std::cout ) const;
 
     void scan( ::std::istream& is = ::std::cin );
 
 
     // memory (de)allocation
 
-    static void* operator new( std::size_t, void* p ) // placement new
-	{ return p; }
+    static void* operator new( std::size_t, void* p ); // placement new
 
-    static void* operator new( std::size_t sz )
-	{ return sc_core::sc_mempool::allocate( sz ); }
+    static void* operator new( std::size_t sz );
 
-    static void operator delete( void* p, std::size_t sz )
-	{ sc_core::sc_mempool::release( p, sz ); }
+    static void operator delete( void* p, std::size_t sz );
 
-    static void* operator new [] ( std::size_t sz )
-	{ return sc_core::sc_mempool::allocate( sz ); }
+    static void* operator new [] ( std::size_t sz );
 
-    static void operator delete [] ( void* p, std::size_t sz )
-	{ sc_core::sc_mempool::release( p, sz ); }
+    static void operator delete [] ( void* p, std::size_t sz );
 
 private:
 
@@ -308,15 +245,6 @@ private:
 // ----------------------------------------------------------------------------
 
 // bitwise operators
-
-inline const sc_logic operator & ( const sc_logic& a, const sc_logic& b )
-       { return sc_logic( sc_logic::and_table[a.m_val][b.m_val] ); }
-
-inline const sc_logic operator | ( const sc_logic& a, const sc_logic& b )
-       { return sc_logic( sc_logic::or_table[a.m_val][b.m_val] ); }
-
-inline const sc_logic operator ^ ( const sc_logic& a, const sc_logic& b )
-       { return sc_logic( sc_logic::xor_table[a.m_val][b.m_val] ); }
 
 #define DEFN_BIN_OP_T(ret,op,tp)                       \
     inline ret operator op ( const sc_logic& a, tp b ) \
@@ -336,11 +264,9 @@ DEFN_BIN_OP(const sc_logic,^)
 
 // relational operators and functions
 
-inline bool operator == ( const sc_logic& a, const sc_logic& b )
-       { return ( (int) a.m_val == b.m_val ); }
+bool operator == ( const sc_logic& a, const sc_logic& b );
 
-inline bool operator != ( const sc_logic& a, const sc_logic& b )
-       { return ( (int) a.m_val != b.m_val ); }
+bool operator != ( const sc_logic& a, const sc_logic& b );
 
 DEFN_BIN_OP(bool,==)
 DEFN_BIN_OP(bool,!=)
@@ -350,22 +276,11 @@ DEFN_BIN_OP(bool,!=)
 
 // ----------------------------------------------------------------------------
 
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_logic& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_logic& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_logic& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_logic& a );
 
 extern const sc_logic SC_LOGIC_0;
 extern const sc_logic SC_LOGIC_1;

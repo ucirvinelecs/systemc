@@ -72,6 +72,7 @@ class sc_process_handle {
     friend class sc_object;
     friend class sc_join;
     friend class sc_module;
+    friend class sc_channel; // 04/07/2015 GL: a new sc_channel class is derived from sc_module
     friend class sc_reset;
     friend class sc_sensitive;
     friend class sc_sensitive_pos;

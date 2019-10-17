@@ -31,7 +31,10 @@
 #include "sysc/kernel/sc_simcontext.h"
 #include "sysc/kernel/sc_module.h"
 #include "sysc/kernel/sc_object_int.h"
-
+//-----------------------------------------------Farah is working here
+int sc_core::sc_export_registry::size() const
+    { return m_export_vec.size(); }
+//----------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

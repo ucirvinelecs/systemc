@@ -44,7 +44,9 @@
 #include "sysc/kernel/sc_kernel_ids.h"
 #include "sysc/kernel/sc_process.h"
 #include "sysc/kernel/sc_module_name.h"
-
+//--------------------------------------------Farah is working here
+sc_core::sc_object_manager::table_entry::table_entry() : m_event_p(NULL), m_object_p(NULL) {}
+//-------------------------------------------Farah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------

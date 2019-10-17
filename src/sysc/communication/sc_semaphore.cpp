@@ -31,6 +31,25 @@
 #include "sysc/kernel/sc_simcontext.h"
 #include "sysc/kernel/sc_wait.h"
 
+//--------------------------------------------------Farah is working here
+
+int sc_core::sc_semaphore::get_value() const
+	{ return m_value; }
+
+
+const char* sc_core::sc_semaphore::kind() const
+    { return "sc_semaphore"; }
+
+
+bool sc_core::sc_semaphore::in_use() const
+	{ return ( m_value <= 0 ); }
+
+
+
+
+
+
+//--------------------------------------------------Fraah is done working here
 namespace sc_core {
 
 // ----------------------------------------------------------------------------
@@ -61,6 +80,7 @@ sc_semaphore::sc_semaphore( int init_value_ )
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() ),
   m_value( init_value_ )
 {
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
     if( m_value < 0 ) {
 	report_error( SC_ID_INVALID_SEMAPHORE_VALUE_ );
     }
@@ -71,6 +91,7 @@ sc_semaphore::sc_semaphore( const char* name_, int init_value_ )
   m_free( (std::string(SC_KERNEL_EVENT_PREFIX)+"_free_event").c_str() ),
   m_value( init_value_ )
 {
+    CHNL_MTX_INIT_( m_mutex ); // 02/10/2015 GL: initialize the channel lock
     if( m_value < 0 ) {
 	report_error( SC_ID_INVALID_SEMAPHORE_VALUE_ );
     }
@@ -84,11 +105,13 @@ sc_semaphore::sc_semaphore( const char* name_, int init_value_ )
 int
 sc_semaphore::wait()
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire the channel lock
     while( in_use() ) {
 	sc_core::wait( m_free, sc_get_curr_simcontext() );
     }
     -- m_value;
     return 0;
+    // 02/24/2015 GL: return release the lock
 }
 
 
@@ -97,11 +120,13 @@ sc_semaphore::wait()
 int
 sc_semaphore::trywait()
 {
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire the channel lock
     if( in_use() ) {
 	return -1;
     }
     -- m_value;
     return 0;
+    // 02/24/2015 GL: return release the lock
 }
 
 
@@ -110,9 +135,13 @@ sc_semaphore::trywait()
 int
 sc_semaphore::post()
 {
+    // sc_get_current_process_b()->lock_and_push( &m_mutex ); // 02/16/2015 GL: acquire the channel lock
+    chnl_scoped_lock lock( m_mutex ); // 02/24/2015 GL: acquire the channel lock
     ++m_value;
     m_free.notify();
+    // sc_get_current_process_b()->pop_and_unlock( &m_mutex ); // 02/16/2015 GL: release the channel lock
     return 0;
+    // 02/24/2015 GL: return release the lock
 }
 
 } // namespace sc_core

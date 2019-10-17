@@ -29,6 +29,31 @@
  *****************************************************************************/
 
 #include <algorithm>
+/* begin TS dynamic analysis */
+#include <typeinfo>
+#include <exception>
+#include <cxxabi.h>
+#include <cstring>
+#include <cstdio>
+#include <string>
+
+extern std::string __risc__dir_filename;
+
+void print_global_variables(FILE *file);
+/* end TS dynamic analysis */
+
+/* begin TS dynamic analysis */
+#include <typeinfo>
+#include <exception>
+#include <cxxabi.h>
+#include <cstring>
+#include <cstdio>
+#include <string>
+
+extern std::string __risc__dir_filename;
+
+void print_global_variables(FILE *file);
+/* end TS dynamic analysis */
 
 #define SC_DISABLE_API_VERSION_CHECK // for in-library sc_ver.h inclusion
 
@@ -97,9 +122,341 @@
 #  define SC_SIMCONTEXT_TRACING_  1
 #endif
 
+// 04/06/2015 GL: set the number of simulation cores
+#ifndef _SYSC_DEFAULT_PAR_SIM_CPUS
+#define _SYSC_DEFAULT_PAR_SIM_CPUS 64
+#endif
+
+#ifndef _SYSC_PAR_SIM_CPUS_ENV_VAR
+#define _SYSC_PAR_SIM_CPUS_ENV_VAR "SYSC_PAR_SIM_CPUS"
+#endif
+
+//--------------------------------------------------------Farah is working here
+/*sc_core::sc_curr_proc_info::sc_curr_proc_info()
+ : process_handle( 0 ), kind( SC_NO_PROC_ ) {}
+*/
+void sc_core::sc_start( int duration, sc_time_unit unit, 
+                      sc_starvation_policy p)
+{
+    sc_start( sc_time((double)duration,unit), p );
+}
+
+void sc_core::sc_start( double duration, sc_time_unit unit, 
+                      sc_starvation_policy p )
+{
+    sc_start( sc_time(duration,unit), p );
+}
+
+sc_core::sc_cor_pkg* sc_core::sc_simcontext::cor_pkg()
+        { return m_cor_pkg; }
+
+sc_core::sc_status sc_core::sc_get_status()
+{
+    return sc_get_curr_simcontext()->get_status();
+}
+
+// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
+bool sc_core::sc_simcontext::elaboration_done() const
+{
+    return m_elaboration_done;
+}
+
+sc_core::sc_status sc_core::sc_simcontext::get_status() const
+{
+    return m_simulation_status != SC_RUNNING ? 
+                  m_simulation_status :
+		  (m_in_simulator_control ? SC_RUNNING : SC_PAUSED);
+}
+
+int sc_core::sc_simcontext::sim_status() const
+{
+    if( m_error ) {
+        return SC_SIM_ERROR;
+    }
+    if( m_forced_stop ) {
+        return SC_SIM_USER_STOP;
+    }
+    return SC_SIM_OK;
+}
+
+sc_core::sc_object_manager* sc_core::sc_simcontext::get_object_manager()
+{
+    return m_object_manager;
+}
+
+sc_core::sc_module_registry* sc_core::sc_simcontext::get_module_registry()
+{
+    return m_module_registry;
+}
+
+sc_core::sc_port_registry* sc_core::sc_simcontext::get_port_registry()
+{
+    return m_port_registry;
+}
+
+sc_core::sc_export_registry* sc_core::sc_simcontext::get_export_registry()
+{
+    return m_export_registry;
+}
+
+sc_core::sc_prim_channel_registry*  sc_core::sc_simcontext::get_prim_channel_registry()
+{
+    return m_prim_channel_registry;
+}
+
+int sc_core::sc_simcontext::next_proc_id()
+{
+    return ( ++ m_next_proc_id );
+}
+
+const sc_core::sc_time& sc_core::sc_simcontext::max_time() const
+{
+    if ( m_max_time == SC_ZERO_TIME )
+    {
+        m_max_time = sc_time::from_value( ~sc_dt::UINT64_ZERO );
+    }
+    return m_max_time;
+}
+
+const sc_core::sc_time& sc_core::sc_simcontext::time_stamp() const
+{
+    return m_curr_time;
+}
+
+bool sc_core::sc_simcontext::event_occurred(sc_dt::uint64 last_change_stamp) const
+{
+    return m_change_stamp == last_change_stamp;
+}
+
+bool sc_core::sc_simcontext::evaluation_phase() const
+{
+    return (m_execution_phase == phase_evaluate) &&
+           m_ready_to_simulate;
+}
+
+bool sc_core::sc_simcontext::update_phase() const
+{
+    return m_execution_phase == phase_update;
+}
+
+bool sc_core::sc_simcontext::notify_phase() const
+{
+    return m_execution_phase == phase_notify;
+}
+
+void sc_core::sc_simcontext::set_error( sc_report* err )
+{
+    delete m_error;
+    m_error = err;
+}
+
+bool sc_core::sc_simcontext::get_error()
+{
+    return m_error != NULL;
+}
+
+int sc_core::sc_simcontext::add_delta_event( sc_event* e )
+{
+    m_delta_events.push_back( e );
+    return ( m_delta_events.size() - 1 );
+}
+
+void sc_core::sc_simcontext::add_timed_event( sc_event_timed* et )
+{
+    m_timed_events->insert( et );
+}
+
+sc_core::sc_object* sc_core::sc_simcontext::get_current_writer() const
+{
+    return m_write_check ? get_curr_proc() : (sc_object*)0; // 02/06/2015 GL: m_current_writer are different in different threads
+}
+
+bool sc_core::sc_simcontext::write_check() const
+{
+    return m_write_check;
+}
+
+sc_core::sc_object* sc_core::sc_get_current_object()
+{
+  return sc_get_curr_simcontext()->active_object();
+}
+
+sc_core::sc_process_b* sc_core::sc_get_current_process_b()
+{
+    return sc_get_curr_simcontext()->get_curr_proc();
+}
+
+sc_core::sc_curr_proc_kind sc_core::sc_get_curr_process_kind()
+{
+    return sc_get_curr_simcontext()->get_curr_proc()->proc_kind();
+}
+
+int sc_core::sc_get_simulator_status()
+{
+    return sc_get_curr_simcontext()->sim_status();
+}
+
+const std::vector<sc_core::sc_event*>& sc_core::sc_get_top_level_events(
+    const sc_simcontext* simc_p = sc_get_curr_simcontext() )
+{
+    return simc_p->m_child_events;
+}
+
+const std::vector<sc_core::sc_object*>& sc_core::sc_get_top_level_objects(
+    const sc_simcontext* simc_p = sc_get_curr_simcontext() )
+{
+    return simc_p->m_child_objects;
+}
+
+bool sc_core::sc_is_running( const sc_simcontext* simc_p)
+{
+    return simc_p->m_ready_to_simulate;
+}
+void sc_core::sc_pause()
+{
+    sc_get_curr_simcontext()->m_paused = true;
+}
+
+bool sc_core::sc_pending_activity_at_current_time( const sc_simcontext* simc_p)
+{
+  return simc_p->pending_activity_at_current_time();
+}
+
+bool sc_core::sc_pending_activity_at_future_time
+  ( const sc_simcontext* simc_p)
+{
+  sc_time ignored;
+  return simc_p->next_time( ignored );
+}
+
+bool sc_core::sc_pending_activity
+  ( const sc_simcontext* simc_p)
+{
+  return sc_pending_activity_at_current_time( simc_p )
+      || sc_pending_activity_at_future_time( simc_p );
+}
+
+bool sc_core::sc_end_of_simulation_invoked()
+{
+    return sc_get_curr_simcontext()->m_end_of_simulation_called;
+}
+
+bool sc_core::sc_hierarchical_name_exists( const char* name )
+{
+    return sc_find_object(name) || sc_find_event(name);
+}
+
+bool sc_core::sc_start_of_simulation_invoked()
+{
+    return sc_get_curr_simcontext()->m_start_of_simulation_called;
+}
+
+
+sc_dt::uint64
+sc_core::sc_simcontext::change_stamp() const
+{
+    return m_change_stamp;
+}
+
+
+sc_dt::uint64 sc_core::sc_delta_count()
+{
+    return sc_get_curr_simcontext()->m_delta_count;
+}
+
+// Added from parsc version 2/14/2017
+//----------------------------------------------------------------------------//
+void
+sc_core::sc_simcontext::remove_running_process( sc_process_b* proc )
+{
+    m_curr_proc_queue.remove( proc );
+}
+
+bool
+sc_core::sc_simcontext::is_running_process( sc_process_b* proc )
+{
+    for ( std::list<sc_process_b*>::iterator it = m_curr_proc_queue.begin(); it != m_curr_proc_queue.end(); it++ )
+        if ( *it == proc )
+            return true;
+    return false;
+}
+//----------------------------------------------------------------------------//
+
+//--------------------------------------------------------Farah is done working here
 namespace sc_core {
 
+unsigned int _SYSC_NUM_SIM_CPUs; // 04/06/2015 GL: the number of simulation cores
+
 sc_stop_mode stop_mode = SC_STOP_FINISH_DELTA;
+
+//bool empty_eval_phase = true; // 11/05/2014 GL: make empty_eval_phase a global 
+                              // varible so that mapper can communicate with crunch
+
+//------------------------------------------------------------------------------
+// "get_cor_pointer"
+//
+// This method returns m_cor_p in sc_method_process or
+// sc_(c)thread_process.
+//
+// 05/22/2015 GL: moved from sc_thread_process.h
+//------------------------------------------------------------------------------
+sc_cor* get_cor_pointer( sc_process_b* process_p )
+{
+    if ( !process_p ) // the root thread
+        return sc_get_curr_simcontext()->m_cor;
+    switch ( process_p->proc_kind() )
+    {
+        case SC_THREAD_PROC_:
+        case SC_CTHREAD_PROC_:
+        {
+            sc_thread_handle thread_p = DCAST<sc_thread_handle>(process_p);
+            return thread_p->m_cor_p;
+        }
+        case SC_METHOD_PROC_:
+        {
+            sc_method_handle method_p = DCAST<sc_method_handle>(process_p);
+            return method_p->m_cor_p;
+        }
+        default:
+        {
+            SC_REPORT_ERROR(SC_ID_UNKNOWN_PROCESS_TYPE_, process_p->name());
+            return NULL;
+        }
+    }
+}
+
+// 05/22/2015 GL: constructor & destructor for sc_kernel_lock
+sc_kernel_lock::sc_kernel_lock()
+{
+    simc_p = sc_get_curr_simcontext();
+    m_cor_p = get_cor_pointer( simc_p->get_curr_proc() );
+
+    if ( !m_cor_p ) // m_cor_p is 0 in the elaboration phase
+    {
+        assert( !simc_p->m_elaboration_done );
+        return; // only the root thread is running in the elaboration phase
+    }
+
+    if ( simc_p->is_locked_and_owner() ) 
+        m_cor_p->increment_counter();
+    else 
+        simc_p->acquire_sched_mutex(); // acquire the kernel lock to protect simulation kernel
+}
+
+sc_kernel_lock::~sc_kernel_lock()
+{
+    if ( !m_cor_p ) // m_cor_p is 0 in the elaboration phase
+    {
+        assert( !simc_p->m_elaboration_done );
+        return; // only the root thread is running in the elaboration phase
+    }
+
+    if ( m_cor_p->get_counter() )
+        m_cor_p->decrement_counter();
+    else
+        simc_p->release_sched_mutex(); // release the kernel lock
+}
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_process_table
@@ -372,7 +729,10 @@ sc_simcontext::init()
     m_phase_cb_registry = new sc_phase_callback_registry( *this );
     m_name_gen = new sc_name_gen;
     m_process_table = new sc_process_table;
-    m_current_writer = 0;
+    //m_current_writer = 0;
+
+    m_curr_proc_queue.clear();
+    //m_curr_proc_num = 0;
 
 
     // CHECK FOR ENVIRONMENT VARIABLES THAT MODIFY SIMULATOR EXECUTION:
@@ -433,6 +793,9 @@ sc_simcontext::clean()
     delete m_time_params;
     delete m_cor_pkg;
     delete m_error;
+
+    m_curr_proc_queue.clear();
+    //m_curr_proc_num = 0;
 }
 
 
@@ -440,7 +803,7 @@ sc_simcontext::sc_simcontext() :
     m_object_manager(0), m_module_registry(0), m_port_registry(0),
     m_export_registry(0), m_prim_channel_registry(0),
     m_phase_cb_registry(0), m_name_gen(0),
-    m_process_table(0), m_curr_proc_info(), m_current_writer(0),
+    m_process_table(0), m_curr_proc_queue(),
     m_write_check(false), m_next_proc_id(-1), m_child_events(),
     m_child_objects(), m_delta_events(), m_timed_events(0), m_trace_files(),
     m_something_to_trace(false), m_runnable(0), m_collectable(0), 
@@ -450,7 +813,8 @@ sc_simcontext::sc_simcontext() :
     m_execution_phase(phase_initialize), m_error(0),
     m_in_simulator_control(false), m_end_of_simulation_called(false),
     m_simulation_status(SC_ELABORATION), m_start_of_simulation_called(false),
-    m_cor_pkg(0), m_cor(0)
+    m_cor_pkg(0), m_cor(0), m_one_delta_cycle(false), m_one_timed_cycle(false),
+    m_finish_time(SC_ZERO_TIME)
 {
     init();
 }
@@ -475,10 +839,514 @@ sc_simcontext::active_object()
 
     result_p = m_object_manager->hierarchy_curr();
     if ( !result_p )
-        result_p = (sc_object*)get_curr_proc_info()->process_handle;
+        result_p = (sc_object*)get_curr_proc();
     return result_p;
 }
 
+#if 0
+// +----------------------------------------------------------------------------
+// |"sc_simcontext::mapper"
+// | 
+// | This method dispatches thread and method processes based on the READY 
+// | queue and RUN queue, and it will suspend the scheduler when no more process
+// | can be added to the RUN queue, or resume the scheduler if both the READY and
+// | RUN queue are empty. 
+// +----------------------------------------------------------------------------
+void
+sc_simcontext::mapper( sc_cor* cor_p )
+{
+    sc_process_b* m_process_b = get_curr_proc(); // running process handle: NULL if it is the root thread
+
+    while ( true )
+    {
+        // check for errors
+        if( m_error ) return;
+
+        // check for call(s) to sc_stop
+        if( m_forced_stop ) {
+            if ( stop_mode == SC_STOP_IMMEDIATE ) return;
+        }
+
+        if ( m_runnable->is_empty() )
+        {
+            if ( m_curr_proc_queue.size() == 0 )
+            {
+                if ( cor_p == m_cor )
+                    return;
+                else
+                {
+                    m_cor_pkg->go( m_cor );
+                    return;
+                }
+            }
+            else
+            {
+                if ( cor_p == m_cor )
+                    m_cor_pkg->wait( cor_p );
+                else return;
+            }
+        }
+        else
+        {
+            while ( !m_runnable->is_empty() && m_curr_proc_queue.size()<_SYSC_NUM_SIM_CPUs )
+            {
+                // execute method processes
+
+                m_runnable->toggle_methods();
+                sc_method_handle method_h = pop_runnable_method();
+                while( method_h != 0 ) {
+                    if ( method_h->m_cor_p != NULL ) break;
+                    method_h = pop_runnable_method();
+                }
+
+                if (method_h != 0) {
+                    empty_eval_phase = false;
+                    m_curr_proc_queue.push_back( (sc_process_b*)method_h );
+                    if ( m_process_b != (sc_process_b*)method_h ) // do not switch to myself!
+                        m_cor_pkg->go( method_h->m_cor_p );
+                    continue;
+                }
+
+                // execute (c)thread processes
+
+                m_runnable->toggle_threads();
+                sc_thread_handle thread_h = pop_runnable_thread();
+                while( thread_h != 0 ) {
+                    if ( thread_h->m_cor_p != NULL ) break;
+                    thread_h = pop_runnable_thread();
+                }
+
+                if( thread_h != 0 ) {
+                    empty_eval_phase = false;
+                    m_curr_proc_queue.push_back( (sc_process_b*)thread_h );
+                    if ( m_process_b != (sc_process_b*)thread_h ) // do not switch to myself!
+                        m_cor_pkg->go( thread_h->m_cor_p );
+                }
+            }
+
+            if ( cor_p == m_cor )
+            {
+                m_cor_pkg->wait( cor_p ); // suspend the scheduler
+            }
+            else return;
+        }
+    }
+}
+#endif
+
+// +----------------------------------------------------------------------------
+// |"sc_simcontext::schedule"
+// | 
+// | This method dispatches thread and method processes based on the READY queue
+// | and RUN queue, and performs one or more delta cycles and timed cycles.
+// | 
+// | Each delta cycle consists of an evaluation, an update phase, and a 
+// | notification phase. During the evaluation phase any processes that are  
+// | ready to run are executed. After all the processes have been executed the  
+// | update phase is entered. During the update phase the values of any signals  
+// | that have changed are updated. After the updates have been performed the  
+// | notification phase is entered. During that phase any notifications that need 
+// | to occur because of of signal values changes are performed. This will result 
+// | in the queueing of processes for execution that are sensitive to those 
+// | notifications. At that point a delta cycle is complete, and the process is 
+// | started again unless 'm_one_delta_cycle' is true.
+// | 
+// | If the READY queue is empty at the end of the notification phase, the 
+// | current timed cycle finishes. At this point, the simulation time will 
+// | advance to the time of next timed event. If the new simulation time does 
+// | not exceed 'm_finish_time', timed notifications at the new time will be 
+// | processed, which results in the queueing of processes for execution that 
+// | are sensitive to those notifications. A new timed cycle is started again 
+// | unless 'm_one_timed_cycle' is true. When the simulation time execeeds 
+// | 'm_finish_time', it resumes the root thread and exits.
+// |
+// | Notes:
+// |   (1) This code always run with an SC_EXIT_ON_STARVATION starvation policy,
+// |       so the simulation time on return will be the minimum of the 
+// |       simulation on entry plus the duration, and the maximum time of any 
+// |       event present in the simulation. If the simulation policy is
+// |       SC_RUN_TO_TIME starvation it is implemented by the caller of this 
+// |       method, e.g., sc_start(), by artificially setting the simulation
+// |       time forward after this method completes.
+// |
+// | (05/18/2015 GL)
+// +----------------------------------------------------------------------------
+void
+sc_simcontext::schedule( sc_cor* cor_p )
+{
+    // assume we have acquired the kernel lock upon here
+#ifdef SC_LOCK_CHECK
+    assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    sc_process_b* m_process_b = get_curr_proc(); // running process handle: NULL if it is the root thread
+    sc_time t; // current simulaton time.
+
+    do {
+        while ( true )
+        {
+
+            // EVALUATE PHASE
+
+            m_execution_phase = phase_evaluate;
+            static bool empty_eval_phase = true;
+
+            if ( !m_runnable->is_empty() )
+            {
+                while ( !m_runnable->is_empty() && m_curr_proc_queue.size()<_SYSC_NUM_SIM_CPUs )
+                {
+                    // execute method processes
+
+                    m_runnable->toggle_methods();
+                    sc_method_handle method_h = pop_runnable_method();
+                    while( method_h != 0 ) {
+                        if ( method_h->m_cor_p != NULL ) break;
+                        method_h = pop_runnable_method();
+                    }
+
+                    if (method_h != 0) {
+                        empty_eval_phase = false;
+                        m_curr_proc_queue.push_back( (sc_process_b*)method_h );
+                        if ( m_process_b != (sc_process_b*)method_h ) // do not switch to myself!
+                            m_cor_pkg->go( method_h->m_cor_p );
+                        continue;
+                    }
+
+                    // execute (c)thread processes
+
+                    m_runnable->toggle_threads();
+                    sc_thread_handle thread_h = pop_runnable_thread();
+                    while( thread_h != 0 ) {
+                        if ( thread_h->m_cor_p != NULL ) break;
+                        thread_h = pop_runnable_thread();
+                    }
+
+                    if( thread_h != 0 ) {
+                        empty_eval_phase = false;
+                        m_curr_proc_queue.push_back( (sc_process_b*)thread_h );
+                        if ( m_process_b != (sc_process_b*)thread_h ) // do not switch to myself!
+                            m_cor_pkg->go( thread_h->m_cor_p );
+                    }
+                }
+
+                if ( cor_p == m_cor )
+                {
+                    m_cor_pkg->wait( cor_p ); // suspend the root thread
+                }
+
+                reset_curr_proc();
+                if ( m_error ) {
+                    throw *m_error; // re-throw propagated error
+                }
+                return;
+            }
+
+            // if ( m_runnable->is_empty() == true )
+
+            if ( m_curr_proc_queue.size() != 0 ) {
+                assert( cor_p != m_cor );
+
+                reset_curr_proc();
+                if ( m_error ) {
+                    throw *m_error; // re-throw propagated error
+                }
+                return;
+            }
+
+            // if ( m_runnable->is_empty() == true && m_curr_proc_queue.size() == 0 )
+
+            // check for errors
+            if( m_error ) {
+                break;
+            }
+
+            // check for call(s) to sc_stop
+            if( m_forced_stop ) {
+                if ( stop_mode == SC_STOP_IMMEDIATE ) {
+                    break;
+                }
+            }
+
+
+            // UPDATE PHASE
+	    //
+            // The change stamp must be updated first so that event_occurred()
+            // will work.
+
+            m_execution_phase = phase_update;
+            if ( !empty_eval_phase ) 
+            {
+//              SC_DO_PHASE_CALLBACK_(evaluation_done);
+                m_change_stamp++;
+                m_delta_count ++;
+                empty_eval_phase = true; // 06/04/2015 GL: reset empty_eval_phase
+            }
+            m_prim_channel_registry->perform_update();
+            SC_DO_PHASE_CALLBACK_(update_done);
+            m_execution_phase = phase_notify;
+
+#if SC_SIMCONTEXT_TRACING_
+            if( m_something_to_trace ) {
+                trace_cycle( /* delta cycle? */ true );
+            }
+#endif
+
+            // check for call(s) to sc_stop
+            if( m_forced_stop ) {
+                break;
+            }
+
+#ifdef DEBUG_SYSTEMC
+            // check for possible infinite loops
+            if( ++ num_deltas > SC_MAX_NUM_DELTA_CYCLES ) {
+	        ::std::cerr << "SystemC warning: "
+                     << "the number of delta cycles exceeds the limit of "
+                     << SC_MAX_NUM_DELTA_CYCLES
+                     << ", defined in sc_constants.h.\n"
+                     << "This is a possible sign of an infinite loop.\n"
+                     << "Increase the limit if this warning is invalid.\n";
+                break;
+            }
+#endif
+
+            // NOTIFICATION PHASE:
+            //
+            // Process delta notifications which will queue processes for 
+            // subsequent execution.
+
+            int size = m_delta_events.size();
+            if ( size != 0 )
+            {
+                sc_event** l_events = &m_delta_events[0];
+                int i = size - 1;
+                do {
+                    l_events[i]->trigger();
+                } while( -- i >= 0 );
+                m_delta_events.resize(0);
+            }
+
+            // IF ONLY DOING ONE CYCLE, WE ARE DONE. OTHERWISE EXECUTE NEW CALLBACKS
+
+            if ( m_one_delta_cycle ) {
+                if ( cor_p != m_cor ) {
+                    m_cor_pkg->go( m_cor ); // resume the root thread
+                }
+
+                reset_curr_proc();
+                if ( m_error ) {
+                    throw *m_error; // re-throw propagated error
+                }
+                return;
+            }
+
+            if( m_runnable->is_empty() ) {
+                // no more runnable processes
+                break;
+            }
+
+            // if sc_pause() was called we are done.
+
+            if ( m_paused ) break;
+        }
+
+        // When this point is reached the processing of delta cycles is complete
+        // if the completion was because of an error throw the exception specified
+        // by '*m_error'.
+        reset_curr_proc();
+        if( m_error ) {
+            throw *m_error; // re-throw propagated error
+        }
+
+        if ( m_one_timed_cycle ) {
+            if ( cor_p != m_cor ) {
+                m_cor_pkg->go( m_cor ); // resume the root thread
+            }
+            return;
+        }
+
+        if( m_error ) {
+            m_in_simulator_control = false;
+            if ( cor_p != m_cor ) {
+                m_cor_pkg->go( m_cor ); // resume the root thread
+            }
+            return;
+        }
+#if SC_SIMCONTEXT_TRACING_
+        if( m_something_to_trace ) {
+            trace_cycle( false );
+        }
+#endif
+        // check for call(s) to sc_stop() or sc_pause().
+        if( m_forced_stop ) {
+            do_sc_stop_action();
+            if ( cor_p != m_cor ) {
+                m_cor_pkg->go( m_cor ); // resume the root thread
+            }
+            return;
+        }
+        if( m_paused ) // return via explicit pause
+        {
+            m_execution_phase      = phase_evaluate;
+            m_in_simulator_control = false;
+            SC_DO_PHASE_CALLBACK_(simulation_paused);
+
+            if ( cor_p != m_cor ) {
+                m_cor_pkg->go( m_cor ); // resume the root thread
+            }
+            return;
+        }
+
+        // Advance Time
+
+        t = m_curr_time; 
+
+        do {
+            // See note 1 above:
+
+            if ( !next_time(t) || (t > m_finish_time ) )
+            {
+                if ( t > m_curr_time && t <= m_finish_time )
+                {
+                    SC_DO_PHASE_CALLBACK_(before_timestep);
+                    m_curr_time = t;
+                    m_change_stamp++;
+                }
+
+                m_execution_phase      = phase_evaluate;
+                m_in_simulator_control = false;
+                SC_DO_PHASE_CALLBACK_(simulation_paused);
+
+                if ( cor_p != m_cor ) {
+                    m_cor_pkg->go( m_cor ); // resume the root thread
+                }
+                return;
+            }
+            if ( t > m_curr_time ) 
+            {
+                SC_DO_PHASE_CALLBACK_(before_timestep);
+                m_curr_time = t;
+                m_change_stamp++;
+            }
+
+            // PROCESS TIMED NOTIFICATIONS AT THE CURRENT TIME
+
+            do {
+                sc_event_timed* et = m_timed_events->extract_top();
+                sc_event* e = et->event();
+                delete et;
+                if( e != 0 ) {
+                    e->trigger();
+                }
+            } while( m_timed_events->size() &&
+                     m_timed_events->top()->notify_time() == t );
+        } while( m_runnable->is_empty() );
+    } while( t < m_finish_time );
+
+    if ( cor_p != m_cor ) {
+        m_cor_pkg->go( m_cor ); // resume the root thread
+    }
+    return;
+}
+
+// helper functions
+sc_process_b*
+sc_simcontext::get_curr_proc() const
+{
+    if ( m_cor_pkg )
+        return (sc_process_b*)m_cor_pkg->get_thread_specific();
+    else
+        return NULL;
+}
+
+void
+sc_simcontext::acquire_sched_mutex()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        m_cor_pkg->acquire_sched_mutex();
+    else
+        assert( !m_elaboration_done ); // being in the elaboration phase
+}
+
+void
+sc_simcontext::release_sched_mutex()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        m_cor_pkg->release_sched_mutex();
+    else
+        assert( !m_elaboration_done ); // being in the elaboration phase
+}
+
+// for the following two functions, assume that the running thread has already
+// acquired the mutex
+void
+sc_simcontext::suspend_cor( sc_cor* cor_p )
+{
+    m_cor_pkg->wait( cor_p );
+}
+
+void
+sc_simcontext::resume_cor( sc_cor* cor_p )
+{
+    m_cor_pkg->go( cor_p );
+}
+
+// 04/29/2015 GL: get the state of the kernel lock
+bool
+sc_simcontext::is_locked()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        return m_cor_pkg->is_locked();
+    else {
+        assert( !m_elaboration_done ); // being in the elaboration phase
+        return false;
+    }
+}
+
+bool
+sc_simcontext::is_unlocked()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        return m_cor_pkg->is_unlocked();
+    else {
+        assert( !m_elaboration_done ); // being in the elaboration phase
+        return true;
+    }
+}
+
+bool
+sc_simcontext::is_lock_owner()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        return m_cor_pkg->is_lock_owner();
+    else {
+        assert( !m_elaboration_done ); // being in the elaboration phase
+        return false;
+    }
+}
+
+bool
+sc_simcontext::is_not_owner()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        return m_cor_pkg->is_not_owner();
+    else {
+        assert( !m_elaboration_done ); // being in the elaboration phase
+        return true;
+    }
+}
+
+bool
+sc_simcontext::is_locked_and_owner()
+{
+    if ( m_cor_pkg ) // m_cor_pkg is 0 in the elaboration phase
+        return m_cor_pkg->is_locked_and_owner();
+    else {
+        assert( !m_elaboration_done ); // being in the elaboration phase
+        return false;
+    }
+}
+
+#if 0
 // +----------------------------------------------------------------------------
 // |"sc_simcontext::crunch"
 // | 
@@ -507,56 +1375,25 @@ sc_simcontext::crunch( bool once )
     while ( true ) 
     {
 
-	// EVALUATE PHASE
-	
-	m_execution_phase = phase_evaluate;
-	bool empty_eval_phase = true;
-	while( true ) 
-	{
+        // EVALUATE PHASE
 
-	    // execute method processes
+        m_execution_phase = phase_evaluate;
+        empty_eval_phase = true;
+        m_cor_pkg->acquire_sched_mutex();
+	mapper( m_cor );
+        m_cor_pkg->release_sched_mutex();
 
-	    m_runnable->toggle_methods();
-	    sc_method_handle method_h = pop_runnable_method();
-	    while( method_h != 0 ) {
-		empty_eval_phase = false;
-		if ( !method_h->run_process() )
-		{
-		    goto out;
-		}
-		method_h = pop_runnable_method();
-	    }
+        // check for errors
+        if( m_error ) {
+            goto out;
+        }
 
-	    // execute (c)thread processes
+        // check for call(s) to sc_stop
+        if( m_forced_stop ) {
+            if ( stop_mode == SC_STOP_IMMEDIATE ) goto out;
+        }
 
-	    m_runnable->toggle_threads();
-	    sc_thread_handle thread_h = pop_runnable_thread();
-	    while( thread_h != 0 ) {
-                if ( thread_h->m_cor_p != NULL ) break;
-		thread_h = pop_runnable_thread();
-	    }
-
-	    if( thread_h != 0 ) {
-	        empty_eval_phase = false;
-		m_cor_pkg->yield( thread_h->m_cor_p );
-	    }
-	    if( m_error ) {
-		goto out;
-	    }
-
-	    // check for call(s) to sc_stop
-	    if( m_forced_stop ) {
-		if ( stop_mode == SC_STOP_IMMEDIATE ) goto out;
-	    }
-
-	    // no more runnable processes
-
-	    if( m_runnable->is_empty() ) {
-		break;
-	    }
-	}
-
-	// remove finally dead zombies:
+        // remove finally dead zombies:
 
         while( ! m_collectable->empty() )
         {
@@ -643,6 +1480,7 @@ out:
     this->reset_curr_proc();
     if( m_error ) throw *m_error; // re-throw propagated error
 }
+#endif
 
 inline
 void
@@ -651,7 +1489,19 @@ sc_simcontext::cycle( const sc_time& t)
     sc_time next_event_time;
 
     m_in_simulator_control = true;
-    crunch(); 
+    {
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+        assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+        m_one_timed_cycle = true;
+        schedule( m_cor );
+        m_one_timed_cycle = false;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK 
+    assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
     SC_DO_PHASE_CALLBACK_(before_timestep);
 #if SC_SIMCONTEXT_TRACING_
     if( m_something_to_trace ) {
@@ -732,6 +1582,7 @@ sc_simcontext::prepare_to_simulate()
     // instantiate the coroutine package
     m_cor_pkg = new sc_cor_pkg_t( this );
     m_cor = m_cor_pkg->get_main();
+    m_cor_pkg->set_thread_specific( NULL ); // 10/29/2014 GL: initialize the thread-specific data of the root thread
 
     // NOTIFY ALL OBJECTS THAT SIMULATION IS ABOUT TO START:
 
@@ -748,6 +1599,14 @@ sc_simcontext::prepare_to_simulate()
     if( m_forced_stop ) {
         do_sc_stop_action();
         return;
+    }
+
+    // PREPARE ALL METHOD PROCESSES FOR SIMULATION:
+
+    for ( method_p = m_process_table->method_q_head(); 
+	  method_p; method_p = method_p->next_exist() )
+    {
+	method_p->prepare_for_simulation();
     }
 
     // PREPARE ALL (C)THREAD PROCESSES FOR SIMULATION:
@@ -843,7 +1702,19 @@ sc_simcontext::initial_crunch( bool no_crunch )
 
     // run the delta cycle loop
 
-    crunch();
+    {
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+        assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+        m_one_timed_cycle = true;
+        schedule( m_cor );
+        m_one_timed_cycle = false;
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+    }
+#ifdef SC_LOCK_CHECK
+    assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
     if( m_error ) {
         return;
     }
@@ -860,11 +1731,80 @@ sc_simcontext::initial_crunch( bool no_crunch )
     }
 }
 
+/* begin TS dynamic analysis */
+void
+sc_simcontext::traverse_design()
+{
+  FILE *file = fopen (__risc__dir_filename.c_str(), "w");
+  std::vector<sc_object*> top_objects = sc_get_top_level_objects();
+
+  for(std::vector<sc_object*>::iterator
+      iter  = top_objects.begin();
+      iter != top_objects.end();
+      iter++) {
+
+    traverse_objects(*iter, file);
+  }
+
+  print_global_variables(file);
+  fclose(file);
+}
+
+void
+sc_simcontext::traverse_objects(sc_object *object, FILE *file)
+{
+  sc_core::sc_module *module = dynamic_cast<sc_core::sc_module*>(object);
+
+  if(module) {
+
+    char *realname = abi::__cxa_demangle(typeid(*module).name(), 0, 0, 0);
+
+    if(dynamic_cast<sc_core::sc_channel*>(object)) {
+
+      if(dynamic_cast<sc_core::sc_interface*>(object) == NULL ) {
+
+        std::cout << "Error: The channel class " << realname << " has no interface." << std::endl;
+        std::cout << "No dynamic elaboration is possible!" << std::endl;
+        exit(1);
+      }
+
+      fprintf(file, "%s?%p(", realname, dynamic_cast<sc_core::sc_interface*>(object));
+    } else {
+      fprintf(file, "%s#%p(", realname, module);
+    }
+
+    module->print_variables(file);
+    module->print_events(file);
+    module->print_ports(file);
+
+    for(std::vector<sc_object*>::const_iterator
+        iter  = object->get_child_objects().begin();
+        iter != object->get_child_objects().end();
+        iter++) {
+
+      if(dynamic_cast<sc_core::sc_module*>(*iter)) {
+
+        traverse_objects(dynamic_cast<sc_core::sc_module*>(*iter), file);
+      }
+    }
+
+    fprintf(file, "),");
+
+    free(realname);
+  }
+}
+/* end TS dynamic analysis */
+
 void
 sc_simcontext::initialize( bool no_crunch )
 {
     m_in_simulator_control = true;
     elaborate();
+
+    /* begin TS dynamic analysis */
+    traverse_design();
+    exit(0);
+    /* end TS dynamic analysis */
 
     prepare_to_simulate();
     initial_crunch(no_crunch);
@@ -911,8 +1851,7 @@ sc_simcontext::simulate( const sc_time& duration )
     m_in_simulator_control = true;
     m_paused = false;
 
-    sc_time until_t = m_curr_time + duration;
-    sc_time t;            // current simulaton time.
+    m_finish_time = m_curr_time + duration;
 
     // IF DURATION WAS ZERO WE ONLY CRUNCH ONCE:
     //
@@ -921,7 +1860,19 @@ sc_simcontext::simulate( const sc_time& duration )
     if ( duration == SC_ZERO_TIME ) 
     {
 	m_in_simulator_control = true;
-  	crunch( true );
+        {
+            sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+            assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+            m_one_delta_cycle = true;
+  	    schedule( m_cor );
+            m_one_delta_cycle = false;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+        }
+#ifdef SC_LOCK_CHECK
+        assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
 	if( m_error ) {
 	    m_in_simulator_control = false;
 	    return;
@@ -935,69 +1886,32 @@ sc_simcontext::simulate( const sc_time& duration )
             return;
         }
         // return via implicit pause
-        goto exit_pause;
+        m_execution_phase      = phase_evaluate;
+        m_in_simulator_control = false;
+        SC_DO_PHASE_CALLBACK_(simulation_paused);
     }
 
     // NON-ZERO DURATION: EXECUTE UP TO THAT TIME, OR UNTIL EVENT STARVATION:
-
-    do {
-
-	crunch();
-	if( m_error ) {
-	    m_in_simulator_control = false;
-	    return;
-	}
-#if SC_SIMCONTEXT_TRACING_
-	if( m_something_to_trace ) {
-	    trace_cycle( false );
-	}
-#endif
-        // check for call(s) to sc_stop() or sc_pause().
-        if( m_forced_stop ) {
-            do_sc_stop_action();
-            return;
-        }
-        if( m_paused ) goto exit_pause; // return explicit pause
-
-	t = m_curr_time; 
-
-	do {
-	    // See note 1 above:
-
-            if ( !next_time(t) || (t > until_t ) ) goto exit_time;
-	    if ( t > m_curr_time ) 
-	    {
-		SC_DO_PHASE_CALLBACK_(before_timestep);
-		m_curr_time = t;
-		m_change_stamp++;
-	    }
-
-	    // PROCESS TIMED NOTIFICATIONS AT THE CURRENT TIME
-
-	    do {
-		sc_event_timed* et = m_timed_events->extract_top();
-		sc_event* e = et->event();
-		delete et;
-		if( e != 0 ) {
-		    e->trigger();
-		}
-	    } while( m_timed_events->size() &&
-		     m_timed_events->top()->notify_time() == t );
-
-	} while( m_runnable->is_empty() );
-    } while ( t < until_t ); // hold off on the delta for the until_t time.
-
-exit_time:  // final simulation time update, if needed
-    if ( t > m_curr_time && t <= until_t ) 
-    {
-        SC_DO_PHASE_CALLBACK_(before_timestep);
-        m_curr_time = t;
-        m_change_stamp++;
+    else {
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+        assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+        schedule( m_cor );
+        // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
     }
-exit_pause: // call pause callback upon implicit or explicit pause
-    m_execution_phase      = phase_evaluate;
-    m_in_simulator_control = false;
-    SC_DO_PHASE_CALLBACK_(simulation_paused);
+#ifdef SC_LOCK_CHECK
+    assert( is_not_owner() );
+#endif /* SC_LOCK_CHECK */
+
+    // remove finally dead zombies:
+
+    while( ! m_collectable->empty() )
+    {
+        sc_process_b* del_p = m_collectable->front();
+        m_collectable->pop_front();
+        del_p->reference_decrement();
+    }
 }
 
 void
@@ -1154,6 +2068,7 @@ sc_simcontext::create_method_process(
     sc_method_handle handle = 
         new sc_method_process(name_p, free_host, method_p, host_p, opt_p);
     if ( m_ready_to_simulate ) { // dynamic process
+        handle->prepare_for_simulation(); // 11/13/2014 GL: create a coroutine for this method process
 	if ( !handle->dont_initialize() )
         {
 #ifdef SC_HAS_PHASE_CALLBACKS_
@@ -1258,7 +2173,17 @@ sc_simcontext::next_cor()
     if( thread_h != 0 ) {
 	return thread_h->m_cor_p;
     } else {
-	return m_cor;
+        sc_kernel_lock lock; // 05/25/2015 GL: sc_kernel_lock constructor acquires the kernel lock
+#ifdef SC_LOCK_CHECK
+        assert( is_locked_and_owner() );
+#endif /* SC_LOCK_CHECK */
+        if (m_curr_proc_queue.size() == 0) {
+	    return m_cor;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+        } else {
+	    return 0;
+            // 05/25/2015 GL: sc_kernel_lock destructor releases the kernel lock
+        }
     }
 }
 
@@ -1402,6 +2327,8 @@ sc_simcontext::remove_delta_event( sc_event* e )
 void 
 sc_simcontext::preempt_with( sc_method_handle method_h )
 {
+    assert(0); // 10/28/2014 GL TODO: clean up the codes in the future
+/*
     sc_curr_proc_info caller_info;     // process info for caller.
     sc_method_handle  active_method_h; // active method or null.
     sc_thread_handle  active_thread_h; // active thread or null.
@@ -1466,7 +2393,7 @@ sc_simcontext::preempt_with( sc_method_handle method_h )
 	sc_get_curr_simcontext()->set_curr_proc( (sc_process_b*)method_h );
 	method_h->run_process();
 	m_curr_proc_info = caller_info;
-    }
+    }*/
 }
 
 //------------------------------------------------------------------------------
@@ -1480,7 +2407,7 @@ sc_simcontext::preempt_with( sc_method_handle method_h )
 void sc_simcontext::requeue_current_process()
 {
     sc_thread_handle thread_p;
-    thread_p = DCAST<sc_thread_handle>(get_curr_proc_info()->process_handle);
+    thread_p = DCAST<sc_thread_handle>(get_curr_proc());
     if ( thread_p )
     {
 	execute_thread_next( thread_p );
@@ -1497,7 +2424,7 @@ void sc_simcontext::requeue_current_process()
 void sc_simcontext::suspend_current_process()
 {
     sc_thread_handle thread_p;
-    thread_p = DCAST<sc_thread_handle>(get_curr_proc_info()->process_handle);
+    thread_p = DCAST<sc_thread_handle>(get_curr_proc());
     if ( thread_p )
     {
 	thread_p->suspend_me(); 
@@ -1599,7 +2526,7 @@ sc_get_curr_process_handle()
        );
     }
 
-    return sc_get_curr_simcontext()->get_curr_proc_info()->process_handle;
+    return sc_get_curr_simcontext()->get_curr_proc();
 }
 
 // Return indication if there are more processes to execute in this delta phase
@@ -1648,6 +2575,56 @@ sc_set_random_seed( unsigned int )
 
 
 // +----------------------------------------------------------------------------
+// |"set_number_sim_cpus"
+// | 
+// | This function sets _SYSC_NUM_SIM_CPUs, the number of simulation cores.
+// |
+// | (04/06/2015 GL)
+// +----------------------------------------------------------------------------
+void set_number_sim_cpus()
+{
+    const char* sim_cpus_var = _SYSC_PAR_SIM_CPUS_ENV_VAR;
+    char* sim_cpus_str;
+
+    sim_cpus_str = getenv( sim_cpus_var );
+
+    if ( sim_cpus_str )
+    {
+        // 04/06/2015 GL: why not using atoi()? Because it does not handle errors (out-of-range?!) properly
+        unsigned int len = strlen( sim_cpus_str );
+        unsigned int i = 0;
+        _SYSC_NUM_SIM_CPUs = 0;
+        while ( len )
+        {
+            if ( sim_cpus_str[i] >= 0x30 && sim_cpus_str[i] <= 0x39 )
+            {
+                _SYSC_NUM_SIM_CPUs = _SYSC_NUM_SIM_CPUs * 10 + sim_cpus_str[i] - 0x30;
+                len --;
+                i ++;
+            }
+            else
+            {
+#ifdef _SYSC_DEFAULT_PAR_SIM_CPUS
+                _SYSC_NUM_SIM_CPUs = _SYSC_DEFAULT_PAR_SIM_CPUS;
+#else
+                _SYSC_NUM_SIM_CPUs = 64;
+#endif
+                break;
+            }
+        }
+    }
+    else
+    {
+#ifdef _SYSC_DEFAULT_PAR_SIM_CPUS
+        _SYSC_NUM_SIM_CPUs = _SYSC_DEFAULT_PAR_SIM_CPUS;
+#else
+        _SYSC_NUM_SIM_CPUs = 64;
+#endif
+    }
+}
+
+
+// +----------------------------------------------------------------------------
 // |"sc_start"
 // | 
 // | This function starts, or restarts, the execution of the simulator.
@@ -1664,6 +2641,11 @@ sc_start( const sc_time& duration, sc_starvation_policy p )
     sc_time        exit_time;      // simulation time to set upon exit.
     sc_dt::uint64  starting_delta; // delta count upon entry.
     int            status;         // current simulation status.
+
+    set_number_sim_cpus(); // 04/06/2015 GL: set the number of simulation cores
+#ifdef DEBUG_SYSTEMC
+    printf("The maximum number of concurrent pthreads is %d.\n", _SYSC_NUM_SIM_CPUs);
+#endif
 
     // Set up based on the arguments passed to us:
 

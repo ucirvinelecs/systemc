@@ -50,7 +50,60 @@
 
 #include "sysc/datatypes/fx/sc_fxcast_switch.h"
 
+//--------------------------------------------Farah is working here 
 
+sc_dt::sc_fxcast_switch::sc_fxcast_switch() 
+: m_sw()
+{
+    *this = sc_fxcast_context::default_value();
+}
+
+
+sc_dt::sc_fxcast_switch::sc_fxcast_switch( sc_switch sw_ )
+: m_sw( sw_ )
+{}
+
+
+sc_dt::sc_fxcast_switch::sc_fxcast_switch( const sc_fxcast_switch& a )
+: m_sw( a.m_sw )
+{}
+
+
+sc_dt::sc_fxcast_switch::sc_fxcast_switch( sc_without_context )
+: m_sw( SC_DEFAULT_CAST_SWITCH_ )
+{}
+
+sc_dt::sc_fxcast_switch&
+sc_dt::sc_fxcast_switch::operator = ( const sc_fxcast_switch& a )
+{
+    if( &a != this )
+    {
+        m_sw = a.m_sw;
+    }
+    return *this;
+}
+
+bool
+sc_dt::operator == ( const sc_fxcast_switch& a, const sc_fxcast_switch& b )
+{
+    return ( a.m_sw == b.m_sw );
+}
+
+
+bool
+sc_dt::operator != ( const sc_fxcast_switch& a, const sc_fxcast_switch& b )
+{
+    return ( a.m_sw != b.m_sw );
+}
+
+
+::std::ostream&
+sc_dt::operator << ( ::std::ostream& os, const sc_fxcast_switch& a )
+{
+    a.print( os );
+    return os;
+}
+//--------------------------------------------Farah is done working here
 namespace sc_dt
 {
 

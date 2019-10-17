@@ -36,6 +36,160 @@
 #ifndef SC_DISABLE_ASYNC_UPDATES
 #  include "sysc/communication/sc_host_mutex.h"
 #endif
+//-------------------------------------------Farah is working here 
+
+const char* sc_core::sc_prim_channel::kind() const
+    { return "sc_prim_channel"; }
+
+bool sc_core::sc_prim_channel::update_requested() 
+	{ return m_update_next_p != (sc_prim_channel*)list_end; }
+
+void sc_core::sc_prim_channel::wait()
+    { sc_core::wait( simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_event& e )
+    { sc_core::wait( e, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_event_or_list& el )
+	{ sc_core::wait( el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_event_and_list& el )
+	{ sc_core::wait( el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_time& t )
+    { sc_core::wait( t, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( double v, sc_time_unit tu )
+    { sc_core::wait( sc_time( v, tu, simcontext() ), simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_time& t, const sc_event& e )
+    { sc_core::wait( t, e, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( double v, sc_time_unit tu, const sc_event& e )
+    { sc_core::wait( sc_time( v, tu, simcontext() ), e, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_time& t, const sc_event_or_list& el )
+    { sc_core::wait( t, el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( double v, sc_time_unit tu, const sc_event_or_list& el )
+    { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( const sc_time& t, const sc_event_and_list& el )
+    { sc_core::wait( t, el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( double v, sc_time_unit tu, const sc_event_and_list& el )
+    { sc_core::wait( sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+void sc_core::sc_prim_channel::wait( int n )
+    { sc_core::wait( n, simcontext() ); }
+
+
+
+
+void sc_core::sc_prim_channel::next_trigger()
+	{ sc_core::next_trigger( simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_event& e )
+    { sc_core::next_trigger( e, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_event_or_list& el )
+    { sc_core::next_trigger( el, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_event_and_list& el )
+    { sc_core::next_trigger( el, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_time& t )
+    { sc_core::next_trigger( t, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( double v, sc_time_unit tu )
+    {sc_core::next_trigger( sc_time( v, tu, simcontext() ), simcontext() );}
+
+void sc_core::sc_prim_channel::next_trigger( const sc_time& t, const sc_event& e )
+    { sc_core::next_trigger( t, e, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( double v, sc_time_unit tu, const sc_event& e )
+    { sc_core::next_trigger( 
+  sc_time( v, tu, simcontext() ), e, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_time& t, const sc_event_or_list& el )
+    { sc_core::next_trigger( t, el, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( double v, sc_time_unit tu, const sc_event_or_list& el )
+    { sc_core::next_trigger( 
+  sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( const sc_time& t, const sc_event_and_list& el )
+    { sc_core::next_trigger( t, el, simcontext() ); }
+
+void sc_core::sc_prim_channel::next_trigger( double v, sc_time_unit tu, const sc_event_and_list& el )
+    { sc_core::next_trigger( 
+  sc_time( v, tu, simcontext() ), el, simcontext() ); }
+
+bool sc_core::sc_prim_channel::timed_out()
+	{ return sc_core::timed_out( simcontext() ); }
+
+
+int sc_core::sc_prim_channel_registry::size() const
+   { return m_prim_channel_vec.size(); }
+
+
+bool sc_core::sc_prim_channel_registry::pending_updates() const
+{
+    return m_update_list_p != (sc_prim_channel*)sc_prim_channel::list_end 
+           || pending_async_updates();
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_prim_channel_registry
+//
+//  Registry for all primitive channels.
+//  FOR INTERNAL USE ONLY!
+// ----------------------------------------------------------------------------
+void
+sc_core::sc_prim_channel_registry::request_update( sc_prim_channel& prim_channel_ )
+{
+    prim_channel_.m_update_next_p = m_update_list_p;
+    m_update_list_p = &prim_channel_;
+}
+
+// ----------------------------------------------------------------------------
+//  CLASS : sc_prim_channel
+//
+//  Abstract base class of all primitive channel classes.
+// ----------------------------------------------------------------------------
+
+// request the update method (to be executed during the update phase)
+void
+sc_core::sc_prim_channel::request_update()
+{
+    if( ! m_update_next_p ) {
+	m_registry->request_update( *this );
+    }
+}
+
+
+// request the update method from external to the simulator (to be executed 
+// during the update phase)
+
+void
+sc_core::sc_prim_channel::async_request_update()
+{
+    m_registry->async_request_update(*this);
+}
+
+
+// called during the update phase of a delta cycle (if requested)
+
+
+void
+sc_core::sc_prim_channel::perform_update()
+{
+    update();
+    m_update_next_p = 0;
+}
+
+
+//-------------------------------------------Farah is done working here 
 
 namespace sc_core {
 
@@ -53,6 +207,7 @@ sc_prim_channel::sc_prim_channel()
   m_update_next_p( 0 ) 
 {
     m_registry->insert( *this );
+    CHNL_MTX_INIT_( m_mutex ); // 02/25/2015 GL: initialize the mutex
 }
 
 sc_prim_channel::sc_prim_channel( const char* name_ )
@@ -61,6 +216,7 @@ sc_prim_channel::sc_prim_channel( const char* name_ )
   m_update_next_p( 0 )
 {
     m_registry->insert( *this );
+    CHNL_MTX_INIT_( m_mutex ); // 02/25/2015 GL: initialize the mutex
 }
 
 
@@ -69,6 +225,7 @@ sc_prim_channel::sc_prim_channel( const char* name_ )
 sc_prim_channel::~sc_prim_channel()
 {
     m_registry->remove( *this );
+    CHNL_MTX_DESTROY_( m_mutex ); // 02/25/2015 GL: destroy the mutex
 }
 
 
@@ -201,6 +358,8 @@ private:
 void
 sc_prim_channel_registry::insert( sc_prim_channel& prim_channel_ )
 {
+    // 12/04/2014 GL: as sc_prim_channel can only be constructed during elaboration, we do not need to grab a lock here
+
     if( sc_is_running() ) {
        SC_REPORT_ERROR( SC_ID_INSERT_PRIM_CHANNEL_, "simulation running" );
     }
@@ -227,6 +386,8 @@ sc_prim_channel_registry::insert( sc_prim_channel& prim_channel_ )
 void
 sc_prim_channel_registry::remove( sc_prim_channel& prim_channel_ )
 {
+    // 12/04/2014 GL: as sc_prim_channel can only be destructed during cleanup, we do not need to grab a lock here
+
     int i;
     for( i = 0; i < size(); ++ i ) {
 	if( &prim_channel_ == m_prim_channel_vec[i] ) {
@@ -271,6 +432,8 @@ sc_prim_channel_registry::async_request_update( sc_prim_channel& prim_channel_ )
 void
 sc_prim_channel_registry::perform_update()
 {
+    // 12/04/2014 GL: this function should only be called by simulation kernel, in the root thread, right?
+
     // Update the values for the primitive channels set external to the
     // simulator.
 

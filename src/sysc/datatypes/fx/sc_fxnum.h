@@ -1413,221 +1413,11 @@ private:
 //  Proxy class for bit-selection in class sc_fxnum, behaves like sc_bit.
 // ----------------------------------------------------------------------------
 
-// constructor
-
-inline
-sc_fxnum_bitref::sc_fxnum_bitref( sc_fxnum& num_, int idx_ )
-    : m_num( num_ ), m_idx( idx_ )
-{}
-
-
-// copy constructor
-
-inline
-sc_fxnum_bitref::sc_fxnum_bitref( const sc_fxnum_bitref& a )
-    : m_num( a.m_num ), m_idx( a.m_idx )
-{}
-
-
-// assignment operators
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator = ( const sc_fxnum_bitref& a )
-{
-    if( &a != this )
-    {
-	SC_FXNUM_OBSERVER_READ_( a.m_num )
-	set( a.get() );
-	SC_FXNUM_OBSERVER_WRITE_( m_num )
-    }
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator = ( const sc_fxnum_fast_bitref& a )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a.m_num )
-    set( a.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator = ( const sc_bit& a )
-{
-    set( static_cast<bool>( a ) );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator = ( bool a )
-{
-    set( a );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator &= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() && b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator &= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() && b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator &= ( const sc_bit& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() && static_cast<bool>( b ) );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator &= ( bool b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() && b );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator |= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() || b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator |= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() || b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator |= ( const sc_bit& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() || static_cast<bool>( b ) );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator |= ( bool b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() || b );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator ^= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() != b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator ^= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() != b.get() );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator ^= ( const sc_bit& b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() != static_cast<bool>( b ) );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_bitref&
-sc_fxnum_bitref::operator ^= ( bool b )
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    set( get() != b );
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-// implicit conversion
-
-inline
-sc_fxnum_bitref::operator bool() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    return get();
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum_bitref& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum_bitref& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum_bitref& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_fxnum_bitref& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_fast_bitref
@@ -1635,221 +1425,11 @@ operator >> ( ::std::istream& is, sc_fxnum_bitref& a )
 //  Proxy class for bit-selection in class sc_fxnum_fast, behaves like sc_bit.
 // ----------------------------------------------------------------------------
 
-// constructor
-
-inline
-sc_fxnum_fast_bitref::sc_fxnum_fast_bitref( sc_fxnum_fast& num_, int idx_ )
-    : m_num( num_ ), m_idx( idx_ )
-{}
-
-
-// copy constructor
-
-inline
-sc_fxnum_fast_bitref::sc_fxnum_fast_bitref( const sc_fxnum_fast_bitref& a )
-    : m_num( a.m_num ), m_idx( a.m_idx )
-{}
-
-
-// assignment operators
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator = ( const sc_fxnum_bitref& a )
-{
-    SC_FXNUM_OBSERVER_READ_( a.m_num )
-    set( a.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator = ( const sc_fxnum_fast_bitref& a )
-{
-    if( &a != this )
-    {
-	SC_FXNUM_FAST_OBSERVER_READ_( a.m_num )
-	set( a.get() );
-	SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    }
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator = ( const sc_bit& a )
-{
-    set( static_cast<bool>( a ) );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator = ( bool a )
-{
-    set( a );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator &= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() && b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator &= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() && b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator &= ( const sc_bit& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() && static_cast<bool>( b ) );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator &= ( bool b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() && b );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator |= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() || b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator |= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() || b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator |= ( const sc_bit& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() || static_cast<bool>( b ) );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator |= ( bool b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() || b );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator ^= ( const sc_fxnum_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_OBSERVER_READ_( b.m_num )
-    set( get() != b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator ^= ( const sc_fxnum_fast_bitref& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    SC_FXNUM_FAST_OBSERVER_READ_( b.m_num )
-    set( get() != b.get() );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator ^= ( const sc_bit& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() != static_cast<bool>( b ) );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_bitref&
-sc_fxnum_fast_bitref::operator ^= ( bool b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    set( get() != b );
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-
-// implicit conversion
-
-inline
-sc_fxnum_fast_bitref::operator bool() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    return get();
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum_fast_bitref& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum_fast_bitref& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum_fast_bitref& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_fxnum_fast_bitref& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_subref
@@ -1857,59 +1437,6 @@ operator >> ( ::std::istream& is, sc_fxnum_fast_bitref& a )
 //  Proxy class for part-selection in class sc_fxnum,
 //  behaves like sc_bv_base.
 // ----------------------------------------------------------------------------
-
-// constructor
-
-inline
-sc_fxnum_subref::sc_fxnum_subref( sc_fxnum& num_, int from_, int to_ )
-    : m_num( num_ ), m_from( from_ ), m_to( to_ ),
-      m_bv( *new sc_bv_base( sc_max( m_from, m_to ) -
-			     sc_min( m_from, m_to ) + 1 ) )
-{}
-
-
-// copy constructor
-
-inline
-sc_fxnum_subref::sc_fxnum_subref( const sc_fxnum_subref& a )
-    : m_num( a.m_num ), m_from( a.m_from ), m_to( a.m_to ),
-      m_bv( *new sc_bv_base( a.m_bv ) )
-{}
-
-
-// destructor
-
-inline
-sc_fxnum_subref::~sc_fxnum_subref()
-{
-    delete &m_bv;
-}
-
-
-// assignment operators
-
-inline
-sc_fxnum_subref&
-sc_fxnum_subref::operator = ( const sc_fxnum_subref& a )
-{
-    if( &a != this )
-    {
-	m_bv = static_cast<sc_bv_base>( a );
-	set();
-	SC_FXNUM_OBSERVER_WRITE_( m_num )
-    }
-    return *this;
-}
-
-inline
-sc_fxnum_subref&
-sc_fxnum_subref::operator = ( const sc_fxnum_fast_subref& a )
-{
-    m_bv = static_cast<sc_bv_base>( a );
-    set();
-    SC_FXNUM_OBSERVER_WRITE_( m_num )
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \
@@ -2062,73 +1589,6 @@ DEFN_RED_FNC(xnor_reduce)
 #undef DEFN_RED_FNC
 
 
-// query parameter
-
-inline
-int
-sc_fxnum_subref::length() const
-{
-    return m_bv.length();
-}
-
-
-// explicit conversions
-
-inline
-int
-sc_fxnum_subref::to_int() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_int();
-}
-
-inline
-int64
-sc_fxnum_subref::to_int64() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_int64();
-}
-
-inline
-unsigned int
-sc_fxnum_subref::to_uint() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_uint();
-}
-
-inline
-uint64
-sc_fxnum_subref::to_uint64() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_uint64();
-}
-
-inline
-long
-sc_fxnum_subref::to_long() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_long();
-}
-
-inline
-unsigned long
-sc_fxnum_subref::to_ulong() const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_ulong();
-}
-
-
 #ifdef SC_DT_DEPRECATED
 
 inline
@@ -2147,59 +1607,13 @@ sc_fxnum_subref::to_unsigned() const
 
 #endif
 
-
-inline
-const std::string
-sc_fxnum_subref::to_string() const
-{
-    get();
-    return m_bv.to_string();
-}
-
-inline
-const std::string
-sc_fxnum_subref::to_string( sc_numrep numrep ) const
-{
-    get();
-    return m_bv.to_string( numrep );
-}
-
-inline
-const std::string
-sc_fxnum_subref::to_string( sc_numrep numrep, bool w_prefix ) const
-{
-    get();
-    return m_bv.to_string( numrep, w_prefix );
-}
-
-
 // implicit conversion
 
-inline
-sc_fxnum_subref::operator sc_bv_base () const
-{
-    SC_FXNUM_OBSERVER_READ_( m_num )
-    get();
-    return m_bv;
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum_subref& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum_subref& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum_subref& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_fxnum_subref& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_fast_subref
@@ -2208,59 +1622,6 @@ operator >> ( ::std::istream& is, sc_fxnum_subref& a )
 //  behaves like sc_bv_base.
 // ----------------------------------------------------------------------------
 
-// constructor
-
-inline
-sc_fxnum_fast_subref::sc_fxnum_fast_subref( sc_fxnum_fast& num_,
-					    int from_, int to_ )
-    : m_num( num_ ), m_from( from_ ), m_to( to_ ),
-      m_bv( *new sc_bv_base( sc_max( m_from, m_to ) -
-			     sc_min( m_from, m_to ) + 1 ) )
-{}
-
-
-// copy constructor
-
-inline
-sc_fxnum_fast_subref::sc_fxnum_fast_subref( const sc_fxnum_fast_subref& a )
-    : m_num( a.m_num ), m_from( a.m_from ), m_to( a.m_to ),
-      m_bv( *new sc_bv_base( a.m_bv ) )
-{}
-
-
-// destructor
-
-inline
-sc_fxnum_fast_subref::~sc_fxnum_fast_subref()
-{
-    delete &m_bv;
-}
-
-
-// assignment operators
-
-inline
-sc_fxnum_fast_subref&
-sc_fxnum_fast_subref::operator = ( const sc_fxnum_subref& a )
-{
-    m_bv = static_cast<sc_bv_base>( a );
-    set();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    return *this;
-}
-
-inline
-sc_fxnum_fast_subref&
-sc_fxnum_fast_subref::operator = ( const sc_fxnum_fast_subref& a )
-{
-    if( &a != this )
-    {
-	m_bv = static_cast<sc_bv_base>( a );
-	set();
-	SC_FXNUM_FAST_OBSERVER_WRITE_( m_num )
-    }
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \
@@ -2412,74 +1773,6 @@ DEFN_RED_FNC(xnor_reduce)
 
 #undef DEFN_RED_FNC
 
-
-// query parameter
-
-inline
-int
-sc_fxnum_fast_subref::length() const
-{
-    return m_bv.length();
-}
-
-
-// explicit conversions
-
-inline
-int
-sc_fxnum_fast_subref::to_int() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_int();
-}
-
-inline
-int64
-sc_fxnum_fast_subref::to_int64() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_int64();
-}
-
-inline
-unsigned int
-sc_fxnum_fast_subref::to_uint() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_uint();
-}
-
-inline
-uint64
-sc_fxnum_fast_subref::to_uint64() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_uint64();
-}
-
-inline
-long
-sc_fxnum_fast_subref::to_long() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_long();
-}
-
-inline
-unsigned long
-sc_fxnum_fast_subref::to_ulong() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv.to_ulong();
-}
-
-
 #ifdef SC_DT_DEPRECATED
 
 inline
@@ -2498,101 +1791,18 @@ sc_fxnum_fast_subref::to_unsigned() const
 
 #endif
 
-
-inline
-const std::string
-sc_fxnum_fast_subref::to_string() const
-{
-    get();
-    return m_bv.to_string();
-}
-
-inline
-const std::string
-sc_fxnum_fast_subref::to_string( sc_numrep numrep ) const
-{
-    get();
-    return m_bv.to_string( numrep );
-}
-
-inline
-const std::string
-sc_fxnum_fast_subref::to_string( sc_numrep numrep, bool w_prefix ) const
-{
-    get();
-    return m_bv.to_string( numrep, w_prefix );
-}
-
-
 // implicit conversion
 
-inline
-sc_fxnum_fast_subref::operator sc_bv_base () const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( m_num )
-    get();
-    return m_bv;
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum_fast_subref& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum_fast_subref& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum_fast_subref& a )
-{
-    a.scan( is );
-    return is;
-}
-
-
+operator >> ( ::std::istream& is, sc_fxnum_fast_subref& a );
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum
 //
 //  Base class for the fixed-point types; arbitrary precision.
 // ----------------------------------------------------------------------------
-
-inline
-sc_fxnum_observer*
-sc_fxnum::observer() const
-{
-    return m_observer;
-}
-
-
-inline
-void
-sc_fxnum::cast()
-{
-    SC_ERROR_IF_( ! m_rep->is_normal(), sc_core::SC_ID_INVALID_FX_VALUE_ );
-
-    if( m_params.cast_switch() == SC_ON )
-	m_rep->cast( m_params, m_q_flag, m_o_flag );
-}
-
-
-// constructors
-
-inline
-sc_fxnum::sc_fxnum( const sc_fxtype_params& type_params_,
-		    sc_enc enc_,
-		    const sc_fxcast_switch& cast_sw,
-		    sc_fxnum_observer* observer_ )
-: m_rep( new scfx_rep ),
-  m_params( type_params_, enc_, cast_sw ),
-  m_q_flag( false ),
-  m_o_flag( false ),
-  m_observer( observer_ )
-{
-    SC_FXNUM_OBSERVER_DEFAULT_
-    SC_FXNUM_OBSERVER_CONSTRUCT_( *this )
-}
 
 #define DEFN_CTOR_T(tp,arg)                                                   \
 inline                                                                        \
@@ -2643,66 +1853,6 @@ DEFN_CTOR_T_A(const sc_unsigned&)
 #undef DEFN_CTOR_T_B
 #undef DEFN_CTOR_T_C
 #undef DEFN_CTOR_T_D
-
-
-inline
-sc_fxnum::~sc_fxnum()
-{
-    SC_FXNUM_OBSERVER_DESTRUCT_( *this )
-    delete m_rep;
-}
-
-
-// internal use only;
-inline
-const scfx_rep*
-sc_fxnum::get_rep() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep;
-}
-
-
-// unary operators
-
-inline
-const sc_fxval
-sc_fxnum::operator - () const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return sc_fxval( sc_dt::neg_scfx_rep( *m_rep ) );
-}
-
-inline
-const sc_fxval
-sc_fxnum::operator + () const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return sc_fxval( new scfx_rep( *m_rep ) );
-}
-
-
-// unary functions
-
-inline
-void
-neg( sc_fxval& c, const sc_fxnum& a )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    c.set_rep( sc_dt::neg_scfx_rep( *a.m_rep ) );
-}
-
-inline
-void
-neg( sc_fxnum& c, const sc_fxnum& a )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    delete c.m_rep;
-    c.m_rep = sc_dt::neg_scfx_rep( *a.m_rep );
-    c.cast();
-    SC_FXNUM_OBSERVER_WRITE_( c )
-}
-
 
 // binary operators
 
@@ -2779,30 +1929,15 @@ DEFN_BIN_OP(+,add)
 DEFN_BIN_OP(-,sub)
 // don't use macros
 //DEFN_BIN_OP(/,div)
-inline
-const sc_fxval
-operator / ( const sc_fxnum& a, const sc_fxnum& b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    SC_FXNUM_OBSERVER_READ_( b )
-    return sc_fxval( sc_dt::div_scfx_rep( *a.m_rep, *b.m_rep ) );
-}
 
-inline
 const sc_fxval
-operator / ( const sc_fxnum& a, const sc_fxval& b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    return sc_fxval( sc_dt::div_scfx_rep( *a.m_rep, *b.get_rep() ) );
-}
+operator / ( const sc_fxnum& a, const sc_fxnum& b );
 
-inline
 const sc_fxval
-operator / ( const sc_fxval& a, const sc_fxnum& b )
-{
-    SC_FXNUM_OBSERVER_READ_( b )
-    return sc_fxval( sc_dt::div_scfx_rep( *a.get_rep(), *b.m_rep ) );
-}
+operator / ( const sc_fxnum& a, const sc_fxval& b );
+
+const sc_fxval
+operator / ( const sc_fxval& a, const sc_fxnum& b );
 
 DEFN_BIN_OP_T(/,div,int)
 DEFN_BIN_OP_T(/,div,unsigned int)
@@ -2828,22 +1963,11 @@ DEFN_BIN_OP_T(/,div,const sc_unsigned&)
 #undef DEFN_BIN_OP
 
 
-inline
 const sc_fxval
-operator << ( const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    return sc_fxval( sc_dt::lsh_scfx_rep( *a.m_rep, b ) );
-}
+operator << ( const sc_fxnum& a, int b );
 
-inline
 const sc_fxval
-operator >> ( const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    return sc_fxval( sc_dt::rsh_scfx_rep( *a.m_rep, b ) );
-}
-
+operator >> ( const sc_fxnum& a, int b );
 
 // binary functions
 
@@ -2982,46 +2106,6 @@ DEFN_BIN_FNC(sub)
 #undef DEFN_BIN_FNC_OTHER
 #undef DEFN_BIN_FNC
 
-
-inline
-void
-lshift( sc_fxval& c, const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    c.set_rep( sc_dt::lsh_scfx_rep( *a.m_rep, b ) );
-}
-
-inline
-void
-rshift( sc_fxval& c, const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    c.set_rep( sc_dt::rsh_scfx_rep( *a.m_rep, b ) );
-}
-
-inline
-void
-lshift( sc_fxnum& c, const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    delete c.m_rep;
-    c.m_rep = sc_dt::lsh_scfx_rep( *a.m_rep, b );
-    c.cast();
-    SC_FXNUM_OBSERVER_WRITE_( c )
-}
-
-inline
-void
-rshift( sc_fxnum& c, const sc_fxnum& a, int b )
-{
-    SC_FXNUM_OBSERVER_READ_( a )
-    delete c.m_rep;
-    c.m_rep = sc_dt::rsh_scfx_rep( *a.m_rep, b );
-    c.cast();
-    SC_FXNUM_OBSERVER_WRITE_( c )
-}
-
-
 // relational (including equality) operators
 
 #define DEFN_REL_OP_T(op,ret,tp)                                              \
@@ -3111,29 +2195,6 @@ DEFN_REL_OP(!=,result != 0)
 
 // assignment operators
 
-inline
-sc_fxnum&
-sc_fxnum::operator = ( const sc_fxnum& a )
-{
-    if( &a != this )
-    {
-        SC_FXNUM_OBSERVER_READ_( a )
-	*m_rep = *a.m_rep;
-	cast();
-	SC_FXNUM_OBSERVER_WRITE_( *this )
-    }
-    return *this;
-}
-
-inline
-sc_fxnum&
-sc_fxnum::operator = ( const sc_fxval& a )
-{
-    *m_rep = *a.get_rep();
-    cast();
-    SC_FXNUM_OBSERVER_WRITE_( *this )
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \
@@ -3243,488 +2304,16 @@ DEFN_ASN_OP(-=,sub)
 #undef DEFN_ASN_OP_OTHER
 #undef DEFN_ASN_OP
 
-
-inline
-sc_fxnum&
-sc_fxnum::operator <<= ( int b )
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    m_rep->lshift( b );
-    cast();
-    SC_FXNUM_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-inline
-sc_fxnum&
-sc_fxnum::operator >>= ( int b )
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    m_rep->rshift( b );
-    cast();
-    SC_FXNUM_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-
-// auto-increment and auto-decrement
-
-inline
-const sc_fxval
-sc_fxnum::operator ++ ( int )
-{
-    sc_fxval c( *this );
-    (*this) += 1;
-    return c;
-}
-
-inline
-const sc_fxval
-sc_fxnum::operator -- ( int )
-{
-    sc_fxval c( *this );
-    (*this) -= 1;
-    return c;
-}
-
-inline
-sc_fxnum&
-sc_fxnum::operator ++ ()
-{
-    (*this) += 1;
-    return *this;
-}
-
-inline
-sc_fxnum&
-sc_fxnum::operator -- ()
-{
-    (*this) -= 1;
-    return *this;
-}
-
-
-// bit selection
-
-inline
-const sc_fxnum_bitref
-sc_fxnum::operator [] ( int i ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_bitref( const_cast<sc_fxnum&>( *this ),
-			    i - m_params.fwl() );
-}
-
-inline
-sc_fxnum_bitref
-sc_fxnum::operator [] ( int i )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_bitref( *this, i - m_params.fwl() );
-}
-
-inline
-const sc_fxnum_bitref
-sc_fxnum::bit( int i ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_bitref( const_cast<sc_fxnum&>( *this ),
-			    i - m_params.fwl() );
-}
-
-inline
-sc_fxnum_bitref
-sc_fxnum::bit( int i )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_bitref( *this, i - m_params.fwl() );
-}
-
-
-// part selection
-
-inline
-const sc_fxnum_subref
-sc_fxnum::operator () ( int i, int j ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_subref( const_cast<sc_fxnum&>( *this ),
-			    i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-sc_fxnum_subref
-sc_fxnum::operator () ( int i, int j )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_subref( *this, i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-const sc_fxnum_subref
-sc_fxnum::range( int i, int j ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_subref( const_cast<sc_fxnum&>( *this ),
-			    i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-sc_fxnum_subref
-sc_fxnum::range( int i, int j )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_subref( *this, i - m_params.fwl(), j - m_params.fwl() );
-}
-
-
-inline
-const sc_fxnum_subref
-sc_fxnum::operator () () const
-{
-    return this->operator () ( m_params.wl() - 1, 0 );
-}
-
-inline
-sc_fxnum_subref
-sc_fxnum::operator () ()
-{
-    return this->operator () ( m_params.wl() - 1, 0 );
-}
-
-inline
-const sc_fxnum_subref
-sc_fxnum::range() const
-{
-    return this->range( m_params.wl() - 1, 0 );
-}
-
-inline
-sc_fxnum_subref
-sc_fxnum::range()
-{
-    return this->range( m_params.wl() - 1, 0 );
-}
-
-
-// implicit conversion
-
-inline
-sc_fxnum::operator double() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep->to_double();
-}
-
-
-// explicit conversion to primitive types
-
-inline
-short
-sc_fxnum::to_short() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<short>( m_rep->to_double() );
-}
-
-inline
-unsigned short
-sc_fxnum::to_ushort() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<unsigned short>( m_rep->to_double() );
-}
-
-inline
-int
-sc_fxnum::to_int() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<int>( m_rep->to_double() );
-}
-
-inline
-int64
-sc_fxnum::to_int64() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<int64>( m_rep->to_double() );
-}
-
-inline
-unsigned int
-sc_fxnum::to_uint() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<unsigned int>( m_rep->to_double() );
-}
-
-inline
-uint64
-sc_fxnum::to_uint64() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<uint64>( m_rep->to_double() );
-}
-
-inline
-long
-sc_fxnum::to_long() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<long>( m_rep->to_double() );
-}
-
-inline
-unsigned long
-sc_fxnum::to_ulong() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<unsigned long>( m_rep->to_double() );
-}
-
-inline
-float
-sc_fxnum::to_float() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return static_cast<float>( m_rep->to_double() );
-}
-
-inline
-double
-sc_fxnum::to_double() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep->to_double();
-}
-
-
-// query value
-
-inline
-bool
-sc_fxnum::is_neg() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep->is_neg();
-}
-
-inline
-bool
-sc_fxnum::is_zero() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep->is_zero();
-}
-
-// internal use only;
-inline
-bool
-sc_fxnum::is_normal() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return m_rep->is_normal();
-}
-
-inline
-bool
-sc_fxnum::quantization_flag() const
-{
-    return m_q_flag;
-}
-
-inline
-bool
-sc_fxnum::overflow_flag() const
-{
-    return m_o_flag;
-}
-
-
-inline
-const sc_fxval
-sc_fxnum::value() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this )
-    return sc_fxval( new scfx_rep( *m_rep ) );
-}
-
-
-// query parameters
-
-inline
-int
-sc_fxnum::wl() const
-{
-    return m_params.wl();
-}
-
-inline
-int
-sc_fxnum::iwl() const
-{
-    return m_params.iwl();
-}
-
-inline
-sc_q_mode
-sc_fxnum::q_mode() const
-{
-    return m_params.q_mode();
-}
-
-inline
-sc_o_mode
-sc_fxnum::o_mode() const
-{
-    return m_params.o_mode();
-}
-
-inline
-int
-sc_fxnum::n_bits() const
-{
-    return m_params.n_bits();
-}
-
-
-inline
-const sc_fxtype_params&
-sc_fxnum::type_params() const
-{
-    return m_params.type_params();
-}
-
-
-inline
-const sc_fxcast_switch&
-sc_fxnum::cast_switch() const
-{
-    return m_params.cast_switch();
-}
-
-
-// internal use only;
-inline
-void
-sc_fxnum::observer_read() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this );
-}
-
-
-// internal use only;
-inline
-bool
-sc_fxnum::get_bit( int i ) const
-{
-    return m_rep->get_bit( i );
-}
-
-
-// protected methods and friend functions
-
-inline
-bool
-sc_fxnum::set_bit( int i, bool high )
-{
-    if( high )
-        return m_rep->set( i, m_params );
-    else
-        return m_rep->clear( i, m_params );
-}
-
-
-inline
-bool
-sc_fxnum::get_slice( int i, int j, sc_bv_base& bv ) const
-{
-    return m_rep->get_slice( i, j, m_params, bv );
-}
-
-inline
-bool
-sc_fxnum::set_slice( int i, int j, const sc_bv_base& bv )
-{
-    return m_rep->set_slice( i, j, m_params, bv );
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum& a )
-{
-    a.scan( is );
-    return is;
-}
-
-
+operator >> ( ::std::istream& is, sc_fxnum& a );
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_fast
 //
 //  Base class for the fixed-point types; limited precision.
 // ----------------------------------------------------------------------------
-
-inline
-sc_fxnum_fast_observer*
-sc_fxnum_fast::observer() const
-{
-    return m_observer;
-}
-
-
-// constructors
-
-inline
-sc_fxnum_fast::sc_fxnum_fast( const sc_fxtype_params& type_params_,
-			      sc_enc enc_,
-			      const sc_fxcast_switch& cast_sw,
-			      sc_fxnum_fast_observer* observer_ )
-: m_val( 0.0 ),
-  m_params( type_params_, enc_, cast_sw ),
-  m_q_flag( false ),
-  m_o_flag( false ),
-  m_observer( observer_ )
-{
-    SC_FXNUM_FAST_OBSERVER_DEFAULT_
-    SC_FXNUM_FAST_OBSERVER_CONSTRUCT_(*this)
-}
-
-inline
-sc_fxnum_fast::sc_fxnum_fast( const sc_fxnum_fast& a,
-			      const sc_fxtype_params& type_params_,
-			      sc_enc enc_,
-			      const sc_fxcast_switch& cast_sw,
-			      sc_fxnum_fast_observer* observer_ )
-: m_val( a.m_val ),
-  m_params( type_params_, enc_, cast_sw ),
-  m_q_flag( false ),
-  m_o_flag( false ),
-  m_observer( observer_ )
-{
-    SC_FXNUM_FAST_OBSERVER_DEFAULT_
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    cast();
-    SC_FXNUM_FAST_OBSERVER_CONSTRUCT_( *this )
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-}
 
 #define DEFN_CTOR_T(tp,arg)                                                   \
 inline                                                                        \
@@ -3774,63 +2363,6 @@ DEFN_CTOR_T_C(const sc_unsigned&)
 #undef DEFN_CTOR_T_C
 #undef DEFN_CTOR_T_D
 #undef DEFN_CTOR_T_E
-
-
-inline
-sc_fxnum_fast::~sc_fxnum_fast()
-{
-    SC_FXNUM_FAST_OBSERVER_DESTRUCT_( *this )
-}
-
-
-// internal use only;
-inline
-double
-sc_fxnum_fast::get_val() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return m_val;
-}
-
-
-// unary operators
-
-inline
-const sc_fxval_fast
-sc_fxnum_fast::operator - () const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return sc_fxval_fast( - m_val );
-}
-
-inline
-const sc_fxval_fast
-sc_fxnum_fast::operator + () const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return sc_fxval_fast( m_val );
-}
-
-
-// unary functions
-
-inline
-void
-neg( sc_fxval_fast& c, const sc_fxnum_fast& a )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.set_val( - a.m_val );
-}
-
-inline
-void
-neg( sc_fxnum_fast& c, const sc_fxnum_fast& a )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.m_val = - a.m_val;
-    c.cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
-}
 
 
 // binary operators
@@ -3905,30 +2437,15 @@ DEFN_BIN_OP(*,mult)
 DEFN_BIN_OP(+,add)
 DEFN_BIN_OP(-,sub)
 //DEFN_BIN_OP(/,div)
-inline
-const sc_fxval_fast
-operator / ( const sc_fxnum_fast& a, const sc_fxnum_fast& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    SC_FXNUM_FAST_OBSERVER_READ_( b )
-    return sc_fxval_fast( a.m_val / b.m_val );
-}
 
-inline
 const sc_fxval_fast
-operator / ( const sc_fxnum_fast& a, const sc_fxval_fast& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    return sc_fxval_fast( a.m_val / b.get_val() );
-}
+operator / ( const sc_fxnum_fast& a, const sc_fxnum_fast& b );
 
-inline
 const sc_fxval_fast
-operator / ( const sc_fxval_fast& a, const sc_fxnum_fast& b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( b )
-    return sc_fxval_fast( a.get_val() / b.m_val );
-}
+operator / ( const sc_fxnum_fast& a, const sc_fxval_fast& b );
+
+const sc_fxval_fast
+operator / ( const sc_fxval_fast& a, const sc_fxnum_fast& b );
 
 DEFN_BIN_OP_T(/,int)
 DEFN_BIN_OP_T(/,unsigned int)
@@ -3952,22 +2469,11 @@ DEFN_BIN_OP_T(/,const sc_unsigned&)
 #undef DEFN_BIN_OP
 
 
-inline
 const sc_fxval_fast
-operator << ( const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    return sc_fxval_fast( a.m_val * scfx_pow2( b ) );
-}
+operator << ( const sc_fxnum_fast& a, int b );
 
-inline
 const sc_fxval_fast
-operator >> ( const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    return sc_fxval_fast( a.m_val * scfx_pow2( -b ) );
-}
-
+operator >> ( const sc_fxnum_fast& a, int b );
 
 // binary functions
 
@@ -4102,42 +2608,6 @@ DEFN_BIN_FNC(sub,-)
 #undef DEFN_BIN_FNC
 
 
-inline
-void
-lshift( sc_fxval_fast& c, const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.set_val( a.m_val * scfx_pow2( b ) );
-}
-
-inline
-void
-rshift( sc_fxval_fast& c, const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.set_val( a.m_val * scfx_pow2( -b ) );
-}
-
-inline
-void
-lshift( sc_fxnum_fast& c, const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.m_val = a.m_val * scfx_pow2( b );
-    c.cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
-}
-
-inline
-void
-rshift( sc_fxnum_fast& c, const sc_fxnum_fast& a, int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( a )
-    c.m_val = a.m_val * scfx_pow2( -b );
-    c.cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( c )
-}
-
 
 // relational (including equality) operators
 
@@ -4219,31 +2689,6 @@ DEFN_REL_OP(!=)
 #undef DEFN_REL_OP
 
 
-// assignment operators
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator = ( const sc_fxnum_fast& a )
-{
-    if( &a != this )
-    {
-	SC_FXNUM_FAST_OBSERVER_READ_( a )
-	m_val = a.m_val;
-	cast();
-	SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    }
-    return *this;
-}
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator = ( const sc_fxval_fast& a )
-{
-    m_val = a.get_val();
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \
@@ -4347,450 +2792,17 @@ DEFN_ASN_OP(-=)
 #undef DEFN_ASN_OP_OTHER
 #undef DEFN_ASN_OP
 
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator <<= ( int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    m_val *= scfx_pow2( b );
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator >>= ( int b )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    m_val *= scfx_pow2( -b );
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-
-// auto-increment and auto-decrement
-
-inline
-const sc_fxval_fast
-sc_fxnum_fast::operator ++ ( int )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    double c = m_val;
-    m_val = m_val + 1;
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return sc_fxval_fast( c );
-}
-
-inline
-const sc_fxval_fast
-sc_fxnum_fast::operator -- ( int )
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    double c = m_val;
-    m_val = m_val - 1;
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return sc_fxval_fast( c );
-}
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator ++ ()
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    m_val = m_val + 1;
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-inline
-sc_fxnum_fast&
-sc_fxnum_fast::operator -- ()
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    m_val = m_val - 1;
-    cast();
-    SC_FXNUM_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
-
-
-// bit selection
-
-inline
-const sc_fxnum_fast_bitref
-sc_fxnum_fast::operator [] ( int i ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_fast_bitref( const_cast<sc_fxnum_fast&>( *this ),
-				 i - m_params.fwl() );
-}
-
-inline
-sc_fxnum_fast_bitref
-sc_fxnum_fast::operator [] ( int i )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_fast_bitref( *this, i - m_params.fwl() );
-}
-
-inline
-const sc_fxnum_fast_bitref
-sc_fxnum_fast::bit( int i ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_fast_bitref( const_cast<sc_fxnum_fast&>( *this ),
-				 i - m_params.fwl() );
-}
-
-inline
-sc_fxnum_fast_bitref
-sc_fxnum_fast::bit( int i )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    return sc_fxnum_fast_bitref( *this, i - m_params.fwl() );
-}
-
-
-// part selection
-
-inline
-const sc_fxnum_fast_subref
-sc_fxnum_fast::operator () ( int i, int j ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_fast_subref( const_cast<sc_fxnum_fast&>( *this ),
-				 i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-sc_fxnum_fast_subref
-sc_fxnum_fast::operator () ( int i, int j )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_fast_subref( *this,
-				 i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-const sc_fxnum_fast_subref
-sc_fxnum_fast::range( int i, int j ) const
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_fast_subref( const_cast<sc_fxnum_fast&>( *this ),
-				 i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-sc_fxnum_fast_subref
-sc_fxnum_fast::range( int i, int j )
-{
-    SC_ERROR_IF_( i < 0 || i >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-    SC_ERROR_IF_( j < 0 || j >= m_params.wl(), sc_core::SC_ID_OUT_OF_RANGE_ );
-
-    return sc_fxnum_fast_subref( *this,
-				 i - m_params.fwl(), j - m_params.fwl() );
-}
-
-inline
-const sc_fxnum_fast_subref
-sc_fxnum_fast::operator () () const
-{
-    return this->operator () ( m_params.wl() - 1, 0 );
-}
-
-inline
-sc_fxnum_fast_subref
-sc_fxnum_fast::operator () ()
-{
-    return this->operator () ( m_params.wl() - 1, 0 );
-}
-
-inline
-const sc_fxnum_fast_subref
-sc_fxnum_fast::range() const
-{
-    return this->range( m_params.wl() - 1, 0 );
-}
-
-inline
-sc_fxnum_fast_subref
-sc_fxnum_fast::range()
-{
-    return this->range( m_params.wl() - 1, 0 );
-}
-
-
-// implicit conversion
-
-inline
-sc_fxnum_fast::operator double() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return m_val;
-}
-
-
-// explicit conversion to primitive types
-
-inline
-short
-sc_fxnum_fast::to_short() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<short>( m_val );
-}
-
-inline
-unsigned short
-sc_fxnum_fast::to_ushort() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<unsigned short>( m_val );
-}
-
-inline
-int
-sc_fxnum_fast::to_int() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<int>( m_val );
-}
-
-inline
-int64
-sc_fxnum_fast::to_int64() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<int64>( m_val );
-}
-
-inline
-unsigned int
-sc_fxnum_fast::to_uint() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<unsigned int>( m_val );
-}
-
-inline
-uint64
-sc_fxnum_fast::to_uint64() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<uint64>( m_val );
-}
-
-inline
-long
-sc_fxnum_fast::to_long() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<long>( m_val );
-}
-
-inline
-unsigned long
-sc_fxnum_fast::to_ulong() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<unsigned long>( m_val );
-}
-
-inline
-float
-sc_fxnum_fast::to_float() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return static_cast<float>( m_val );
-}
-
-inline
-double
-sc_fxnum_fast::to_double() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return m_val;
-}
-
-
-// query value
-
-inline
-bool
-sc_fxnum_fast::is_neg() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    scfx_ieee_double id( m_val );
-    return ( id.negative() != 0 );
-}
-
-inline
-bool
-sc_fxnum_fast::is_zero() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    scfx_ieee_double id( m_val );
-    return id.is_zero();
-}
-
-// internal use only;
-inline
-bool
-sc_fxnum_fast::is_normal() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    scfx_ieee_double id( m_val );
-    return ( id.is_normal() || id.is_subnormal() || id.is_zero() );
-}
-
-
-inline
-bool
-sc_fxnum_fast::quantization_flag() const
-{
-    return m_q_flag;
-}
-
-inline
-bool
-sc_fxnum_fast::overflow_flag() const
-{
-    return m_o_flag;
-}
-
-
-inline
-const sc_fxval_fast
-sc_fxnum_fast::value() const
-{
-    SC_FXNUM_FAST_OBSERVER_READ_( *this )
-    return sc_fxval_fast( m_val );
-}
-
-
-// query parameters
-
-inline
-int
-sc_fxnum_fast::wl() const
-{
-    return m_params.wl();
-}
-
-inline
-int
-sc_fxnum_fast::iwl() const
-{
-    return m_params.iwl();
-}
-
-inline
-sc_q_mode
-sc_fxnum_fast::q_mode() const
-{
-    return m_params.q_mode();
-}
-
-inline
-sc_o_mode
-sc_fxnum_fast::o_mode() const
-{
-    return m_params.o_mode();
-}
-
-inline
-int
-sc_fxnum_fast::n_bits() const
-{
-    return m_params.n_bits();
-}
-
-
-inline
-const sc_fxtype_params&
-sc_fxnum_fast::type_params() const
-{
-    return m_params.type_params();
-}
-
-
-inline
-const sc_fxcast_switch&
-sc_fxnum_fast::cast_switch() const
-{
-    return m_params.cast_switch();
-}
-
-
-// internal use only;
-inline
-void
-sc_fxnum_fast::observer_read() const
-{
-    SC_FXNUM_OBSERVER_READ_( *this );
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_fxnum_fast& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_fxnum_fast& a );
 
-inline
 ::std::istream&
-operator >> ( ::std::istream& is, sc_fxnum_fast& a )
-{
-    a.scan( is );
-    return is;
-}
-
+operator >> ( ::std::istream& is, sc_fxnum_fast& a );
 
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxval
 //
 //  Fixed-point value type; arbitrary precision.
 // ----------------------------------------------------------------------------
-
-// public constructors
-
-inline
-sc_fxval::sc_fxval( const sc_fxnum& a,
-		    sc_fxval_observer* observer_ )
-: m_rep( new scfx_rep( *a.get_rep() ) ),
-  m_observer( observer_ )
-{
-    SC_FXVAL_OBSERVER_DEFAULT_
-    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
-    SC_FXVAL_OBSERVER_WRITE_( *this )
-}
-
-inline
-sc_fxval::sc_fxval( const sc_fxnum_fast& a,
-		    sc_fxval_observer* observer_ )
-: m_rep( new scfx_rep( a.to_double() ) ),
-  m_observer( observer_ )
-{
-    SC_FXVAL_OBSERVER_DEFAULT_
-    SC_FXVAL_OBSERVER_CONSTRUCT_( *this )
-    SC_FXVAL_OBSERVER_WRITE_( *this )
-}
 
 
 // binary operators
@@ -4902,16 +2914,6 @@ DEFN_REL_OP(!=,result != 0)
 #undef DEFN_REL_OP
 
 
-// assignment operators
-
-inline
-sc_fxval&
-sc_fxval::operator = ( const sc_fxnum& a )
-{
-    *m_rep = *a.get_rep();
-    SC_FXVAL_OBSERVER_WRITE_( *this )
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \
@@ -4973,30 +2975,6 @@ DEFN_ASN_OP(-=,sub)
 //  Fixed-point value types; limited precision.
 // ----------------------------------------------------------------------------
 
-// public constructors
-
-inline
-sc_fxval_fast::sc_fxval_fast( const sc_fxnum& a,
-			      sc_fxval_fast_observer* observer_ )
-: m_val( a.to_double() ),
-  m_observer( observer_ )
-{
-    SC_FXVAL_FAST_OBSERVER_DEFAULT_
-    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
-    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
-}
-
-inline
-sc_fxval_fast::sc_fxval_fast( const sc_fxnum_fast& a,
-			      sc_fxval_fast_observer* observer_ )
-: m_val( a.get_val() ),
-  m_observer( observer_ )
-{
-    SC_FXVAL_FAST_OBSERVER_DEFAULT_
-    SC_FXVAL_FAST_OBSERVER_CONSTRUCT_( *this )
-    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
-}
-
 
 // binary functions
 
@@ -5034,16 +3012,6 @@ DEFN_BIN_FNC(sub,-)
 #undef DEFN_BIN_FNC
 
 
-// assignment operators
-
-inline
-sc_fxval_fast&
-sc_fxval_fast::operator = ( const sc_fxnum_fast& a )
-{
-    m_val = a.get_val();
-    SC_FXVAL_FAST_OBSERVER_WRITE_( *this )
-    return *this;
-}
 
 #define DEFN_ASN_OP_T(tp)                                                     \
 inline                                                                        \

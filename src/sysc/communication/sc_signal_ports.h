@@ -58,9 +58,7 @@ struct sc_trace_params
     sc_trace_file*        tf;
     std::string      name;
 
-    sc_trace_params( sc_trace_file* tf_, const std::string& name_ )
-	: tf( tf_ ), name( name_ )
-	{}
+    sc_trace_params( sc_trace_file* tf_, const std::string& name_ );
 };
 
 
@@ -284,10 +282,7 @@ private:
 };
 
 template<typename T>
-::std::ostream& operator << ( ::std::ostream& os, const sc_in<T>& a )
-{
-    return os << a->read();
-}
+::std::ostream& operator << ( ::std::ostream& os, const sc_in<T>& a );
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
@@ -388,7 +383,7 @@ sc_in<T>::vbind( sc_port_base& parent_ )
 // ----------------------------------------------------------------------------
 
 template <>
-class sc_in<bool> : 
+class sc_in<bool> :
     public sc_port<sc_signal_in_if<bool>,1,SC_ONE_OR_MORE_BOUND>
 {
 public:
@@ -411,50 +406,23 @@ public:
 
     // constructors
 
-    sc_in()
-	: base_type(), m_traces( 0 ), m_change_finder_p(0), 
-	  m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in();
 
-    explicit sc_in( const char* name_ )
-	: base_type( name_ ), m_traces( 0 ), m_change_finder_p(0), 
-	  m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( const char* name_ );
 
-    explicit sc_in( const in_if_type& interface_ )
-	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ), 
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( const in_if_type& interface_ );
 
-    sc_in( const char* name_, const in_if_type& interface_ )
-	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( const char* name_, const in_if_type& interface_ );
 
-    explicit sc_in( in_port_type& parent_ )
-	: base_type( parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( in_port_type& parent_ );
 
-    sc_in( const char* name_, in_port_type& parent_ )
-	: base_type( name_, parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( const char* name_, in_port_type& parent_ );
 
-    explicit sc_in( inout_port_type& parent_ )
-	: base_type(), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    explicit sc_in( inout_port_type& parent_ );
 
-    sc_in( const char* name_, inout_port_type& parent_ )
-	: base_type( name_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    sc_in( const char* name_, inout_port_type& parent_ );
 
-    sc_in( this_type& parent_ )
-	: base_type( parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( this_type& parent_ );
 
 #if defined(TESTING)
     sc_in( const this_type& parent_ )
@@ -463,138 +431,80 @@ public:
 	{}
 #endif 
 
-    sc_in( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
-
+    sc_in( const char* name_, this_type& parent_ );
 
     // destructor
 
-    virtual ~sc_in()
-	{
-	    remove_traces();
-	    delete m_change_finder_p;
-	    delete m_neg_finder_p;
-	    delete m_pos_finder_p;
-	}
-
+    virtual ~sc_in();
 
     // bind to in interface
 
-    SC_VIRTUAL_ void bind( const in_if_type& interface_ )
-	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+    SC_VIRTUAL_ void bind( const in_if_type& interface_ );
 
-    SC_VIRTUAL_ void bind( in_if_type& interface_ )
-	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+    SC_VIRTUAL_ void bind( in_if_type& interface_ );
 
-    void operator () ( const in_if_type& interface_ )
-	{ this->bind( interface_ ); }
-
+    void operator () ( const in_if_type& interface_ );
 
     // bind to parent in port
 
-    SC_VIRTUAL_ void bind( in_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( in_port_type& parent_ );
 
-    void operator () ( in_port_type& parent_ )
-        { this->bind( parent_ ); }
-
+    void operator () ( in_port_type& parent_ );
 
     // bind to parent inout port
 
-    SC_VIRTUAL_ void bind( inout_port_type& parent_ )
-	{ sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( inout_port_type& parent_ );
 
-    void operator () ( inout_port_type& parent_ )
-	{ this->bind( parent_ ); }
-
+    void operator () ( inout_port_type& parent_ );
 
     // interface access shortcut methods
 
     // get the default event
 
-    const sc_event& default_event() const
-	{ return (*this)->default_event(); }
+    const sc_event& default_event() const;
 
 
     // get the value changed event
 
-    const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    const sc_event& value_changed_event() const;
 
     // get the positive edge event
 
-    const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    const sc_event& posedge_event() const;
 
     // get the negative edge event
 
-    const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
-
+    const sc_event& negedge_event() const;
 
     // read the current value
 
-    const data_type& read() const
-	{ return (*this)->read(); }
+    const data_type& read() const;
 
-    operator const data_type& () const
-	{ return (*this)->read(); }
-
+    operator const data_type& () const;
 
     // use for positive edge sensitivity
 
-    sc_event_finder& pos() const
-    {
-        if ( !m_pos_finder_p )
-	{
-	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::posedge_event );
-	} 
-	return *m_pos_finder_p;
-    }
+    sc_event_finder& pos() const;
 
     // use for negative edge sensitivity
 
-    sc_event_finder& neg() const
-    {
-        if ( !m_neg_finder_p )
-	{
-	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::negedge_event );
-	} 
-	return *m_neg_finder_p;
-    }
-
+    sc_event_finder& neg() const;
 
     // was there a value changed event?
 
-    bool event() const
-	{ return (*this)->event(); }
+    bool event() const;
 
     // was there a positive edge event?
 
-    bool posedge() const
-        { return (*this)->posedge(); }
+    bool posedge() const;
 
     // was there a negative edge event?
 
-    bool negedge() const
-        { return (*this)->negedge(); }
+    bool negedge() const;
 
     // (other) event finder method(s)
 
-    sc_event_finder& value_changed() const
-    {
-        if ( !m_change_finder_p )
-	{
-	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::value_changed_event );
-	}
-	return *m_change_finder_p;
-    }
-
+    sc_event_finder& value_changed() const;
 
     // called when elaboration is done
     /*  WHEN DEFINING THIS METHOD IN A DERIVED CLASS, */
@@ -602,9 +512,7 @@ public:
 
     virtual void end_of_elaboration();
 
-    virtual const char* kind() const
-        { return "sc_in"; }
-
+    virtual const char* kind() const;
 
     void add_trace( sc_trace_file*, const std::string& ) const;
 
@@ -628,8 +536,7 @@ protected:
     //  - should only be called, when using sc_port_b explicitly
     //  - errors are detected during elaboration
 
-    SC_VIRTUAL_ void bind( base_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( base_port_type& parent_ );
 
 private:
   mutable sc_event_finder* m_change_finder_p;
@@ -685,183 +592,97 @@ public:
 
     // constructors
 
-    sc_in()
-	: base_type(), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in();
 
-    explicit sc_in( const char* name_ )
-	: base_type( name_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( const char* name_ );
 
-    explicit sc_in( const in_if_type& interface_ )
-	: base_type( CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( const in_if_type& interface_ );
 
-    sc_in( const char* name_, const in_if_type& interface_ )
-	: base_type( name_, CCAST<in_if_type&>( interface_ ) ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( const char* name_, const in_if_type& interface_ );
 
-    explicit sc_in( in_port_type& parent_ )
-	: base_type( parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_in( in_port_type& parent_ );
 
-    sc_in( const char* name_, in_port_type& parent_ )
-	: base_type( name_, parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( const char* name_, in_port_type& parent_ );
 
-    explicit sc_in( inout_port_type& parent_ )
-	: base_type(), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    explicit sc_in( inout_port_type& parent_ );
 
-    sc_in( const char* name_, inout_port_type& parent_ )
-	: base_type( name_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{ sc_port_base::bind( parent_ ); }
+    sc_in( const char* name_, inout_port_type& parent_ );
 
-    sc_in( this_type& parent_ )
-	: base_type( parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_in( this_type& parent_ );
 
-    sc_in( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
-
+    sc_in( const char* name_, this_type& parent_ );
 
     // destructor
 
-    virtual ~sc_in()
-	{
-	    remove_traces();
-	    delete m_change_finder_p;
-	    delete m_neg_finder_p;
-	    delete m_pos_finder_p;
-	}
-
+    virtual ~sc_in();
 
     // bind to in interface
 
-    SC_VIRTUAL_ void bind( const in_if_type& interface_ )
-	{ sc_port_base::bind( CCAST<in_if_type&>( interface_ ) ); }
+    SC_VIRTUAL_ void bind( const in_if_type& interface_ );
 
-    SC_VIRTUAL_ void bind( in_if_type& interface_ )
-	{ this->bind( CCAST<const in_if_type&>( interface_ ) ); }
+    SC_VIRTUAL_ void bind( in_if_type& interface_ );
 
-    void operator () ( const in_if_type& interface_ )
-	{ this->bind( interface_ ); }
-
+    void operator () ( const in_if_type& interface_ );
 
     // bind to parent in port
 
-    SC_VIRTUAL_ void bind( in_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( in_port_type& parent_ );
 
-    void operator () ( in_port_type& parent_ )
-        { this->bind( parent_ ); }
-
+    void operator () ( in_port_type& parent_ );
 
     // bind to parent inout port
 
-    SC_VIRTUAL_ void bind( inout_port_type& parent_ )
-	{ sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( inout_port_type& parent_ );
 
-    void operator () ( inout_port_type& parent_ )
-	{ this->bind( parent_ ); }
-
+    void operator () ( inout_port_type& parent_ );
 
     // interface access shortcut methods
 
     // get the default event
 
-    const sc_event& default_event() const
-	{ return (*this)->default_event(); }
-
+    const sc_event& default_event() const;
 
     // get the value changed event
 
-    const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    const sc_event& value_changed_event() const;
 
     // get the positive edge event
 
-    const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    const sc_event& posedge_event() const;
 
     // get the negative edge event
 
-    const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
-
+    const sc_event& negedge_event() const;
 
     // read the current value
 
-    const data_type& read() const
-	{ return (*this)->read(); }
+    const data_type& read() const;
 
-    operator const data_type& () const
-	{ return (*this)->read(); }
-
+    operator const data_type& () const;
 
     // use for positive edge sensitivity
 
-    sc_event_finder& pos() const
-    {
-        if ( !m_pos_finder_p )
-	{
-	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::posedge_event );
-	} 
-	return *m_pos_finder_p;
-    }
+    sc_event_finder& pos() const;
 
     // use for negative edge sensitivity
 
-    sc_event_finder& neg() const
-    {
-        if ( !m_neg_finder_p )
-	{
-	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::negedge_event );
-	} 
-	return *m_neg_finder_p;
-    }
-
+    sc_event_finder& neg() const;
 
     // was there a value changed event?
 
-    bool event() const
-	{ return (*this)->event(); }
+    bool event() const;
 
     // was there a positive edge event?
 
-    bool posedge() const
-        { return (*this)->posedge(); }
+    bool posedge() const;
 
     // was there a negative edge event?
 
-    bool negedge() const
-        { return (*this)->negedge(); }
+    bool negedge() const;
 
     // (other) event finder method(s)
 
-    sc_event_finder& value_changed() const
-    {
-        if ( !m_change_finder_p )
-	{
-	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::value_changed_event );
-	}
-	return *m_change_finder_p;
-    }
-
+    sc_event_finder& value_changed() const;
 
     // called when elaboration is done
     /*  WHEN DEFINING THIS METHOD IN A DERIVED CLASS, */
@@ -869,9 +690,7 @@ public:
 
     virtual void end_of_elaboration();
 
-    virtual const char* kind() const
-        { return "sc_in"; }
-
+    virtual const char* kind() const;
 
     void add_trace( sc_trace_file*, const std::string& ) const;
 
@@ -895,8 +714,7 @@ protected:
     //  - should only be called, when using sc_port_b explicitly
     //  - errors are detected during elaboration
 
-    SC_VIRTUAL_ void bind( base_port_type& parent_ )
-        { sc_port_base::bind( parent_ ); }
+    SC_VIRTUAL_ void bind( base_port_type& parent_ );
 
 private:
   mutable sc_event_finder* m_change_finder_p;
@@ -1109,11 +927,7 @@ private:
 };
 
 template<typename T>
-::std::ostream& operator << ( ::std::ostream& os, const sc_inout<T>& a )
-{
-    return os << a->read();
-}
-
+::std::ostream& operator << ( ::std::ostream& os, const sc_inout<T>& a );
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
 
@@ -1240,46 +1054,21 @@ public:
 
     // constructors
 
-    sc_inout()
-	: base_type(), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout();
 
-    explicit sc_inout( const char* name_ )
-	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( const char* name_ );
 
-    explicit sc_inout( inout_if_type& interface_ )
-	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( inout_if_type& interface_ );
 
-    sc_inout( const char* name_, inout_if_type& interface_ )
-	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( const char* name_, inout_if_type& interface_ );
 
-    explicit sc_inout( inout_port_type& parent_ )
-	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( inout_port_type& parent_ );
 
-    sc_inout( const char* name_, inout_port_type& parent_ )
-	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( const char* name_, inout_port_type& parent_ );
 
-    sc_inout( this_type& parent_ )
-	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( this_type& parent_ );
 
-    sc_inout( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
-
+    sc_inout( const char* name_, this_type& parent_ );
 
     // destructor
 
@@ -1290,103 +1079,65 @@ public:
 
     // get the default event
 
-    const sc_event& default_event() const
-	{ return (*this)->default_event(); }
-
+    const sc_event& default_event() const;
 
     // get the value changed event
 
-    const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    const sc_event& value_changed_event() const;
 
     // get the positive edge event
 
-    const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    const sc_event& posedge_event() const;
 
     // get the negative edge event
 
-    const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
-
+    const sc_event& negedge_event() const;
 
     // read the current value
 
-    const data_type& read() const
-	{ return (*this)->read(); }
+    const data_type& read() const;
 
-    operator const data_type& () const
-	{ return (*this)->read(); }
-
+    operator const data_type& () const;
 
     // use for positive edge sensitivity
 
-    sc_event_finder& pos() const
-    {
-        if ( !m_pos_finder_p )
-	{
-	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::posedge_event );
-	} 
-	return *m_pos_finder_p;
-    }
+    sc_event_finder& pos() const;
 
     // use for negative edge sensitivity
 
-    sc_event_finder& neg() const
-    {
-        if ( !m_neg_finder_p )
-	{
-	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::negedge_event );
-	} 
-	return *m_neg_finder_p;
-    }
-
+    sc_event_finder& neg() const;
 
     // was there a value changed event?
 
-    bool event() const
-	{ return (*this)->event(); }
+    bool event() const;
 
     // was there a positive edge event?
 
-    bool posedge() const
-        { return (*this)->posedge(); }
+    bool posedge() const;
 
     // was there a negative edge event?
 
-    bool negedge() const
-        { return (*this)->negedge(); }
+    bool negedge() const;
 
     // write the new value
 
-    void write( const data_type& value_ )
-	{ (*this)->write( value_ ); }
+    void write( const data_type& value_ );
 
-    this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    this_type& operator = ( const data_type& value_ );
 
-    this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    this_type& operator = ( const in_if_type& interface_ );
 
-    this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const in_port_type& port_ );
 
-    this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const inout_port_type& port_ );
 
-    this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
-
+    this_type& operator = ( const this_type& port_ );
 
     // set initial value (can also be called when port is not bound yet)
 
     void initialize( const data_type& value_ );
 
-    void initialize( const in_if_type& interface_ )
-	{ initialize( interface_.read() ); }
-
+    void initialize( const in_if_type& interface_ );
 
     // called when elaboration is done
     /*  WHEN DEFINING THIS METHOD IN A DERIVED CLASS, */
@@ -1397,18 +1148,9 @@ public:
 
     // (other) event finder method(s)
 
-    sc_event_finder& value_changed() const
-    {
-        if ( !m_change_finder_p )
-	{
-	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::value_changed_event );
-	}
-	return *m_change_finder_p;
-    }
+    sc_event_finder& value_changed() const;
 
-    virtual const char* kind() const
-        { return "sc_inout"; }
+    virtual const char* kind() const;
 
 protected:
 
@@ -1476,45 +1218,21 @@ public:
 
     // constructors
 
-    sc_inout()
-	: base_type(), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout();
 
-    explicit sc_inout( const char* name_ )
-	: base_type( name_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( const char* name_ );
 
-    explicit sc_inout( inout_if_type& interface_ )
-	: base_type( interface_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( inout_if_type& interface_ );
 
-    sc_inout( const char* name_, inout_if_type& interface_ )
-	: base_type( name_, interface_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( const char* name_, inout_if_type& interface_ );
 
-    explicit sc_inout( inout_port_type& parent_ )
-	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    explicit sc_inout( inout_port_type& parent_ );
 
-    sc_inout( const char* name_, inout_port_type& parent_ )
-	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( const char* name_, inout_port_type& parent_ );
 
-    sc_inout( this_type& parent_ )
-	: base_type( parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( this_type& parent_ );
 
-    sc_inout( const char* name_, this_type& parent_ )
-	: base_type( name_, parent_ ), m_init_val( 0 ), m_traces( 0 ),
-	  m_change_finder_p(0), m_neg_finder_p(0), m_pos_finder_p(0)
-	{}
+    sc_inout( const char* name_, this_type& parent_ );
 
 
     // destructor
@@ -1526,103 +1244,66 @@ public:
 
     // get the default event
 
-    const sc_event& default_event() const
-	{ return (*this)->default_event(); }
-
+    const sc_event& default_event() const;
 
     // get the value changed event
 
-    const sc_event& value_changed_event() const
-	{ return (*this)->value_changed_event(); }
+    const sc_event& value_changed_event() const;
 
     // get the positive edge event
 
-    const sc_event& posedge_event() const
-	{ return (*this)->posedge_event(); }
+    const sc_event& posedge_event() const;
 
     // get the negative edge event
 
-    const sc_event& negedge_event() const
-	{ return (*this)->negedge_event(); }
-
+    const sc_event& negedge_event() const;
 
     // read the current value
 
-    const data_type& read() const
-	{ return (*this)->read(); }
+    const data_type& read() const;
 
-    operator const data_type& () const
-	{ return (*this)->read(); }
-
+    operator const data_type& () const;
 
     // use for positive edge sensitivity
 
-    sc_event_finder& pos() const
-    {
-        if ( !m_pos_finder_p )
-	{
-	    m_pos_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::posedge_event );
-	} 
-	return *m_pos_finder_p;
-    }
+    sc_event_finder& pos() const;
 
     // use for negative edge sensitivity
 
-    sc_event_finder& neg() const
-    {
-        if ( !m_neg_finder_p )
-	{
-	    m_neg_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::negedge_event );
-	} 
-	return *m_neg_finder_p;
-    }
-
+    sc_event_finder& neg() const;
 
     // was there a value changed event?
 
-    bool event() const
-	{ return (*this)->event(); }
+    bool event() const;
 
     // was there a positive edge event?
 
-    bool posedge() const
-        { return (*this)->posedge(); }
+    bool posedge() const;
 
     // was there a negative edge event?
 
-    bool negedge() const
-        { return (*this)->negedge(); }
+    bool negedge() const;
 
     // write the new value
 
-    void write( const data_type& value_ )
-	{ (*this)->write( value_ ); }
+    void write( const data_type& value_ );
 
-    this_type& operator = ( const data_type& value_ )
-	{ (*this)->write( value_ ); return *this; }
+    this_type& operator = ( const data_type& value_ );
 
-    this_type& operator = ( const in_if_type& interface_ )
-	{ (*this)->write( interface_.read() ); return *this; }
+    this_type& operator = ( const in_if_type& interface_ );
 
-    this_type& operator = ( const in_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const in_port_type& port_ );
 
-    this_type& operator = ( const inout_port_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const inout_port_type& port_ );
 
-    this_type& operator = ( const this_type& port_ )
-	{ (*this)->write( port_->read() ); return *this; }
+    this_type& operator = ( const this_type& port_ );
 
 
     // set initial value (can also be called when port is not bound yet)
 
     void initialize( const data_type& value_ );
 
-    void initialize( const in_if_type& interface_ )
-	{ initialize( interface_.read() ); }
-
+    void initialize( const in_if_type& interface_ );
 
     // called when elaboration is done
     /*  WHEN DEFINING THIS METHOD IN A DERIVED CLASS, */
@@ -1633,18 +1314,9 @@ public:
 
     // (other) event finder method(s)
 
-    sc_event_finder& value_changed() const
-    {
-        if ( !m_change_finder_p )
-	{
-	    m_change_finder_p = new sc_event_finder_t<in_if_type>(
-	        *this, &in_if_type::value_changed_event );
-	}
-        return *m_change_finder_p;
-    }
+    sc_event_finder& value_changed() const;
 
-    virtual const char* kind() const
-        { return "sc_inout"; }
+    virtual const char* kind() const;
 
 protected:
 

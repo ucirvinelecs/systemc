@@ -103,7 +103,6 @@ class sc_fxnum_fast;
 
 #endif
 
-
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_observer
 //
@@ -115,8 +114,8 @@ class sc_fxnum_observer
 
 protected:
     
-    sc_fxnum_observer() {}
-    virtual ~sc_fxnum_observer() {}
+    sc_fxnum_observer();
+    virtual ~sc_fxnum_observer();
 
 public:
 
@@ -129,7 +128,6 @@ public:
 
 };
 
-
 // ----------------------------------------------------------------------------
 //  CLASS : sc_fxnum_fast_observer
 //
@@ -140,9 +138,9 @@ class sc_fxnum_fast_observer
 {
 
 protected:
-    
-    sc_fxnum_fast_observer() {}
-    virtual ~sc_fxnum_fast_observer() {}
+
+    sc_fxnum_fast_observer();
+    virtual ~sc_fxnum_fast_observer();
 
 public:
 
@@ -155,64 +153,7 @@ public:
 
 };
 
-
-// IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fxnum_observer
-//
-//  Abstract base class for fixed-point types observers; arbitrary precision.
-// ----------------------------------------------------------------------------
-
-inline
-void
-sc_fxnum_observer::construct( const sc_fxnum& )
-{}
-
-inline
-void
-sc_fxnum_observer::destruct( const sc_fxnum& )
-{}
-
-inline
-void
-sc_fxnum_observer::read( const sc_fxnum& )
-{}
-
-inline
-void
-sc_fxnum_observer::write( const sc_fxnum& )
-{}
-
-
-// ----------------------------------------------------------------------------
-//  CLASS : sc_fxnum_fast_observer
-//
-//  Abstract base class for fixed-point types observers; limited precision.
-// ----------------------------------------------------------------------------
-
-inline
-void
-sc_fxnum_fast_observer::construct( const sc_fxnum_fast& )
-{}
-
-inline
-void
-sc_fxnum_fast_observer::destruct( const sc_fxnum_fast& )
-{}
-
-inline
-void
-sc_fxnum_fast_observer::read( const sc_fxnum_fast& )
-{}
-
-inline
-void
-sc_fxnum_fast_observer::write( const sc_fxnum_fast& )
-{}
-
 } // namespace sc_dt
-
 
 #endif
 

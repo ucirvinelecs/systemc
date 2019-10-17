@@ -33,7 +33,26 @@
 //
 
 #include "sysc/utils/sc_pq.h"
+//----------------------------------------------Farah is working here 
+    void* sc_core::sc_ppq_base::top() const
+	{ return m_heap[1]; }
 
+    int sc_core::sc_ppq_base::size() const
+	{ return m_heap_size; }
+
+    bool sc_core::sc_ppq_base::empty() const
+	{ return (m_heap_size == 0); }
+
+    int sc_core::sc_ppq_base::parent( int i ) const
+	{ return i >> 1; }
+
+    int sc_core::sc_ppq_base::left( int i ) const
+	{ return i << 1; }
+
+    int sc_core::sc_ppq_base::right( int i ) const
+	{ return (i << 1) + 1; }
+
+//----------------------------------------------Farah is done working here
 namespace sc_core {
 
 sc_ppq_base::sc_ppq_base( int sz, int (*cmp)( const void*, const void* ) )

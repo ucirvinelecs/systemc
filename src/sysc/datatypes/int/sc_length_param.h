@@ -121,79 +121,16 @@ typedef sc_context<sc_length_param> sc_length_context;
 
 // IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 
-inline
-sc_length_param::sc_length_param() : m_len()
-{
-    *this = sc_length_context::default_value();
-}
 
-inline
-sc_length_param::sc_length_param( int len_ ) : m_len(len_)
-{
-    SC_CHECK_WL_( len_ );
-}
-
-inline
-sc_length_param::sc_length_param( const sc_length_param& a )
-    : m_len( a.m_len )
-{}
-
-inline
-sc_length_param::sc_length_param( sc_without_context )
-    : m_len( SC_DEFAULT_WL_ )
-{}
-
-
-inline
-sc_length_param&
-sc_length_param::operator = ( const sc_length_param& a )
-{
-    if( &a != this )
-    {
-	m_len = a.m_len;
-    }
-    return *this;
-}
-
-
-inline
 bool
-operator == ( const sc_length_param& a, const sc_length_param& b )
-{
-    return ( a.m_len == b.m_len );
-}
+operator == ( const sc_length_param& a, const sc_length_param& b );
 
-inline
 bool
-operator != ( const sc_length_param& a, const sc_length_param& b )
-{
-    return ( a.m_len != b.m_len );
-}
+operator != ( const sc_length_param& a, const sc_length_param& b );
 
 
-inline
-int
-sc_length_param::len() const
-{
-    return m_len;
-}
-
-inline
-void
-sc_length_param::len( int len_ )
-{
-    SC_CHECK_WL_( len_ );
-    m_len = len_;
-}
-
-
-inline
 ::std::ostream&
-operator << ( ::std::ostream& os, const sc_length_param& a )
-{
-    a.print( os );
-    return os;
-}
+operator << ( ::std::ostream& os, const sc_length_param& a );
 
 } // namespace sc_dt
 

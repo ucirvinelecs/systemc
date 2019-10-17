@@ -54,7 +54,22 @@
 #include "sysc/communication/sc_signal_ifs.h"
 #include "sysc/utils/sc_report.h"
 #include "sysc/utils/sc_utils_ids.h"
+//-----------------------------------------------Farah is working here
+sc_core::sc_trace_file::~sc_trace_file()
+	{ /* Intentionally blank */ }
 
+void
+sc_core::sc_trace_delta_cycles( sc_trace_file* tf, bool on )
+{
+    if( tf ) tf->delta_cycles( on );
+}
+
+void
+sc_core::sc_write_comment( sc_trace_file* tf, const std::string& comment )
+{
+    if( tf ) tf->write_comment( comment );
+}
+//---------------------------------------------Farah is done working hre
 namespace sc_core {
 
 // Trace file common functions.

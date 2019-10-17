@@ -51,29 +51,23 @@ public:
 
     ~sc_ppq_base();
 
-    void* top() const
-	{ return m_heap[1]; }
+    void* top() const;
 
     void* extract_top();
 
     void insert( void* elem );
 
-    int size() const
-	{ return m_heap_size; }
+    int size() const;
 
-    bool empty() const
-	{ return (m_heap_size == 0); }
+    bool empty() const;
 
 protected:
 
-    int parent( int i ) const
-	{ return i >> 1; }
+    int parent( int i ) const;
 
-    int left( int i ) const
-	{ return i << 1; }
+    int left( int i ) const;
 
-    int right( int i ) const
-	{ return (i << 1) + 1; }
+    int right( int i ) const;
 
     void heapify( int i );
 
